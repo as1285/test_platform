@@ -9,27 +9,180 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
-const geoip = require('geoip-lite');
+const { cityLabelFromIp } = require('../utils/ipCity');
 const jwt = require('jsonwebtoken');
 const mysql = require('mysql2/promise');
 const registerGuard = require('../../register-guard');
 const serverMonitor = require('../../serverMonitor');
+const { requireOptionalPurchaseUxMonitor } = require('../shared/optionalRootModule');
+const purchaseUxMonitor = requireOptionalPurchaseUxMonitor();
 const dbLogRetention = require('../../dbLogRetention');
+const unusedActivationCodes = require('../../unusedActivationCodes');
+const opsStatsReport = require('../../opsStatsReport');
 const alipay = require('../../alipay');
-const chatAi = require('../../chatAi');
 const { inferBankNameFromCardNo } = require('../../bank_card_bins');
 const config = require('../shared/config');
+const { isListedPartnerIp } = require('../partner/bankSalaryFlow');
+const signedAssets = require('../shared/signedAssets');
 const sharedDb = require('../shared/db');
+const waitForMysql = require('../shared/waitForMysql');
 const { runMigrations } = require('../shared/migrate');
 const adminMenuRegistry = require('../admin/menuRegistry');
+const adminDownline = require('../admin/downline');
+const { blockedByFromAdmin, blockedByLabel } = require('../admin/blockedByLabel');
+const adminUiCookie = require('../admin/uiAssetCookie');
+const {
+  adminUsernameKey,
+  adminHasFullUserScope,
+  fullUserScopeUsernameSqlIn
+} = require('../admin/fullUserScope');
+const {
+  rootAdminUsername,
+  shouldRecordAdminOperation
+} = require('../admin/operationLog');
 const settingsPolicy = require('../shared/settingsPolicy');
+const { addDaysToYmd, analyticsPeriodDateKeys } = require('../shared/ymd');
+const {
+  consumeRateLimit,
+  kvSet,
+  kvSetNx,
+  kvGet,
+  kvDel,
+  rateLimitBackendLabel
+} = require('../shared/rateLimit');
+const plainPasswordStore = require('../shared/plainPassword');
+const mail = require('../../mail');
 const {
   createInviteReward,
   isUserEffectivelyActive,
   isTrialExpired,
+  userActivationExpiredSql,
+  userEffectivelyActiveSql,
   activationFieldsForApi
 } = require('./inviteReward');
-const { createPricingAb } = require('./pricingAb');
+const { createPricingAb, DEFAULT_PRICING_AB, applyChannelCatalogPrices } = require('./pricingAb');
+const agentChannelsLib = require('./agentChannels');
+const createAgentChannels = agentChannelsLib.createAgentChannels;
+
+/** 兼容旧包未导出时仍可注册，避免 TypeError 直接返回给客户端 */
+function isUrlOnlySalesChannel(ch) {
+  if (typeof agentChannelsLib.isUrlOnlySalesChannel === 'function') {
+    return agentChannelsLib.isUrlOnlySalesChannel(ch);
+  }
+  var k = String(ch == null ? '' : ch)
+    .trim()
+    .toLowerCase();
+  return k === 'abc';
+}
+
+/** sticky 归因排除 URL-only（abc）：无显式 URL / 安装下载时不得回放 */
+function sanitizeStickySalesChannelId(ch) {
+  if (typeof agentChannelsLib.sanitizeStickySalesChannelId === 'function') {
+    return agentChannelsLib.sanitizeStickySalesChannelId(ch);
+  }
+  var k = sanitizeSalesChannelId(ch);
+  if (!k || isUrlOnlySalesChannel(k)) return '';
+  return k;
+}
+
+/**
+ * 新注册 abc（及其它 URL-only）仅 admin 可见的起始时间（UTC）。
+ * 历史 abc 账号不按此规则收紧；可用 ABC_CHANNEL_ADMIN_ONLY_SINCE 覆盖。
+ */
+const ABC_CHANNEL_ADMIN_ONLY_SINCE_UTC = String(
+  process.env.ABC_CHANNEL_ADMIN_ONLY_SINCE || '2026-09-07 02:41:00'
+).trim();
+
+/** 仅 username=admin 可查看截止后新注册的 abc 渠道用户 */
+function isAbcChannelViewerAdmin(admin) {
+  return adminUsernameKey(admin) === 'admin';
+}
+
+function abcChannelAdminOnlySinceUtc() {
+  return ABC_CHANNEL_ADMIN_ONLY_SINCE_UTC || '2026-09-07 02:41:00';
+}
+
+/**
+ * URL-only 渠道可见性：
+ * - admin：全部可见（含新注册 abc）
+ * - 全量运营等：历史 abc 仍可见，截止后新注册 abc 不可见
+ * - 普通子管理员：全部 abc 不可见
+ */
+function appendExcludeUrlOnlySalesChannelUsers(whereClauses, params, admin, userCol) {
+  if (!whereClauses || !admin) return;
+  if (isAbcChannelViewerAdmin(admin)) return;
+  var alias = userTableAliasFromCol(userCol);
+  var chCol = alias + '.sales_promo_channel';
+  var createdCol = alias + '.created_at';
+  if (adminHasFullUserScope(admin)) {
+    if (typeof agentChannelsLib.excludeUrlOnlySalesChannelSinceSql === 'function') {
+      whereClauses.push(
+        agentChannelsLib.excludeUrlOnlySalesChannelSinceSql(
+          chCol,
+          createdCol,
+          abcChannelAdminOnlySinceUtc(),
+          params
+        )
+      );
+      return;
+    }
+    whereClauses.push(
+      "(NOT (LOWER(TRIM(IFNULL(" +
+        chCol +
+        ", ''))) IN ('abc') AND " +
+        createdCol +
+        ' >= ?))'
+    );
+    params.push(abcChannelAdminOnlySinceUtc());
+    return;
+  }
+  if (typeof agentChannelsLib.excludeUrlOnlySalesChannelSql === 'function') {
+    whereClauses.push(agentChannelsLib.excludeUrlOnlySalesChannelSql(chCol, params));
+    return;
+  }
+  whereClauses.push("(LOWER(TRIM(IFNULL(" + chCol + ", ''))) NOT IN ('abc'))");
+}
+
+function resolveSalesChannelForChannelPrices(userCh, requestCh) {
+  if (typeof agentChannelsLib.resolveSalesChannelForChannelPrices === 'function') {
+    return agentChannelsLib.resolveSalesChannelForChannelPrices(userCh, requestCh);
+  }
+  var reqCh = String(requestCh == null ? '' : requestCh)
+    .trim()
+    .toLowerCase();
+  var acctCh = String(userCh == null ? '' : userCh)
+    .trim()
+    .toLowerCase();
+  if (reqCh) return reqCh;
+  if (acctCh) return acctCh;
+  return '';
+}
+const { createUserPriceOffers } = require('../payments/userPriceOffers');
+const { createPriceBids } = require('../payments/priceBids');
+const purchasePriceSurvey = require('../growth/purchasePriceSurvey');
+const { createUserEmailBulk, isValidUserEmail } = require('../admin/userEmailBulk');
+const taxEditFeePolicy = require('../tax/taxEditFeePolicy');
+const taxRecordListOrder = require('../tax/taxRecordListOrder');
+const {
+  sumRowMoney,
+  splitBasicAndSpecialAdditionalDeduction,
+  otherDeductionForDisplay,
+  periodOtherDeductionForDetail,
+  isSeparateTaxIncomeSubtype
+} = require('../tax/deductionSplit');
+const { currentPeriodDeclaredTax } = require('../tax/withholdingCalc');
+const renameFeePolicy = require('../user/renameFeePolicy');
+const lizhiCertFeePolicy = require('../user/lizhiCertFeePolicy');
+const najiluQrFeePolicy = require('../user/najiluQrFeePolicy');
+const najiluQrMod = require('../admin/najiluQr');
+const {
+  computeUserLoginRisk,
+  userLoginRiskMatchSql,
+  userSameRegisterIpOfSql,
+  userRegisterDistinctIpInnerSql,
+  userRegisterIpJoinSql,
+  userRegisterPersonKeySql
+} = require('../domain/userLoginRisk');
 
 const JWT_SECRET = config.JWT_SECRET;
 const JWT_EXPIRES = config.JWT_EXPIRES;
@@ -53,6 +206,14 @@ const LOGIN_RATE_PER_USER_MIN = config.LOGIN_RATE_PER_USER_MIN;
 const ADMIN_LOGIN_RATE_PER_IP_MIN = config.ADMIN_LOGIN_RATE_PER_IP_MIN;
 const ADMIN_API_RATE_PER_IP_MIN = config.ADMIN_API_RATE_PER_IP_MIN;
 const HEAVY_ADMIN_API_RATE_PER_IP_MIN = config.HEAVY_ADMIN_API_RATE_PER_IP_MIN;
+const GUEST_SESSION_RATE_PER_IP_MIN = config.GUEST_SESSION_RATE_PER_IP_MIN;
+const TRACK_RATE_PER_IP_MIN = config.TRACK_RATE_PER_IP_MIN;
+const ADMIN_LOGIN_MAX_FAILS = config.ADMIN_LOGIN_MAX_FAILS;
+const ADMIN_LOGIN_LOCK_MINUTES = config.ADMIN_LOGIN_LOCK_MINUTES;
+const ADMIN_LOGIN_EMAIL_OTP = config.ADMIN_LOGIN_EMAIL_OTP;
+const ADMIN_OTP_EMAIL = config.ADMIN_OTP_EMAIL;
+const ADMIN_OTP_TTL_SEC = config.ADMIN_OTP_TTL_SEC;
+const ADMIN_UPLOAD_MAX_BYTES = config.ADMIN_UPLOAD_MAX_BYTES;
 
 /** mine_ui JSON 中可配置的图片字段（相对路径、uploads/ 或 https） */
 const MINE_UI_IMAGE_KEYS = [
@@ -74,6 +235,7 @@ const MINE_UI_IMAGE_KEYS = [
   'shouye_banner',
   'shouye_zdfwdb',
   'shouye_lb',
+  'shouye_zdb',
   'daiban_header',
   'bancha_header',
   'message_header',
@@ -178,20 +340,6 @@ function activationSourceFromCodeNote(note) {
   return activationSourceKeyFromLabel(label);
 }
 
-/** 按渠道生成激活批次备注 */
-function activationBatchNoteFromChannel(channelInput) {
-  var lab = sanitizeActivationBatchChannelLabel(channelInput);
-  if (!lab) lab = ACTIVATION_BATCH_BUILTIN_CHANNELS.xianyu;
-  var keys = Object.keys(ACTIVATION_BATCH_BUILTIN_CHANNELS);
-  for (var i = 0; i < keys.length; i++) {
-    if (keys[i] === lab) {
-      lab = ACTIVATION_BATCH_BUILTIN_CHANNELS[keys[i]];
-      break;
-    }
-  }
-  return lab + '批量';
-}
-
 /** 激活来源渠道展示文案 */
 function activationSourceChannelLabel(channel) {
   var c = channel != null ? String(channel).trim() : '';
@@ -263,18 +411,6 @@ async function loadActivationBatchCustomChannels(conn) {
   }
 }
 
-/** 保存激活批次自定义渠道 */
-async function saveActivationBatchCustomChannels(conn, labels) {
-  var list = parseActivationBatchCustomChannels(labels);
-  var json = JSON.stringify(list);
-  await conn.execute(
-    `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
-     ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
-    [SETTING_KEY_ACTIVATION_BATCH_CHANNELS, json]
-  );
-  return list;
-}
-
 /** 组装激活批次渠道配置响应 */
 function buildActivationBatchChannelsPayload(customLabels) {
   var builtins = Object.keys(ACTIVATION_BATCH_BUILTIN_CHANNELS).map(function (k) {
@@ -307,9 +443,8 @@ const REGISTER_SOURCE_OTHER_MAX = 64;
 /** 规范化注册来源渠道入参 */
 function normalizeRegisterSourceChannelInput(channel, otherText) {
   var c = channel != null ? String(channel).trim() : '';
-  /* 来源渠道改为可选，降低注册摩擦 */
   if (!c) {
-    return { value: null };
+    return { err: '请选择来源渠道' };
   }
   if (c === 'other') {
     var custom = otherText != null ? String(otherText).trim() : '';
@@ -327,11 +462,11 @@ function normalizeRegisterSourceChannelInput(channel, otherText) {
   return { value: c };
 }
 
-/** 校验注册来源渠道是否合法（空值允许） */
+/** 校验注册来源渠道是否合法（必填） */
 function validateRegisterSourceChannel(channel) {
   var c = channel != null ? String(channel).trim() : '';
   if (!c) {
-    return null;
+    return '请选择来源渠道';
   }
   if (c.indexOf('other:') === 0) {
     var custom = c.slice(6).trim();
@@ -420,29 +555,12 @@ const SETTING_KEY_LANDING_AB = 'landing_ab_json';
 const SETTING_KEY_SALES_AGENT = 'sales_agent_json';
 const SETTING_KEY_PRICING_AB = 'pricing_ab_json';
 const SETTING_KEY_ACTIVATION_NUDGE = 'activation_nudge_json';
-const SETTING_KEY_CHAT_AUTO_REPLY_WELCOME = 'chat_auto_reply_welcome';
-const SETTING_KEY_CHAT_AUTO_REPLY_REPLY = 'chat_auto_reply_reply';
-const SETTING_KEY_CHAT_AI_ENABLED = 'chat_ai_enabled';
-const SETTING_KEY_CHAT_AI_PROMPT = 'chat_ai_prompt';
-
-const DEFAULT_CHAT_AUTO_REPLY_WELCOME =
-  '您好，欢迎咨询在线客服。如需购买激活码，请到「我的」点击「激活」打开购买页（微信/闲鱼/QQ）；也可直接在此留言，客服看到后会尽快回复。';
-const DEFAULT_CHAT_AUTO_REPLY_REPLY =
-  '已收到您的消息，客服稍候会人工回复。紧急购买请到「我的 → 激活」查看微信收款码、闲鱼与 QQ 联系方式。';
-const DEFAULT_CHAT_AI_PROMPT =
-  '你是「个税记录平台」的在线客服助手，语气简洁友好，用中文回复。\n' +
-  '产品说明：用户购买激活码后可去除水印、完整使用平台功能；购买入口在 App「我的 → 激活 / 购买」页，支持支付宝扫码、微信/闲鱼/QQ 等渠道。\n' +
-  '你可解答：激活码如何购买与填写、支付后多久生效、常见使用问题。\n' +
-  '你不能：编造订单/支付结果、索要银行卡密码、承诺退款政策以外的条款、代替人工处理投诉纠纷。\n' +
-  '若用户明确要求人工、涉及退款纠纷、账号安全敏感问题，或你不确定答案：简短说明后请用户等待人工客服，并建议到购买页查看联系方式。\n' +
-  '单次回复控制在 200 字以内，不要使用 Markdown 标题。';
-
 const DEFAULT_CONVERSION_AB = {
   enabled: true,
   activate_title_a: '请输入激活码',
   activate_subtitle_a: '激活后去除水印',
   activate_title_b: '输入激活码，解锁完整功能',
-  activate_subtitle_b: '永久使用，不限制设备',
+  activate_subtitle_b: '开通后去除水印，按时长使用',
   batch_example_prominent: false
 };
 
@@ -477,23 +595,117 @@ const DEFAULT_ACTIVATION_NUDGE = {
 const MSG_COMPANY_SYSTEM_NOTICE = '系统通知';
 const MSG_BULK_MAX_USERS = 5000;
 const MSG_BULK_INSERT_CHUNK = 80;
+/** 自动站内信：注册超 24h 未激活推广（正文标记，用于去重） */
+const MSG_AUTO_ACT24_MARKER = '@@auto_act24';
+const MSG_AUTO_ACT24_TITLE = '开通提醒：激活后去除水印';
+const MSG_AUTO_ACT24_BODY =
+  '您好，检测到您的账号尚未激活。激活后可去除水印，完整使用收入纳税明细与纳税记录等功能。点击下方「前往激活」即可开通。';
+/** 自动站内信：填税后未激活推广 */
+const MSG_AUTO_TAX_DONE_MARKER = '@@auto_tax_done';
+const MSG_AUTO_TAX_DONE_TITLE = '税务记录已生成，开通后可完整查看与导出';
+const MSG_AUTO_TAX_DONE_BODY =
+  '您已成功生成税务记录。开通后可去除水印，完整查看明细并导出纳税证明。';
+/** 自动站内信：支付页退出后未开通 */
+const MSG_AUTO_PURCHASE_EXIT_MARKER = '@@auto_purchase_exit';
+const MSG_AUTO_PURCHASE_EXIT_TITLE = '开通方案仍在等您';
+const MSG_AUTO_PURCHASE_EXIT_BODY =
+  '刚才您查看过开通页面。分享 B 站动态可享优惠，开通后即可完整使用导出等功能。';
+/** 核心推广：未激活用户二次退税广告（站内信去重标记） */
+const MSG_AUTO_REFUND_AD_MARKER = '@@auto_refund_ad';
+const MSG_AUTO_REFUND_AD_TITLE = '二次退税：可一键计算近三年可退金额';
+const MSG_AUTO_REFUND_AD_BODY =
+  '您好，未开通也可先看二次退税。打开页面可一键计算 2023、2024、2025 年大约可退税额，符合请联系客服办理。不强制添加。';
+/** 后台群发受众 */
+const BULK_MSG_AUDIENCE_SET = {
+  pending_activate_24h: true,
+  all_inactive: true,
+  inactive_has_tax: true,
+  inactive_no_tax: true,
+  inactive_visited_purchase: true,
+  inactive_purchase_no_pay: true,
+  inactive_has_d1: true,
+  inactive_d1_only: true,
+  inactive_high_income: true,
+  refund_eligible: true,
+  refund_eligible_copied: true,
+  refund_eligible_not_copied: true
+};
+/** 自己填写的月收入（本期收入/收入）超过该值视为高收入跟进 */
+const HIGH_SELF_INCOME_THRESHOLD = 15000;
+
+/** 单条个税记录的月收入：优先本期收入，否则收入 */
+function taxRecordMonthIncomeSql(alias) {
+  var t = alias || 'tr';
+  return 'GREATEST(IFNULL(' + t + '.income_this_period, 0), IFNULL(' + t + '.income, 0))';
+}
+
+/**
+ * 用户自己填写过月收入大于 threshold 的有效个税（排除公司名含「示例」）
+ * userCol 为 username 列，如 users.username / u.username
+ */
+function userHasSelfFilledHighIncomeSql(userCol, threshold) {
+  var n = Number(threshold);
+  if (!isFinite(n) || n < 0) n = HIGH_SELF_INCOME_THRESHOLD;
+  return (
+    'EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = ' +
+    (userCol || 'users.username') +
+    " AND tr.deleted_at IS NULL AND IFNULL(tr.company_name,'') NOT LIKE '%示例%' AND " +
+    taxRecordMonthIncomeSql('tr') +
+    ' > ' +
+    n +
+    ')'
+  );
+}
+/** 开通类自动站内信（填税后 / 离开支付页 / 注册超24h）默认关闭；设 ACTIVATION_INBOX_PROMO_ENABLED=1 可再开启 */
+const ACTIVATION_INBOX_PROMO_ENABLED =
+  String(process.env.ACTIVATION_INBOX_PROMO_ENABLED || '0').trim() === '1';
+const ACTIVATION_INBOX_PROMO_INTERVAL_MS = parseInt(
+  process.env.ACTIVATION_INBOX_PROMO_INTERVAL_MS || String(6 * 60 * 60 * 1000),
+  10
+);
+/** 核心推广：未激活用户站内信。退税邮件已停发。设 REFUND_AD_PROMO_ENABLED=0 可关站内信。 */
+const REFUND_AD_PROMO_ENABLED =
+  String(process.env.REFUND_AD_PROMO_ENABLED != null ? process.env.REFUND_AD_PROMO_ENABLED : '1').trim() !==
+  '0';
+const REFUND_AD_PROMO_INTERVAL_MS = parseInt(
+  process.env.REFUND_AD_PROMO_INTERVAL_MS || String(6 * 60 * 60 * 1000),
+  10
+);
+/** 退税金额邮件：同一用户 24 小时最多一封 */
+const REFUND_AD_EMAIL_SKIP_HOURS = Math.max(
+  1,
+  parseInt(process.env.REFUND_AD_EMAIL_SKIP_HOURS || '24', 10) || 24
+);
 
 /** 正式菜单键：单一来源见 src/admin/menuRegistry.js */
 const ADMIN_MENU_KEYS = adminMenuRegistry.ADMIN_MENU_KEYS;
 
 /**
- * 运营子账号 admin：注册用户页可看「从此刻起」新注册用户（UTC）。
- * 可用环境变量 ADMIN_OPS_SEE_REGISTERED_SINCE 覆盖，格式 YYYY-MM-DD HH:MM:SS（UTC）。
+ * 运营子账号：注册用户页可看「从此刻起」新注册用户（UTC）。
+ * 默认给 username=admin；额外账号见 ADMIN_OPS_EXTRA_SEE_SINCE。
+ * 可用环境变量 ADMIN_OPS_SEE_REGISTERED_SINCE 覆盖 admin 截止日，格式 YYYY-MM-DD HH:MM:SS（UTC）。
  */
 const ADMIN_OPS_SEE_REGISTERED_SINCE = String(
   process.env.ADMIN_OPS_SEE_REGISTERED_SINCE || '2026-07-23 15:10:00'
 ).trim();
 
+/** 额外运营子账号 → 新注册可见起始时间（UTC） */
+const ADMIN_OPS_EXTRA_SEE_SINCE = {};
+
 function isOpsNamedAdmin(admin) {
-  return !!(admin && String(admin.username || '').trim().toLowerCase() === 'admin');
+  var u = adminUsernameKey(admin);
+  if (!u) return false;
+  if (u === 'admin') return true;
+  return Object.prototype.hasOwnProperty.call(ADMIN_OPS_EXTRA_SEE_SINCE, u);
 }
 
-function adminOpsSeeRegisteredSinceUtc() {
+function adminOpsSeeRegisteredSinceUtc(admin) {
+  var u = String((admin && admin.username) || '')
+    .trim()
+    .toLowerCase();
+  if (u && ADMIN_OPS_EXTRA_SEE_SINCE[u]) {
+    return String(ADMIN_OPS_EXTRA_SEE_SINCE[u]).trim();
+  }
   return ADMIN_OPS_SEE_REGISTERED_SINCE || '2026-07-23 15:10:00';
 }
 
@@ -512,6 +724,117 @@ let pool;
 var inviteRewardApi = null;
 /** 定价 A/B */
 var pricingAbApi = null;
+/** 用户专属报价 */
+var userPriceOffersApi = null;
+/** 运营邮件群发 */
+var userEmailBulkApi = null;
+/** 代理专属渠道 */
+var agentChannelsApi = null;
+
+function getUserPriceOffers() {
+  if (!userPriceOffersApi) {
+    if (!pool) {
+      throw new Error('database pool not ready');
+    }
+    userPriceOffersApi = createUserPriceOffers({
+      pool: pool,
+      normalizeAmount: function (v) {
+        return alipay.normalizeAmount(v);
+      },
+      /* 原价与套餐列表统一走 pricingAb 的后台可配目录价，避免两份 LIVE SKU 漂移 */
+      loadCatalogAmounts: function () {
+        return getPricingAb().loadCatalogAmounts();
+      },
+      loadCatalogConfig: function () {
+        return getPricingAb().loadCatalogConfig();
+      }
+    });
+  }
+  return userPriceOffersApi;
+}
+
+/** 心理价出价 */
+var priceBidsApi = null;
+
+function getPriceBids() {
+  if (!priceBidsApi) {
+    if (!pool) {
+      throw new Error('database pool not ready');
+    }
+    priceBidsApi = createPriceBids({
+      pool: pool,
+      normalizeAmount: function (v) {
+        return alipay.normalizeAmount(v);
+      },
+      offers: getUserPriceOffers(),
+      /* 与支付页一致的货架（含渠道专属档现价），避免年卡出价误用周卡价 */
+      listPurchaseSkusForUser: async function (username) {
+        var envProduct = getAlipayProductConfig();
+        var offer = await getPricingAb().resolveOfferForUser(
+          username || '',
+          envProduct.amount,
+          envProduct.subject,
+          null
+        );
+        offer = await applyAgentChannelPricesToOffer(offer, username || '', null);
+        try {
+          if (username) {
+            var applied = await getUserPriceOffers().applyOfferToPricingOffer(username, offer);
+            offer = (applied && applied.offer) || offer;
+          }
+        } catch (eOffer) {
+          /* 专属价失败时仍用渠道货架 */
+        }
+        return Array.isArray(offer && offer.skus) ? offer.skus : [];
+      },
+      notifyUser: async function (username, title, body, linkUrl) {
+        var uid = String(username || '').trim();
+        if (!uid) return { email_sent: false, reason: 'no_user' };
+        var content = String(body || '') + '\n@@link:' + sanitizeInAppMessageLink(linkUrl);
+        var mid = 'msg_bid_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        await pool.execute(
+          'INSERT INTO messages (id, user_id, title, content, company_name, msg_date, is_read) VALUES (?, ?, ?, ?, ?, ?, 0)',
+          [mid, uid, String(title || '通知'), content, MSG_COMPANY_SYSTEM_NOTICE, new Date().toISOString().slice(0, 10)]
+        );
+        invalidateMessageListCache(uid);
+        try {
+          var mailOut = await getUserEmailBulk().notifyUserEmail(uid, title, body, linkUrl);
+          return {
+            email_sent: !!(mailOut && mailOut.sent),
+            reason: (mailOut && mailOut.reason) || (mailOut && mailOut.sent ? '' : 'send_failed')
+          };
+        } catch (eMail) {
+          console.error('[price-bid] notify email failed', uid, eMail && eMail.message);
+          return { email_sent: false, reason: 'send_error' };
+        }
+      },
+      onBidRecorded: function (username, amount) {
+        return purchasePriceSurvey.attachExpectedPriceFromBid(username, amount);
+      }
+    });
+  }
+  return priceBidsApi;
+}
+
+function getUserEmailBulk() {
+  if (!userEmailBulkApi) {
+    if (!pool) {
+      throw new Error('database pool not ready');
+    }
+    userEmailBulkApi = createUserEmailBulk({
+      getPool: function () {
+        return pool;
+      },
+      mail: mail,
+      publicSiteUrl: config.PUBLIC_SITE_URL,
+      bulkAudienceSet: BULK_MSG_AUDIENCE_SET,
+      appendBulkMsgAudienceFilters: appendBulkMsgAudienceFilters,
+      appendAdminUserScope: appendAdminUserScope,
+      nonGuestUsernameSql: nonGuestUsernameSql
+    });
+  }
+  return userEmailBulkApi;
+}
 
 function getInviteReward() {
   if (!inviteRewardApi) {
@@ -530,6 +853,21 @@ function getInviteReward() {
   return inviteRewardApi;
 }
 
+function getAgentChannels() {
+  if (!agentChannelsApi) {
+    if (!pool) {
+      throw new Error('database pool not ready');
+    }
+    agentChannelsApi = createAgentChannels({
+      getPool: function () {
+        return pool;
+      },
+      sanitizeSalesChannelId: sanitizeSalesChannelId
+    });
+  }
+  return agentChannelsApi;
+}
+
 function getPricingAb() {
   if (!pricingAbApi) {
     if (!pool) {
@@ -540,6 +878,9 @@ function getPricingAb() {
       upsertAppSetting: upsertAppSetting,
       alipayNormalizeAmount: function (v) {
         return alipay.normalizeAmount(v);
+      },
+      getForcedAbcForUser: async function () {
+        return 'b';
       }
     });
   }
@@ -596,7 +937,7 @@ function normalizeAdminMenuList(rawMenus, isSuper) {
     seen[key] = true;
     out.push(key);
   });
-  return out;
+  return adminMenuRegistry.stripSuperOnlyMenus(adminMenuRegistry.ensureRequiredSubadminMenus(out));
 }
 
 var _wechatPayQrcodeCache = null;
@@ -604,7 +945,8 @@ var WECHAT_PAY_QRCODE_CACHE_MS = 15000;
 var _installPackageSettingsCache = null;
 var INSTALL_PACKAGE_SETTINGS_CACHE_MS = 30000;
 var _installPackagesResponseCache = new Map();
-var INSTALL_PACKAGES_RESPONSE_CACHE_MS = 90000;
+/** 签名 URL 会过期，响应缓存不宜过长 */
+var INSTALL_PACKAGES_RESPONSE_CACHE_MS = 45000;
 var _salesPromoChannelCache = new Map();
 var SALES_PROMO_CHANNEL_CACHE_MS = 30000;
 var _taxRecordsListCache = new Map();
@@ -714,50 +1056,6 @@ async function getTestAccountCompanyName() {
   }
 }
 
-/** 清除测试公司名缓存 */
-function invalidateTestCompanyNameCache() {
-  _testCompanyNameCache = null;
-}
-
-/** 获取：user data analytics excluded companies */
-function getUserDataAnalyticsExcludedCompanies(testCompanyName) {
-  var names = [
-    '1',
-    '北京华示示例软件有限公司',
-    '北京华示例软件有限公司',
-    '示例科技有限公司',
-    '上海云示例网络科技有限公司',
-    '深圳创示例智能有限公司',
-    '杭州数示例信息技术有限公司',
-    '成都汇示例商贸有限公司',
-    '广州联示例电子有限公司',
-    '南京智示例软件有限公司'
-  ];
-  var tc = testCompanyName != null ? String(testCompanyName).trim() : '';
-  if (tc) {
-    names.push(tc);
-  }
-  var seen = {};
-  return names.filter(function (n) {
-    if (!n || seen[n]) {
-      return false;
-    }
-    seen[n] = true;
-    return true;
-  });
-}
-
-/** 排除指定公司名的 SQL 片段 */
-function sqlCompanyNotInExcludedClause(excludedCompanies, columnExpr) {
-  if (!excludedCompanies || !excludedCompanies.length) {
-    return { sql: '', params: [] };
-  }
-  return {
-    sql: ' AND ' + columnExpr + ' NOT IN (' + excludedCompanies.map(function () { return '?'; }).join(',') + ')',
-    params: excludedCompanies.slice()
-  };
-}
-
 /** 深拷贝「我的」页 UI 默认配置 */
 function cloneMineUiDefaults() {
   return {
@@ -780,6 +1078,7 @@ function cloneMineUiDefaults() {
     shouye_banner: 'sydb-v2.jpg',
     shouye_zdfwdb: 'zdfwdb.jpg',
     shouye_lb: 'lb.jpg',
+    shouye_zdb: 'zdb.jpg',
     daiban_header: 'daiban.jpg',
     bancha_header: 'db.jpg',
     message_header: '',
@@ -883,12 +1182,22 @@ function toPublicInstallDownloadUrl(raw) {
   if (/^uploads\//i.test(s)) {
     s = '/' + s;
   }
+  // 本站 uploads 下的 APK / mobileconfig：短时签名，禁止直链热链
+  if (signedAssets.isSensitiveUploadPath(s)) {
+    return signedAssets.toSignedPublicAssetUrl(s, config);
+  }
   // 绕过 Cloudflare 对旧 APK 响应头的缓存（缺 Content-Disposition 时易整页打开失败）
   if (/\.apk$/i.test(s.split('?')[0]) && s.indexOf('?') < 0) {
     s += '?v=20260717';
   }
   return s;
 }
+
+/** 签名下载敏感安装包（APK / mobileconfig） */
+var handlePublicAssetGet = signedAssets.createPublicAssetHandler({
+  config: config,
+  uploadDir: UPLOAD_DIR
+});
 
 /** sanitize xianyu purchase text */
 function sanitizeXianyuPurchaseText(raw) {
@@ -915,6 +1224,28 @@ function sanitizeSalesChannelId(raw) {
     return '';
   }
   return s;
+}
+
+/**
+ * 从 query / body / X-Sales-Channel / UA TaxPlatformDistributor 读取渠道。
+ * 优先级：显式参数 > 请求头 > UA 分发标记。
+ */
+function readSalesChannelFromRequest(req, body) {
+  var q = (req && req.query) || {};
+  var b = body && typeof body === 'object' ? body : {};
+  var fromParam = sanitizeSalesChannelId(
+    q.sales_ch || q.ch || q.channel || b.sales_ch || b.ch || b.channel || ''
+  );
+  if (fromParam) return fromParam;
+  var h = (req && req.headers) || {};
+  var fromHeader = sanitizeSalesChannelId(
+    h['x-sales-channel'] || h['X-Sales-Channel'] || ''
+  );
+  if (fromHeader) return fromHeader;
+  var ua = String(h['user-agent'] || h['User-Agent'] || '');
+  var m = ua.match(/TaxPlatformDistributor\/([a-zA-Z0-9_-]{1,64})/);
+  if (m) return sanitizeSalesChannelId(m[1]);
+  return '';
 }
 
 /** 解析需隐藏闲鱼入口的销售渠道列表 */
@@ -972,10 +1303,293 @@ function shouldHideXianyuForSalesChannel(salesCh, hideList) {
   return (hideList || []).indexOf(ch) >= 0;
 }
 
-/** 获取：agent promo channel list from settings */
+/** 合并设置里的隐藏闲鱼渠道 + 已启用的代理专属渠道 */
 async function getAgentPromoChannelListFromSettings() {
   var raw = await getInstallPackageSettingsFromDb();
-  return raw.xianyu_hide_channels || [];
+  var list = (raw.xianyu_hide_channels || []).slice();
+  try {
+    var extra = await getAgentChannels().listEnabledChannelIds();
+    (extra || []).forEach(function (id) {
+      var ch = sanitizeSalesChannelId(id);
+      if (ch && list.indexOf(ch) < 0) {
+        list.push(ch);
+      }
+    });
+  } catch (e) {}
+  return list;
+}
+
+/** 是否代理推广渠道（隐藏闲鱼列表或专属渠道表） */
+async function isAgentPromoSalesChannel(salesCh) {
+  var ch = sanitizeSalesChannelId(salesCh);
+  if (!ch) return false;
+  try {
+    var list = await getAgentPromoChannelListFromSettings();
+    return list.indexOf(ch) >= 0;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * 代理推广渠道强制的支付方案：全站只保留一套，渠道不再分流 A/C。
+ * @returns {Promise<string|null>} b 或 null（非代理渠道）
+ */
+async function resolveForcedAbcForSalesChannel(salesCh) {
+  var ch = sanitizeSalesChannelId(salesCh);
+  if (!ch) return null;
+  try {
+    var pol = await getAgentChannels().getEnabledChannelById(ch);
+    if (pol) return 'b';
+  } catch (ePol) {}
+  if (await isAgentPromoSalesChannel(ch)) {
+    return 'b';
+  }
+  return null;
+}
+
+/**
+ * 按渠道专属价覆盖 offer.skus。
+ * 普通渠道：账号 sales_promo_channel 或请求 ch / header / UA。
+ * URL-only（abc）：请求 ch 优先；否则认账号已绑的 sales_promo_channel=abc，
+ * 避免渠道包装完后站内进支付页丢 ?ch= 而落到普通价。
+ * 用户专属报价应在本函数之后再套用。
+ */
+async function applyAgentChannelPricesToOffer(offer, username, req) {
+  if (!offer || !offer.skus) return offer;
+  var userCh = '';
+  try {
+    if (username) {
+      userCh = await getUserSalesPromoChannel(username);
+      if (!userCh) {
+        userCh = await maybeBindUrlOnlySalesChannel(username, req);
+      }
+    }
+  } catch (e0) {
+    userCh = userCh || '';
+  }
+  var reqCh = '';
+  if (req) {
+    try {
+      reqCh = readSalesChannelFromRequest(req);
+    } catch (e1) {
+      reqCh = '';
+    }
+  }
+  var ch = resolveSalesChannelForChannelPrices(userCh, reqCh);
+  if (!ch) return offer;
+  var pol = null;
+  try {
+    pol = await getAgentChannels().getEnabledChannelById(ch);
+  } catch (e2) {
+    pol = null;
+  }
+  if (!pol || !pol.has_channel_prices || !pol.sku_prices) return offer;
+  offer.skus = applyChannelCatalogPrices(offer.skus, pol.sku_prices);
+  offer.forced_by_channel = true;
+  offer.channel_prices = true;
+  offer.channel_id = pol.channel_id;
+  if (!offer.abc_source || offer.abc_source === 'single_plan') {
+    offer.abc_source = 'agent_channel_price';
+  }
+  return offer;
+}
+
+/**
+ * 渠道是否「仅激活码 / 隐藏全部自助支付」——已停用，一律走支付宝页。
+ */
+async function resolveCodeOnlyForSalesChannel(salesCh) {
+  return false;
+}
+
+/** 登录用户是否禁止自助支付（仅激活码）——已停用 */
+async function userMustHideSelfServePay(username) {
+  return false;
+}
+
+/**
+ * 经专属/代理推广渠道注册/登录：挂到下属代理名下（若有专属配置）；
+ * 支付方案与全站同一套。
+ * @returns {Promise<object|null>} 渠道配置或 null
+ */
+async function attachUserFromSalesChannel(username, salesCh) {
+  var u = String(username || '').trim();
+  var ch = sanitizeSalesChannelId(salesCh);
+  if (!u || !ch) {
+    return null;
+  }
+  /* abc 等 URL-only：写入账号归因供开通价使用，不挂下属代理 */
+  if (isUrlOnlySalesChannel(ch)) {
+    try {
+      await writeSalesPromoChannelIfEmpty(u, ch);
+    } catch (eUrlOnly) {
+      console.error('attachUserFromSalesChannel url-only', eUrlOnly);
+    }
+    return {
+      channel_id: ch,
+      owner_admin_username: '',
+      default_pricing_abc: 'b',
+      enabled: true,
+      note: ''
+    };
+  }
+  var pol = null;
+  try {
+    pol = await getAgentChannels().attachUserToChannel(u, ch);
+  } catch (eAtt) {
+    console.error('attachUserFromSalesChannel', eAtt);
+    return null;
+  }
+  var forcedAbc = null;
+  if (pol) {
+    forcedAbc = 'b';
+  } else if (await isAgentPromoSalesChannel(ch)) {
+    /* 未建专属渠道、但在代理推广列表：仍写入渠道，支付跟全站同一套 */
+    try {
+      if (pool) {
+        await pool.execute(
+          `UPDATE users
+           SET sales_promo_channel = COALESCE(NULLIF(TRIM(sales_promo_channel), ''), ?)
+           WHERE username = ?`,
+          [ch, u]
+        );
+      }
+    } catch (ePromo) {
+      console.error('attachUserFromSalesChannel promo', ePromo);
+    }
+    forcedAbc = 'b';
+    pol = {
+      channel_id: ch,
+      owner_admin_username: '',
+      default_pricing_abc: 'b',
+      enabled: true,
+      note: ''
+    };
+  }
+  if (forcedAbc) {
+    try {
+      /* 管理端指定方案优先：登录挂渠道时不得覆盖 admin_force */
+      var existingSticky = await getPricingAb().getStickyAssignment(u);
+      if (!(existingSticky && existingSticky.source === 'admin_force')) {
+        await getPricingAb().setStickyAbc(u, forcedAbc, 'agent_channel', true);
+      }
+    } catch (eSticky) {}
+  }
+  try {
+    _salesPromoChannelCache.delete(u);
+  } catch (eCache) {}
+  return pol;
+}
+
+/**
+ * 从请求体 / 已有账号 / 游客继承挂载专属渠道。
+ * 不用裸 IP 归因挂载：同一出口 IP 测过 ?ch=quan_c 后，会把无关账号永久标成仅激活码。
+ * 代理包 / 推广链接须显式带 ch（body/query/localStorage→注册参数）或游客已绑渠道。
+ */
+async function attachUserFromRequestChannel(username, req, body) {
+  var u = String(username || '').trim();
+  if (!u) return null;
+  var ch = readSalesChannelFromRequest(req, body);
+  if (!ch) {
+    try {
+      ch = await getUserSalesPromoChannel(u);
+    } catch (e2) {
+      ch = '';
+    }
+  }
+  /* 游客沙盒已绑渠道时，注册账号继承 */
+  if (!ch) {
+    try {
+      var guestU =
+        (body && (body.guest_username || body.guestUsername)) ||
+        '';
+      guestU = String(guestU || '').trim();
+      if (!guestU) {
+        var cid = readClientIdFromRequest(req);
+        if (!cid && body && (body.client_id || body.clientId)) {
+          cid = String(body.client_id || body.clientId).trim();
+        }
+        if (cid) guestU = guestUsernameForClientId(cid);
+      }
+      if (guestU && guestU.indexOf(GUEST_USERNAME_PREFIX) === 0 && guestU !== u) {
+        ch = await getUserSalesPromoChannel(guestU);
+      }
+    } catch (e3) {
+      ch = ch || '';
+    }
+  }
+  /* 设备指纹/client_id 归因（不含裸 IP）——代理清缓存后同机仍可恢复。
+   * URL-only（abc）已在 resolve 内过滤，须靠显式 ch 或安装下载补绑。 */
+  if (!ch) {
+    try {
+      ch = await resolveSalesChannelForRequestStrict(req);
+    } catch (e4) {
+      ch = '';
+    }
+  }
+  /* 装过 abc 描述文件/安装包：client_id 常会变，按下载埋点补绑 */
+  if (!ch) {
+    try {
+      ch = await resolveUrlOnlyChannelFromInstallDownload(req, { username: u });
+    } catch (e5) {
+      ch = '';
+    }
+  }
+  if (!ch) {
+    return null;
+  }
+  return attachUserFromSalesChannel(u, ch);
+}
+
+/**
+ * 子管理员可见：激活码名下 或 专属渠道归属（owner_agent_admin）
+ * @param {string} userCol 如 users.username / u.username
+ */
+function appendSubAdminOwnedUsersScope(whereClauses, params, adminUsername, userCol, extraOwners) {
+  var owners = adminDownline.uniqueUsernames([adminUsername].concat(extraOwners || []));
+  if (!owners.length || !userCol) return;
+  var m = /^([a-zA-Z_][\w]*)\.username$/.exec(String(userCol));
+  var alias = m ? m[1] : '';
+  var useSameTable = alias === 'users' || alias === 'u';
+  if (useSameTable) {
+    var agentSql = adminDownline.ownerAdminInSql(alias + '.owner_agent_admin', params, owners);
+    var codeSql = adminDownline.ownerAdminInSql('ac.owner_admin_username', params, owners);
+    whereClauses.push(
+      '(' +
+        agentSql +
+        ' OR EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
+        userCol +
+        ' AND ' +
+        codeSql +
+        '))'
+    );
+    return;
+  }
+  var agentSql2 = adminDownline.ownerAdminInSql('__oa.owner_agent_admin', params, owners);
+  var codeSql2 = adminDownline.ownerAdminInSql('ac.owner_admin_username', params, owners);
+  whereClauses.push(
+    '(EXISTS (SELECT 1 FROM users __oa WHERE __oa.username = ' +
+      userCol +
+      ' AND ' +
+      agentSql2 +
+      ') OR EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
+      userCol +
+      ' AND ' +
+      codeSql2 +
+      '))'
+  );
+}
+
+/** 按当前管理员（含下线）追加用户归属范围 */
+function appendSubAdminOwnedUsersScopeForAdmin(whereClauses, params, admin, userCol) {
+  if (!admin) return;
+  appendSubAdminOwnedUsersScope(
+    whereClauses,
+    params,
+    admin.username,
+    userCol,
+    admin.downline_usernames
+  );
 }
 
 /** promo segment filter */
@@ -1144,8 +1758,13 @@ async function queryDailyConversionSegment(conn, period, admin, segment, agentCh
     var regWhereParts = [regWhere];
     appendConversionAnalyticsRegistrationScope(regWhereParts, regParams, admin, 'users.username');
     regWhere = regWhereParts.join(' AND ');
-    actWhere += ' AND ac.owner_admin_username = ?';
-    actParams.push(ownerAdmin);
+    actWhere +=
+      ' AND ' +
+      adminDownline.ownerAdminInSql(
+        'ac.owner_admin_username',
+        actParams,
+        adminDownline.adminScopeUsernames(admin)
+      );
   }
 
   const [regRows] = await conn.query(
@@ -1183,11 +1802,6 @@ async function queryDailyConversionSegment(conn, period, admin, segment, agentCh
   return buildDailyConversionSeries(period.days, regMap, actMap);
 }
 
-/** 查询某日闲鱼激活分段 */
-async function queryDailyXianyuActivationSegment(conn, period, admin) {
-  return queryDailyActivationChannelSegment(conn, period, admin, 'xianyu');
-}
-
 /** 查询某日激活渠道分段 */
 async function queryDailyActivationChannelSegment(conn, period, admin, channelKey) {
   var ownerAdmin = conversionAnalyticsOwnerAdmin(admin);
@@ -1208,8 +1822,13 @@ async function queryDailyActivationChannelSegment(conn, period, admin, channelKe
   var actWhere = 'ac.last_used_at IS NOT NULL AND ac.used_count > 0 AND ' + chFilter;
   var actParams = chParams.slice();
   if (ownerAdmin) {
-    actWhere += ' AND ac.owner_admin_username = ?';
-    actParams.push(ownerAdmin);
+    actWhere +=
+      ' AND ' +
+      adminDownline.ownerAdminInSql(
+        'ac.owner_admin_username',
+        actParams,
+        adminDownline.adminScopeUsernames(admin)
+      );
   }
   if (period.mode === 'range') {
     actWhere += ' AND ' + cnActDay + ' >= ? AND ' + cnActDay + ' <= ?';
@@ -1247,128 +1866,6 @@ async function queryDailyActivationChannelSegment(conn, period, admin, channelKe
   result.activation_only = true;
   result.activation_channel = String(channelKey || '');
   return result;
-}
-
-/** 查询注册漏斗分段 */
-async function queryRegistrationFunnelSegment(conn, period, admin, segment, agentChannels) {
-  var cnUserDay = 'DATE(DATE_ADD(u.created_at, INTERVAL 8 HOUR))';
-  var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
-  var seg = promoSegmentFilter(segment, 'u', agentChannels);
-
-  var where = [];
-  var params = [];
-  if (period.mode === 'range') {
-    where.push(cnUserDay + ' >= ? AND ' + cnUserDay + ' <= ?');
-    params.push(period.start, period.end);
-  } else {
-    where.push(cnUserDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)');
-    params.push(period.span);
-  }
-  where.push(seg.sql);
-  where.push(nonGuestUsernameSql('u.username'));
-  params = params.concat(seg.params);
-  appendConversionAnalyticsRegistrationScope(where, params, admin, 'u.username');
-  var whereSql = ' WHERE ' + where.join(' AND ');
-  var ownerAdmin = conversionAnalyticsOwnerAdmin(admin);
-  // actOwnerSql 的 ? 在 SELECT 的 EXISTS 里，早于 WHERE，owner 必须排在参数最前
-  var actOwnerSql = ownerAdmin ? ' AND ac.owner_admin_username = ?' : '';
-  var funnelParams = ownerAdmin ? [ownerAdmin].concat(params) : params.slice();
-
-  const [sumRows] = await conn.query(
-    `SELECT COUNT(*) AS registered,
-            SUM(CASE WHEN EXISTS (
-              SELECT 1 FROM activation_codes ac
-              WHERE ac.used_by_username = u.username
-                AND ac.last_used_at IS NOT NULL` +
-      actOwnerSql +
-      `
-                AND u.activation_refunded_at IS NULL
-                AND u.list_hidden_at IS NULL
-                AND TIMESTAMPDIFF(HOUR, u.created_at, ac.last_used_at) BETWEEN 0 AND 168
-            ) THEN 1 ELSE 0 END) AS activated_7d,
-            SUM(CASE WHEN EXISTS (
-              SELECT 1 FROM tax_records tr
-              WHERE tr.user_id = u.username
-                AND tr.deleted_at IS NULL
-                AND TIMESTAMPDIFF(HOUR, u.created_at, tr.created_at) BETWEEN 0 AND 168
-            ) THEN 1 ELSE 0 END) AS tax_7d,
-            SUM(CASE WHEN EXISTS (
-              SELECT 1 FROM user_page_events e
-              WHERE e.username = u.username
-                AND (e.page_path LIKE '%shuiming%' OR e.page_path LIKE '%xiangqing%')
-                AND TIMESTAMPDIFF(HOUR, u.created_at, e.created_at) BETWEEN 0 AND 168
-            ) THEN 1 ELSE 0 END) AS viewed_detail_7d
-     FROM users u` + whereSql,
-    funnelParams
-  );
-  var sum = sumRows[0] || {};
-  var registered = Number(sum.registered) || 0;
-  var activated7 = Number(sum.activated_7d) || 0;
-  var tax7 = Number(sum.tax_7d) || 0;
-  var detail7 = Number(sum.viewed_detail_7d) || 0;
-
-  const [dayRows] = await conn.query(
-    `SELECT ${cnUserDay} AS d,
-            COUNT(*) AS registered,
-            SUM(CASE WHEN EXISTS (
-              SELECT 1 FROM activation_codes ac
-              WHERE ac.used_by_username = u.username
-                AND ac.last_used_at IS NOT NULL` +
-      actOwnerSql +
-      `
-                AND u.activation_refunded_at IS NULL
-                AND u.list_hidden_at IS NULL
-                AND TIMESTAMPDIFF(HOUR, u.created_at, ac.last_used_at) BETWEEN 0 AND 168
-            ) THEN 1 ELSE 0 END) AS activated_7d,
-            SUM(CASE WHEN EXISTS (
-              SELECT 1 FROM tax_records tr
-              WHERE tr.user_id = u.username
-                AND tr.deleted_at IS NULL
-                AND TIMESTAMPDIFF(HOUR, u.created_at, tr.created_at) BETWEEN 0 AND 168
-            ) THEN 1 ELSE 0 END) AS tax_7d,
-            SUM(CASE WHEN EXISTS (
-              SELECT 1 FROM user_page_events e
-              WHERE e.username = u.username
-                AND (e.page_path LIKE '%shuiming%' OR e.page_path LIKE '%xiangqing%')
-                AND TIMESTAMPDIFF(HOUR, u.created_at, e.created_at) BETWEEN 0 AND 168
-            ) THEN 1 ELSE 0 END) AS viewed_detail_7d
-     FROM users u` +
-      whereSql +
-      ` GROUP BY ${cnUserDay} ORDER BY d ASC`,
-    funnelParams
-  );
-
-  var series = (dayRows || []).map(function (r) {
-    var reg = Number(r.registered) || 0;
-    var a7 = Number(r.activated_7d) || 0;
-    var t7 = Number(r.tax_7d) || 0;
-    var v7 = Number(r.viewed_detail_7d) || 0;
-    return {
-      date: formatDateKey(r.d),
-      registered: reg,
-      activated_7d: a7,
-      tax_7d: t7,
-      viewed_detail_7d: v7,
-      rate_activate_7d_pct: analyticsConversionPct(a7, reg),
-      rate_tax_7d_pct: analyticsConversionPct(t7, reg),
-      rate_detail_7d_pct: analyticsConversionPct(v7, reg)
-    };
-  });
-
-  return {
-    summary: {
-      registered: registered,
-      activated_7d: activated7,
-      tax_7d: tax7,
-      viewed_detail_7d: detail7,
-      rate_activate_7d_pct: analyticsConversionPct(activated7, registered),
-      rate_tax_7d_pct: analyticsConversionPct(tax7, registered),
-      rate_detail_7d_pct: analyticsConversionPct(detail7, registered),
-      rate_tax_of_activated_pct: analyticsConversionPct(tax7, activated7),
-      rate_detail_of_tax_pct: analyticsConversionPct(detail7, tax7)
-    },
-    series: series
-  };
 }
 
 /** 尝试从请求解析已登录用户 id */
@@ -1419,57 +1916,62 @@ async function getUserSalesPromoChannel(userId) {
   }
 }
 
-/** 解析生效销售渠道 */
-async function resolveEffectiveSalesChannel(req) {
-  var ch = sanitizeSalesChannelId((req.query && (req.query.sales_ch || req.query.ch)) || '');
-  if (ch) {
-    return ch;
-  }
-  var uid = tryAuthUserIdFromRequest(req);
-  if (uid) {
-    ch = await getUserSalesPromoChannel(uid);
-    if (ch) {
-      return ch;
-    }
-  }
-  try {
-    return await resolveSalesChannelForRequest(req);
-  } catch (e) {
-    return '';
-  }
-}
-
 /**
  * 一次解析安装包上下文，避免 install-packages 重复查渠道归因 / 用户渠道。
  * @returns {{ raw: object, salesCh: string, hideXianyu: boolean }}
  */
 async function resolveInstallPackagesContext(req) {
   var raw = await getInstallPackageSettingsFromDb();
-  var hideList = raw.xianyu_hide_channels || [];
-  var queryCh = sanitizeSalesChannelId(
-    (req.query && (req.query.sales_ch || req.query.ch)) || ''
-  );
+  var hideList = (raw.xianyu_hide_channels || []).slice();
+  try {
+    var exclusive = await getAgentChannels().listEnabledChannelIds();
+    (exclusive || []).forEach(function (id) {
+      var chId = sanitizeSalesChannelId(id);
+      if (chId && hideList.indexOf(chId) < 0) {
+        hideList.push(chId);
+      }
+    });
+  } catch (eHide) {}
+  var queryCh = readSalesChannelFromRequest(req);
   var uid =
     req && req.authUserId != null && String(req.authUserId).trim() !== ''
       ? String(req.authUserId).trim()
       : tryAuthUserIdFromRequest(req);
   var userCh = uid ? await getUserSalesPromoChannel(uid) : '';
-  var salesCh = queryCh || userCh || '';
-  if (!salesCh) {
+  /*
+   * 已登录：只用账号渠道或 URL 显式 ?ch=，禁止 IP/设备归因兜底。
+   * 否则测过代理链接的同一出口 IP 会把直客 A 方案也标成 code_only，购买页看不到支付宝。
+   * 未登录：仍可用归因，方便 install_guide 匿名下载/藏闲鱼。
+   * URL-only（abc）：账号已绑定则沿用，便于开通价与再次下载渠道包。
+   */
+  var salesCh = '';
+  if (queryCh) {
+    salesCh = queryCh;
+  } else if (userCh) {
+    salesCh = userCh;
+  }
+  if (!salesCh && !uid) {
     try {
       salesCh = await resolveSalesChannelForRequest(req);
     } catch (e) {
       salesCh = '';
     }
   }
-  var hideXianyu = shouldHideXianyuForSalesChannel(uid ? userCh : salesCh, hideList);
-  return { raw: raw, salesCh: salesCh || null, hideXianyu: hideXianyu };
-}
-
-/** 按当前请求判断是否隐藏闲鱼 */
-async function shouldHideXianyuForRequest(req) {
-  var ctx = await resolveInstallPackagesContext(req);
-  return ctx.hideXianyu;
+  var hideXianyu = shouldHideXianyuForSalesChannel(uid ? userCh || salesCh : salesCh, hideList);
+  var channelPolicy = null;
+  if (salesCh) {
+    try {
+      channelPolicy = await getAgentChannels().getEnabledChannelById(salesCh);
+    } catch (ePol) {
+      channelPolicy = null;
+    }
+  }
+  return {
+    raw: raw,
+    salesCh: salesCh || null,
+    hideXianyu: hideXianyu,
+    channelPolicy: channelPolicy
+  };
 }
 
 /** 清除安装包公开响应缓存 */
@@ -1546,31 +2048,6 @@ function wrapPoolGetConnectionTiming(p) {
   return p;
 }
 
-/** 组装反馈功能公开配置 */
-function feedbackConfigPayload(qrRef, hideXianyu, xianyuText, qqGroupUrl) {
-  var qq = sanitizeInstallDownloadUrl(qqGroupUrl);
-  if (hideXianyu) {
-    return {
-      wechat_pay_qrcode_url: '',
-      wechat_pay_qrcode_display_url: '',
-      xianyu_purchase_url: '',
-      show_xianyu_purchase: false,
-      qq_group_url: qq,
-      show_qq_group: !!qq
-    };
-  }
-  var ref = qrRef != null ? String(qrRef).trim() : '';
-  var xy = xianyuText != null ? String(xianyuText).trim() : '';
-  return {
-    wechat_pay_qrcode_url: ref,
-    wechat_pay_qrcode_display_url: resolvePublicAssetUrl(ref),
-    xianyu_purchase_url: xy,
-    show_xianyu_purchase: !!(ref || xy),
-    qq_group_url: qq,
-    show_qq_group: !!qq
-  };
-}
-
 /** 从请求读取客户端标识 */
 function readClientIdFromRequest(req) {
   try {
@@ -1609,7 +2086,7 @@ async function recordSalesChannelAttribution(req, salesCh, sourcePage) {
   var ua = sanitizeAuditText(normalizeUserAgentHeader(req), 512);
   var modelKey = deviceModelKeyFromRequest(req);
   var src = sourcePage != null ? String(sourcePage).trim().substring(0, 128) : '';
-  var expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+  var expiresAt = new Date(Date.now() + 15 * 60 * 1000);
   try {
     await pool.execute(
       `INSERT INTO sales_channel_attributions
@@ -1623,68 +2100,89 @@ async function recordSalesChannelAttribution(req, salesCh, sourcePage) {
 }
 
 /** 按请求解析销售渠道 */
-async function resolveSalesChannelForRequest(req) {
+async function resolveSalesChannelForRequest(req, opts) {
   if (!pool) {
     return '';
   }
+  opts = opts || {};
+  /* allowIp=false：挂载账号时禁用裸 IP，避免同出口污染直客 */
+  var allowIp = opts.allowIp !== false;
   var cid = readClientIdFromRequest(req);
   var fp = sanitizeAuditText(computeDeviceFingerprint(req), 64);
   var ip = sanitizeAuditText(getClientIp(req), 128);
   var modelKey = deviceModelKeyFromRequest(req);
+  var urlOnlyIds =
+    typeof agentChannelsLib.listUrlOnlySalesChannelIds === 'function'
+      ? agentChannelsLib.listUrlOnlySalesChannelIds()
+      : ['abc'];
+  var urlOnlyPh = urlOnlyIds.length
+    ? urlOnlyIds
+        .map(function () {
+          return '?';
+        })
+        .join(',')
+    : null;
+  /* sticky SQL 直接排除 URL-only，避免最近一条是 abc 时挡住更早的普通渠道 */
+  var notUrlOnlySql = urlOnlyPh
+    ? ' AND LOWER(TRIM(IFNULL(sales_ch, \'\'))) NOT IN (' + urlOnlyPh + ')'
+    : '';
 
   async function pickFirst(sql, params) {
     const [rows] = await pool.execute(sql, params);
     if (rows.length && rows[0].sales_ch) {
-      return sanitizeSalesChannelId(rows[0].sales_ch);
+      return sanitizeStickySalesChannelId(rows[0].sales_ch);
     }
     return '';
   }
 
   var tasks = [];
-  var labels = [];
   if (cid) {
-    labels.push('cid');
     tasks.push(
       pickFirst(
         `SELECT sales_ch FROM sales_channel_attributions
-         WHERE client_id = ? AND expires_at > UTC_TIMESTAMP(3)
+         WHERE client_id = ? AND expires_at > UTC_TIMESTAMP(3)` +
+          notUrlOnlySql +
+          `
          ORDER BY created_at DESC LIMIT 1`,
-        [cid]
+        [cid].concat(urlOnlyIds)
       )
     );
   }
   if (fp) {
-    labels.push('fp');
     tasks.push(
       pickFirst(
         `SELECT sales_ch FROM sales_channel_attributions
-         WHERE device_fp = ? AND expires_at > UTC_TIMESTAMP(3)
+         WHERE device_fp = ? AND expires_at > UTC_TIMESTAMP(3)` +
+          notUrlOnlySql +
+          `
          ORDER BY created_at DESC LIMIT 1`,
-        [fp]
+        [fp].concat(urlOnlyIds)
       )
     );
   }
-  if (ip && modelKey) {
-    labels.push('ip_model');
+  if (allowIp && ip && modelKey) {
     tasks.push(
       pickFirst(
         `SELECT sales_ch FROM sales_channel_attributions
          WHERE ip = ? AND device_model = ? AND expires_at > UTC_TIMESTAMP(3)
-           AND created_at >= DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 7 DAY)
+           AND created_at >= DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 7 DAY)` +
+          notUrlOnlySql +
+          `
          ORDER BY created_at DESC LIMIT 1`,
-        [ip, modelKey]
+        [ip, modelKey].concat(urlOnlyIds)
       )
     );
   }
-  if (ip) {
-    labels.push('ip');
+  if (allowIp && ip) {
     tasks.push(
       pickFirst(
         `SELECT sales_ch FROM sales_channel_attributions
          WHERE ip = ? AND expires_at > UTC_TIMESTAMP(3)
-           AND created_at >= DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 48 HOUR)
+           AND created_at >= DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 48 HOUR)` +
+          notUrlOnlySql +
+          `
          ORDER BY created_at DESC LIMIT 1`,
-        [ip]
+        [ip].concat(urlOnlyIds)
       )
     );
   }
@@ -1696,6 +2194,149 @@ async function resolveSalesChannelForRequest(req) {
     if (results[i]) return results[i];
   }
   return '';
+}
+
+/** 仅 client_id / 设备指纹归因（不含裸 IP） */
+async function resolveSalesChannelForRequestStrict(req) {
+  return resolveSalesChannelForRequest(req, { allowIp: false });
+}
+
+/** 账号尚未绑渠道时写入 sales_promo_channel */
+async function writeSalesPromoChannelIfEmpty(username, salesCh) {
+  var u = String(username || '').trim();
+  var ch = sanitizeSalesChannelId(salesCh);
+  if (!pool || !u || !ch) return false;
+  const [ret] = await pool.execute(
+    `UPDATE users
+     SET sales_promo_channel = ?
+     WHERE username = ?
+       AND (sales_promo_channel IS NULL OR TRIM(sales_promo_channel) = '')`,
+    [ch, u]
+  );
+  try {
+    _salesPromoChannelCache.delete(u);
+  } catch (eCache) {}
+  return !!(ret && ret.affectedRows);
+}
+
+/**
+ * 从 iOS 描述文件 / Android 安装包点击埋点解析 URL-only 渠道（abc）。
+ * 优先 client_id、设备指纹；否则同 IP 且落在安装下载时间窗内（装完描述文件后会话会变）。
+ */
+async function resolveUrlOnlyChannelFromInstallDownload(req, opts) {
+  if (!pool) return '';
+  opts = opts || {};
+  var cid = readClientIdFromRequest(req);
+  var fp = sanitizeAuditText(computeDeviceFingerprint(req), 64);
+  var ip = sanitizeAuditText(getClientIp(req), 128);
+  if (!cid && !fp && !ip) return '';
+  var username = String(opts.username || '').trim();
+  var urlOnlyIds =
+    typeof agentChannelsLib.listUrlOnlySalesChannelIds === 'function'
+      ? agentChannelsLib.listUrlOnlySalesChannelIds()
+      : ['abc'];
+  if (!urlOnlyIds.length) return '';
+  var chPh = urlOnlyIds
+    .map(function () {
+      return '?';
+    })
+    .join(',');
+  var ipWindowSql = username
+    ? `(? <> '' AND ip = ?
+         AND created_at >= DATE_SUB((SELECT created_at FROM users WHERE username = ? LIMIT 1), INTERVAL 2 HOUR)
+         AND created_at <= DATE_ADD((SELECT created_at FROM users WHERE username = ? LIMIT 1), INTERVAL 15 MINUTE))`
+    : `(? <> '' AND ip = ?
+         AND created_at >= DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 2 HOUR)
+         AND created_at <= DATE_ADD(UTC_TIMESTAMP(3), INTERVAL 1 MINUTE))`;
+  var params = ['track_install_ios_click', 'track_install_apk_click']
+    .concat(urlOnlyIds)
+    .concat(urlOnlyIds)
+    .concat([cid || '', cid || '', fp || '', fp || '', ip || '', ip || '']);
+  if (username) {
+    params.push(username, username);
+  }
+  params.push(cid || '', cid || '', fp || '', fp || '');
+  try {
+    const [rows] = await pool.execute(
+      `SELECT LOWER(TRIM(IFNULL(
+           NULLIF(JSON_UNQUOTE(JSON_EXTRACT(meta_json, '$.sales_ch')), ''),
+           JSON_UNQUOTE(JSON_EXTRACT(meta_json, '$.ch'))
+         ))) AS sales_ch
+       FROM install_guide_track_events
+       WHERE event_key IN (?, ?)
+         AND created_at >= DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 7 DAY)
+         AND (
+           LOWER(TRIM(IFNULL(JSON_UNQUOTE(JSON_EXTRACT(meta_json, '$.sales_ch')), ''))) IN (` +
+        chPh +
+        `)
+           OR LOWER(TRIM(IFNULL(JSON_UNQUOTE(JSON_EXTRACT(meta_json, '$.ch')), ''))) IN (` +
+        chPh +
+        `)
+         )
+         AND (
+           (? <> '' AND client_id = ?)
+           OR (? <> '' AND device_fp = ?)
+           OR ` +
+        ipWindowSql +
+        `
+         )
+       ORDER BY
+         CASE
+           WHEN ? <> '' AND client_id = ? THEN 1
+           WHEN ? <> '' AND device_fp = ? THEN 2
+           ELSE 3
+         END,
+         created_at DESC
+       LIMIT 1`,
+      params
+    );
+    var ch = rows && rows[0] ? sanitizeSalesChannelId(rows[0].sales_ch) : '';
+    return isUrlOnlySalesChannel(ch) ? ch : '';
+  } catch (eQ) {
+    console.error('resolveUrlOnlyChannelFromInstallDownload', eQ);
+    return '';
+  }
+}
+
+/**
+ * 账号未绑渠道时，把 abc 安装下载 / 本次显式 abc 写进 sales_promo_channel。
+ * 禁止靠 client_id / 指纹 sticky 归因补绑（与 URL-only 语义一致）。
+ */
+async function maybeBindUrlOnlySalesChannel(username, req) {
+  var u = String(username || '').trim();
+  if (!u) return '';
+  var existing = '';
+  try {
+    existing = await getUserSalesPromoChannel(u);
+  } catch (e0) {
+    existing = '';
+  }
+  if (existing) return existing;
+  var ch = '';
+  try {
+    ch = readSalesChannelFromRequest(req);
+  } catch (e1) {
+    ch = '';
+  }
+  if (!isUrlOnlySalesChannel(ch)) {
+    ch = '';
+    try {
+      ch = await resolveUrlOnlyChannelFromInstallDownload(req, { username: u });
+    } catch (e3) {
+      ch = '';
+    }
+  }
+  if (!isUrlOnlySalesChannel(ch)) return '';
+  try {
+    await writeSalesPromoChannelIfEmpty(u, ch);
+  } catch (eW) {
+    console.error('maybeBindUrlOnlySalesChannel', eW);
+  }
+  try {
+    return (await getUserSalesPromoChannel(u)) || ch;
+  } catch (eR) {
+    return ch;
+  }
 }
 
 /** 从库读安装包设置 */
@@ -1905,7 +2546,6 @@ async function getMineUiForAdminForm() {
 
 var ADMIN_UPLOAD_MEDIA_EXT = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.mp4', '.mov', '.m4v', '.webm'];
 var ADMIN_UPLOAD_INSTALL_EXT = ['.apk', '.mobileconfig'];
-var CHAT_USER_IMAGE_EXT = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
 
 const adminUpload = multer({
   storage: multer.diskStorage({
@@ -1921,6 +2561,7 @@ const adminUpload = multer({
       cb(null, crypto.randomBytes(16).toString('hex') + ext);
     }
   }),
+  limits: { fileSize: ADMIN_UPLOAD_MAX_BYTES },
   fileFilter: function (req, file, cb) {
     var ext = path.extname(file.originalname || '').toLowerCase();
     var ok =
@@ -1932,48 +2573,12 @@ const adminUpload = multer({
   }
 });
 
-const userChatImageUpload = multer({
-  storage: multer.diskStorage({
-    destination: function (req, file, cb) {
-      cb(null, UPLOAD_DIR);
-    },
-    filename: function (req, file, cb) {
-      var ext = path.extname(file.originalname || '').toLowerCase();
-      if (CHAT_USER_IMAGE_EXT.indexOf(ext) < 0) {
-        ext = '.jpg';
-      }
-      cb(null, crypto.randomBytes(16).toString('hex') + ext);
-    }
-  }),
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: function (req, file, cb) {
-    var ext = path.extname(file.originalname || '').toLowerCase();
-    var mime = String(file.mimetype || '').toLowerCase();
-    var okExt = CHAT_USER_IMAGE_EXT.indexOf(ext) >= 0;
-    var okMime = !mime || /^image\/(jpeg|png|gif|webp)$/.test(mime);
-    cb(okExt && okMime ? null : new Error('仅支持 jpg / png / gif / webp 图片，且不超过 5MB'), okExt && okMime);
-  }
-});
-
 /** 管理端上传资源 */
 function handleAdminUploadAsset(req, res) {
   if (!req.file) {
     return res.status(400).json({ code: 400, msg: '未选择文件或扩展名不支持' });
   }
   return res.json({ code: 200, data: { path: 'uploads/' + req.file.filename } });
-}
-
-/** 客服聊天图片上传 */
-async function handleChatUploadImage(req, res) {
-  if (!req.file) {
-    return res.status(400).json({ code: 400, msg: '未选择图片或格式不支持' });
-  }
-  var rel = 'uploads/' + req.file.filename;
-  req.body = Object.assign({}, req.body || {}, {
-    action: 'send',
-    content: formatChatImageContent(rel)
-  });
-  return handleChatPost(req, res);
 }
 
 /** 判断用户行是否为测试账号 */
@@ -2031,35 +2636,6 @@ function isAdminIpDenied(req) {
   return ADMIN_IP_DENYLIST.indexOf(ip) >= 0;
 }
 
-var memoryRateBuckets = new Map();
-
-/** 清理内存限流桶中的过期项 */
-function pruneMemoryRateBuckets(now) {
-  if (memoryRateBuckets.size < 20000) return;
-  memoryRateBuckets.forEach(function (v, k) {
-    if (!v || v.reset_at <= now) memoryRateBuckets.delete(k);
-  });
-}
-
-/** 消耗一次内存限流配额 */
-function consumeMemoryRateLimit(bucket, key, max, windowMs) {
-  var limit = Number(max) || 0;
-  if (limit <= 0) return { ok: true };
-  var now = Date.now();
-  pruneMemoryRateBuckets(now);
-  var fullKey = bucket + ':' + String(key || 'unknown').substring(0, 160);
-  var row = memoryRateBuckets.get(fullKey);
-  if (!row || row.reset_at <= now) {
-    row = { count: 0, reset_at: now + windowMs };
-  }
-  row.count += 1;
-  memoryRateBuckets.set(fullKey, row);
-  if (row.count > limit) {
-    return { ok: false, retry_after_ms: Math.max(1000, row.reset_at - now) };
-  }
-  return { ok: true };
-}
-
 /** 返回限流错误 */
 function sendRateLimited(res, result, msg) {
   var retryMs = result && result.retry_after_ms ? Number(result.retry_after_ms) : 60000;
@@ -2067,54 +2643,62 @@ function sendRateLimited(res, result, msg) {
   return res.status(429).json({ code: 429, msg: msg || '请求过于频繁，请稍后再试', retry_after_ms: retryMs });
 }
 
-/** 检查登录业务限流 */
-function checkLoginBusinessRate(req, username) {
+/** 检查登录业务限流（Redis 优先）。银行模拟器白名单 IP 批量登录，不计入 IP/账号限额。 */
+async function checkLoginBusinessRate(req, username) {
   var ip = getClientIp(req) || 'unknown';
-  var byIp = consumeMemoryRateLimit('login-ip', ip, LOGIN_RATE_PER_IP_MIN, 60 * 1000);
+  if (isListedPartnerIp(ip, config.BANK_PARTNER_IP_ALLOWLIST)) {
+    return { ok: true, backend: 'bank_partner_exempt' };
+  }
+  var byIp = await consumeRateLimit('login-ip', ip, LOGIN_RATE_PER_IP_MIN, 60 * 1000);
   if (!byIp.ok) return byIp;
   if (username) {
-    return consumeMemoryRateLimit('login-user', String(username).toLowerCase(), LOGIN_RATE_PER_USER_MIN, 60 * 1000);
+    return await consumeRateLimit(
+      'login-user',
+      String(username).toLowerCase(),
+      LOGIN_RATE_PER_USER_MIN,
+      60 * 1000
+    );
   }
   return { ok: true };
 }
 
+/** 埋点写入限流 */
+async function checkTrackRate(req) {
+  var ip = getClientIp(req) || 'unknown';
+  return await consumeRateLimit('track-ip', ip, TRACK_RATE_PER_IP_MIN, 60 * 1000);
+}
+
 /** 管理 API 限流 */
 function adminApiRateLimit(req, res, next) {
+  var p = String(req.originalUrl || req.url || '');
+  if (p.indexOf('/api/admin/ui-asset-auth') >= 0) {
+    return next();
+  }
   var ip = getClientIp(req) || 'unknown';
-  var result = consumeMemoryRateLimit('admin-api-ip', ip, ADMIN_API_RATE_PER_IP_MIN, 60 * 1000);
-  if (!result.ok) return sendRateLimited(res, result, '管理后台请求过于频繁，请稍后再试');
-  next();
+  consumeRateLimit('admin-api-ip', ip, ADMIN_API_RATE_PER_IP_MIN, 60 * 1000)
+    .then(function (result) {
+      if (!result.ok) return sendRateLimited(res, result, '管理后台请求过于频繁，请稍后再试');
+      next();
+    })
+    .catch(function () {
+      next();
+    });
 }
 
 /** 管理重查询限流 */
 function heavyAdminApiRateLimit(req, res, next) {
   var ip = getClientIp(req) || 'unknown';
-  var result = consumeMemoryRateLimit('admin-heavy-ip', ip, HEAVY_ADMIN_API_RATE_PER_IP_MIN, 60 * 1000);
-  if (!result.ok) return sendRateLimited(res, result, '统计/查询接口请求过于频繁，请稍后再试');
-  next();
+  consumeRateLimit('admin-heavy-ip', ip, HEAVY_ADMIN_API_RATE_PER_IP_MIN, 60 * 1000)
+    .then(function (result) {
+      if (!result.ok) return sendRateLimited(res, result, '统计/查询接口请求过于频繁，请稍后再试');
+      next();
+    })
+    .catch(function () {
+      next();
+    });
 }
 
-/** 由 IP 解析城市展示名 */
-function cityLabelFromIp(ip) {
-  if (!ip) return '—';
-  if (ip === '::1' || ip === '127.0.0.1') return '本地';
-  var g = geoip.lookup(ip);
-  if (!g) return '—';
-  if (g.country === 'CN') {
-    var c = g.city && String(g.city).trim();
-    if (c) return c;
-    /* geoip-lite 对大量国内 IP 只有国家、无 city；避免误读成「用户城市就是中国」 */
-    var r = g.region && String(g.region).trim();
-    if (r) return '中国（' + r + '）';
-    return '中国（IP 库无城市）';
-  }
-  var parts = [];
-  if (g.city) parts.push(g.city);
-  if (g.country) parts.push(g.country);
-  return parts.join(' · ') || '—';
-}
-
-/** 解析：device city label */
+/** 由 IP 解析城市展示名（见 utils/ipCity，ip2region） */
 function resolveDeviceCityLabel(ip, cityStored) {
   var c = cityStored != null ? String(cityStored).trim() : '';
   if (c && c !== '—') return c.substring(0, 255);
@@ -2140,7 +2724,7 @@ async function updateUserLastLoginCity(username, req) {
 /** 初始化库表与连接池 */
 async function initDatabase() {
   try {
-    const conn = await mysql.createConnection({
+    const conn = await waitForMysql.connectWithRetry(mysql, {
       host: DB_HOST,
       port: DB_PORT,
       user: DB_USER,
@@ -2156,11 +2740,13 @@ async function initDatabase() {
       user: DB_USER,
       password: DB_PASSWORD,
       database: DB_DATABASE,
+      charset: 'utf8mb4',
       waitForConnections: true,
       // 业务页常并发 auth+user+tax+埋点；原 10 易排队，弱网下表现为接口集体变慢
       connectionLimit: parseInt(process.env.DB_POOL_SIZE || '30', 10) || 30,
       // 有限排队：满则快速失败，避免 message/user 等接口无限挂起成几十秒假慢
       queueLimit: parseInt(process.env.DB_POOL_QUEUE_LIMIT || '60', 10) || 60,
+      connectTimeout: parseInt(process.env.DB_CONNECT_TIMEOUT_MS || '3000', 10) || 3000,
       enableKeepAlive: true,
       keepAliveInitialDelay: 10000
     });
@@ -2169,7 +2755,9 @@ async function initDatabase() {
     
     await createTables();
     await runMigrations(pool);
+    await ensurePaymentOrdersVariantColumns(pool);
     registerGuard.initRegisterGuard(pool);
+    sharedDb.markReady(true);
     console.log('Database initialized successfully');
   } catch (error) {
     console.error('Failed to initialize database:', error);
@@ -2363,6 +2951,19 @@ async function createTables() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
 
+  for (const issueColSql of [
+    "ALTER TABLE tax_issue_applications ADD COLUMN qr_image_url VARCHAR(512) NULL COMMENT '自定义二维码图片'",
+    "ALTER TABLE tax_issue_applications ADD COLUMN qr_block_image_url VARCHAR(512) NULL COMMENT '二维码+验证码整块图'"
+  ]) {
+    try {
+      await conn.execute(issueColSql);
+    } catch (eIssueCol) {
+      if (!eIssueCol || !/Duplicate column/i.test(String(eIssueCol.message || eIssueCol))) {
+        console.warn('[schema] tax_issue_applications column', eIssueCol && eIssueCol.message);
+      }
+    }
+  }
+
   await conn.execute(`
     CREATE TABLE IF NOT EXISTS sbdy_demo_certs (
       id BIGINT NOT NULL AUTO_INCREMENT,
@@ -2375,6 +2976,21 @@ async function createTables() {
       UNIQUE KEY uk_sbdy_auth (auth_code),
       UNIQUE KEY uk_sbdy_token (token),
       INDEX idx_sbdy_created (created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS gjj_demo_certs (
+      id BIGINT NOT NULL AUTO_INCREMENT,
+      auth_code VARCHAR(32) NOT NULL COMMENT '演示核验授权码',
+      token VARCHAR(64) NOT NULL COMMENT '展示页路径令牌',
+      payload_json MEDIUMTEXT NOT NULL,
+      created_by_admin VARCHAR(64) NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY uk_gjj_auth (auth_code),
+      UNIQUE KEY uk_gjj_token (token),
+      INDEX idx_gjj_created (created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
 
@@ -2500,6 +3116,15 @@ async function createTables() {
   try {
     await conn.execute(`
       ALTER TABLE users ADD COLUMN registered_from_install_guide TINYINT(1) NOT NULL DEFAULT 0 COMMENT '注册时上报来自安装页引流'
+    `);
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
+    }
+  }
+  try {
+    await conn.execute(`
+      ALTER TABLE users ADD COLUMN registered_from_share TINYINT(1) NOT NULL DEFAULT 0 COMMENT '注册时上报来自分享链接（主站流量）'
     `);
   } catch (e) {
     if (e.errno !== 1060) {
@@ -2731,6 +3356,36 @@ async function createTables() {
     }
   }
 
+  try {
+    await conn.execute(`
+      ALTER TABLE users ADD COLUMN activation_cancelled_at DATETIME(3) NULL COMMENT '管理端取消激活时间，运营看板今日激活不计入'
+    `);
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
+    }
+  }
+
+  try {
+    await conn.execute(`
+      ALTER TABLE users ADD COLUMN activation_cancelled_by VARCHAR(255) NULL COMMENT '执行取消激活的管理员'
+    `);
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
+    }
+  }
+
+  try {
+    await conn.execute(`
+      ALTER TABLE users ADD COLUMN activation_credit_amount DECIMAL(10,2) NULL COMMENT '管理端填写的激活收款金额，admin 非支付宝开通按此计入支付分析'
+    `);
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
+    }
+  }
+
   var guestMergeUserCols = [
     "ALTER TABLE users ADD COLUMN guest_merged_to VARCHAR(255) NULL COMMENT '游客账号合并到的正式账号'",
     "ALTER TABLE users ADD COLUMN merged_from_guest VARCHAR(255) NULL COMMENT '正式账号来源的游客账号'",
@@ -2793,23 +3448,6 @@ async function createTables() {
     SETTING_KEY_SALES_AGENT,
     JSON.stringify(DEFAULT_SALES_AGENT)
   ]);
-  await conn.execute(`INSERT IGNORE INTO app_settings (setting_key, setting_value) VALUES (?, ?)`, [
-    SETTING_KEY_CHAT_AUTO_REPLY_WELCOME,
-    DEFAULT_CHAT_AUTO_REPLY_WELCOME
-  ]);
-  await conn.execute(`INSERT IGNORE INTO app_settings (setting_key, setting_value) VALUES (?, ?)`, [
-    SETTING_KEY_CHAT_AUTO_REPLY_REPLY,
-    DEFAULT_CHAT_AUTO_REPLY_REPLY
-  ]);
-  await conn.execute(`INSERT IGNORE INTO app_settings (setting_key, setting_value) VALUES (?, ?)`, [
-    SETTING_KEY_CHAT_AI_ENABLED,
-    '0'
-  ]);
-  await conn.execute(`INSERT IGNORE INTO app_settings (setting_key, setting_value) VALUES (?, ?)`, [
-    SETTING_KEY_CHAT_AI_PROMPT,
-    DEFAULT_CHAT_AI_PROMPT
-  ]);
-
   await conn.execute(`
     CREATE TABLE IF NOT EXISTS analytics_api_daily (
       stat_date DATE NOT NULL,
@@ -3095,6 +3733,25 @@ async function createTables() {
   `);
 
   await conn.execute(`
+    CREATE TABLE IF NOT EXISTS ad_page_track_events (
+      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      username VARCHAR(255) NULL,
+      client_id VARCHAR(128) NULL,
+      device_fp CHAR(64) NULL,
+      event_key VARCHAR(80) NOT NULL,
+      dwell_seconds INT UNSIGNED NULL,
+      meta_json VARCHAR(1024) NULL,
+      ip VARCHAR(128) NULL,
+      user_agent VARCHAR(512) NULL,
+      created_at DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+      INDEX idx_created (created_at),
+      INDEX idx_event_created (event_key, created_at),
+      INDEX idx_user_created (username, created_at),
+      INDEX idx_client_created (client_id, created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await conn.execute(`
     CREATE TABLE IF NOT EXISTS sales_channel_attributions (
       id BIGINT AUTO_INCREMENT PRIMARY KEY,
       sales_ch VARCHAR(64) NOT NULL,
@@ -3255,12 +3912,14 @@ async function createTables() {
 
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
-     SELECT admin_id, 'user-behavior' FROM admin_account_menus WHERE menu_key = 'user-data'`
+     SELECT admin_id, 'activated-user-analysis' FROM admin_account_menus WHERE menu_key = 'user-data'`
   );
 
+  /* 清理已下线的数据分析 / 用户反馈 / 在线客服菜单权限（勿加现行菜单键：analytics-activity / analytics-devices 仍在用） */
   await conn.execute(
-    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
-     SELECT admin_id, 'activated-user-analysis' FROM admin_account_menus WHERE menu_key = 'user-data'`
+    `DELETE FROM admin_account_menus WHERE menu_key IN (
+      'user-behavior', 'api-analytics', 'feedback', 'chat', 'share-stats'
+    )`
   );
 
   await conn.execute(
@@ -3275,17 +3934,11 @@ async function createTables() {
 
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
-     SELECT admin_id, 'chat' FROM admin_account_menus WHERE menu_key = 'feedback'`
+     SELECT admin_id, 'tax-records-edit' FROM admin_account_menus
+     WHERE menu_key IN ('users', 'user-data')`
   );
 
-  var analyticsSplitMenus = [
-    'analytics-conversion',
-    'analytics-activity',
-    'analytics-register',
-    'analytics-purchase',
-    'analytics-tracking',
-    'analytics-devices'
-  ];
+  var analyticsSplitMenus = ['analytics-conversion', 'analytics-purchase'];
   for (var asi = 0; asi < analyticsSplitMenus.length; asi++) {
     await conn.execute(
       `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
@@ -3300,20 +3953,127 @@ async function createTables() {
      WHERE menu_key IN ('analytics-conversion', 'analytics-tracking', 'analytics')`
   );
 
+  await conn.execute(`DELETE FROM admin_account_menus WHERE menu_key = 'analytics-tracking'`);
+
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT admin_id, 'install-guide-stats' FROM admin_account_menus
+     WHERE menu_key = 'analytics-register'`
+  );
+
+  await conn.execute(`DELETE FROM admin_account_menus WHERE menu_key = 'analytics-register'`);
+
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
      SELECT admin_id, 'sbdy-demo' FROM admin_account_menus WHERE menu_key = 'codes'`
   );
 
   await conn.execute(
+    `DELETE FROM admin_account_menus WHERE menu_key = 'weekly-codes'`
+  );
+
+  await conn.execute(`DELETE FROM admin_account_menus WHERE menu_key = 'ylbx-ps'`);
+
+  /* 工资流水：已有证明工具权限的账号自动开通 */
+  await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
-     SELECT admin_id, 'weekly-codes' FROM admin_account_menus WHERE menu_key = 'codes'`
+     SELECT DISTINCT admin_id, 'ccb-flow' FROM admin_account_menus
+     WHERE menu_key IN ('lizhi-cert', 'zaizhi-cert', 'sbdy-demo', 'najilu-qr')`
+  );
+
+  /* 在职证明：已有离职证明权限的账号自动开通 */
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT DISTINCT admin_id, 'zaizhi-cert' FROM admin_account_menus
+     WHERE menu_key = 'lizhi-cert'`
+  );
+
+  /* 下线管理员：现有子管理员自动开通，便于发展下线并查看其数据 */
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT id, 'downline-admins' FROM admin_accounts WHERE is_super = 0`
+  );
+
+  /* 激活码：所有子管理员必带，即使未勾选运营看板也能发码/看码 */
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT id, 'codes' FROM admin_accounts WHERE is_super = 0`
   );
 
   await conn.execute(
+    `DELETE FROM admin_account_menus WHERE menu_key = 'sales-contacts'`
+  );
+
+  /* 指定运营账号：注册用户列表 + 用户数据全量可见（名单见 fullUserScope.js） */
+  var fullScopeIn = fullUserScopeUsernameSqlIn();
+  await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
-     SELECT admin_id, 'sales-contacts' FROM admin_account_menus
-     WHERE menu_key IN ('install-guide', 'settings')`
+     SELECT id, 'users' FROM admin_accounts WHERE username IN (` +
+      fullScopeIn +
+      `)`
+  );
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT id, 'user-data' FROM admin_accounts WHERE username IN (` +
+      fullScopeIn +
+      `)`
+  );
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT id, 'tax-records-edit' FROM admin_accounts WHERE username IN (` +
+      fullScopeIn +
+      `)`
+  );
+
+  /* 侧栏子页独立授权：原挂在「注册用户 / 管理登录」下的入口补权，避免已有账号丢菜单 */
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT DISTINCT admin_id, 'rename-tax-daily' FROM admin_account_menus WHERE menu_key IN ('users', 'peer-accounts')`
+  );
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT DISTINCT admin_id, 'users-deleted' FROM admin_account_menus WHERE menu_key = 'users'`
+  );
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT DISTINCT admin_id, 'user-login-log' FROM admin_account_menus WHERE menu_key = 'login-log'`
+  );
+
+  /* C 档 hub 合并：旧子页权限回填到侧栏 hub key，避免丢入口 */
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT DISTINCT admin_id, 'settings' FROM admin_account_menus
+     WHERE menu_key IN ('install-guide', 'appearance')`
+  );
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT DISTINCT admin_id, 'lizhi-cert' FROM admin_account_menus WHERE menu_key = 'zaizhi-cert'`
+  );
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT DISTINCT admin_id, 'sbdy-demo' FROM admin_account_menus WHERE menu_key = 'gjj-demo'`
+  );
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT DISTINCT admin_id, 'login-log' FROM admin_account_menus WHERE menu_key = 'user-login-log'`
+  );
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT DISTINCT admin_id, 'insights-product' FROM admin_account_menus
+     WHERE menu_key IN ('analytics-activity', 'analytics-devices', 'tax-fill-survey')`
+  );
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT DISTINCT admin_id, 'insights-growth' FROM admin_account_menus
+     WHERE menu_key IN ('channel-analysis', 'install-guide-stats')`
+  );
+
+  /* 订单检索仅超管：去掉子账号上因发码/看板自动开通的权限 */
+  await conn.execute(
+    `DELETE aam FROM admin_account_menus aam
+     INNER JOIN admin_accounts aa ON aa.id = aam.admin_id
+     WHERE aam.menu_key = 'payment-orders'
+       AND IFNULL(aa.is_super, 0) = 0`
   );
 
   conn.release();
@@ -3329,20 +4089,6 @@ function normalizeIncomeTypeLabel(t) {
     s = s.slice(0, -2);
   }
   return s;
-}
-
-/** 判断税务记录是否匹配收入类型筛选 */
-function recordMatchesIncomeTypes(record, incomeTypes) {
-  if (!incomeTypes || !incomeTypes.length) {
-    return true;
-  }
-  var rt = normalizeIncomeTypeLabel(record.income_type);
-  for (var i = 0; i < incomeTypes.length; i++) {
-    if (normalizeIncomeTypeLabel(incomeTypes[i]) === rt) {
-      return true;
-    }
-  }
-  return false;
 }
 
 /** 查询用户税务记录列表 */
@@ -3365,7 +4111,7 @@ async function getRecords(userId, year, incomeTypes) {
     'id, year, month, income_type, income_subtype, company_name, company_tax_id, tax_authority, ' +
     'report_channel, report_date, tax_period, income, tax_reported, income_this_period, tax_free_income, ' +
     'deduction_fee, special_deduction, other_deduction, donation_deduction, ' +
-    'pension_insurance, medical_insurance, unemployment_insurance, housing_fund, created_at, updated_at';
+    'pension_insurance, medical_insurance, unemployment_insurance, housing_fund, list_order, created_at, updated_at';
   let query =
     'SELECT ' + listCols + ' FROM tax_records WHERE user_id = ? AND ' + TAX_RECORD_NOT_DELETED_SQL;
   const params = [userId];
@@ -3400,7 +4146,7 @@ async function getRecords(userId, year, incomeTypes) {
   }
 
   query +=
-    ' ORDER BY year DESC, month DESC, (CASE WHEN TRIM(IFNULL(income_subtype,\'\')) = \'全年一次性奖金收入\' THEN 1 ELSE 0 END) ASC, id ASC';
+    ' ORDER BY year DESC, month DESC, list_order ASC, (CASE WHEN TRIM(IFNULL(income_subtype,\'\')) = \'全年一次性奖金收入\' THEN 1 ELSE 0 END) ASC, id ASC';
 
   const [rows] = await conn.execute(query, params);
   conn.release();
@@ -3426,6 +4172,43 @@ async function getRecords(userId, year, incomeTypes) {
   return out;
 }
 
+/** 同月两条记录对调上下顺序；不写变更日志、不计入改税天数 */
+async function reorderTaxRecord(userId, id, direction) {
+  const conn = await pool.getConnection();
+  try {
+    const [mine] = await conn.execute(
+      'SELECT id, year, month FROM tax_records WHERE id = ? AND user_id = ? AND ' + TAX_RECORD_NOT_DELETED_SQL,
+      [String(id), String(userId)]
+    );
+    if (!mine.length) {
+      var missing = new Error('记录不存在');
+      missing.status = 404;
+      throw missing;
+    }
+    const [rows] = await conn.execute(
+      'SELECT id, year, month, income_subtype, list_order FROM tax_records WHERE user_id = ? AND year = ? AND month = ? AND ' +
+        TAX_RECORD_NOT_DELETED_SQL,
+      [String(userId), mine[0].year, mine[0].month]
+    );
+    var planned = taxRecordListOrder.planMonthReorder(rows, id, direction);
+    if (!planned.ok) {
+      var bad = new Error(planned.msg || '无法调整顺序');
+      bad.status = 400;
+      throw bad;
+    }
+    for (var i = 0; i < planned.updates.length; i++) {
+      await conn.execute(
+        'UPDATE tax_records SET list_order = ?, updated_at = updated_at WHERE id = ? AND user_id = ?',
+        [planned.updates[i].list_order, planned.updates[i].id, String(userId)]
+      );
+    }
+    invalidateTaxRecordsListCache(userId);
+    return { ok: true, updates: planned.updates };
+  } finally {
+    conn.release();
+  }
+}
+
 var TAX_CHANGE_LOG_FIELDS = [
   { key: 'tax_period', label: '税款所属期' },
   { key: 'year', label: '年' },
@@ -3447,7 +4230,7 @@ var TAX_CHANGE_LOG_FIELDS = [
   { key: 'medical_insurance', label: '基本医疗保险' },
   { key: 'unemployment_insurance', label: '失业保险' },
   { key: 'housing_fund', label: '住房公积金' },
-  { key: 'other_deduction', label: '本期其他扣除' },
+  { key: 'other_deduction', label: '专项附加扣除' },
   { key: 'donation_deduction', label: '捐赠扣除' }
 ];
 
@@ -3679,6 +4462,18 @@ async function saveRecordInConn(conn, userId, record, opts) {
   opts = opts || {};
   var deferChangeLog = !!opts.deferChangeLog;
   record = normalizeTaxRecordForSql(record);
+  var yearGate = Number(record.year);
+  var monthGate = Number(record.month);
+  if (!isFinite(yearGate) || yearGate < 2000 || yearGate > 2100) {
+    var yearErr = new Error('年份无效（须为 2000–2100）');
+    yearErr.code = 'TAX_YEAR_INVALID';
+    throw yearErr;
+  }
+  if (!isFinite(monthGate) || monthGate < 1 || monthGate > 12) {
+    var monthErr = new Error('月份无效');
+    monthErr.code = 'TAX_MONTH_INVALID';
+    throw monthErr;
+  }
   const id = record.id != null ? String(record.id) : 'tr_' + Date.now();
 
   const [existing] = await conn.execute(
@@ -3816,63 +4611,8 @@ async function saveRecord(userId, record) {
       out.pendingChangeLog.after
     );
   }
+  maybeQueueAutoTaxDoneMessage(userId);
   return { id: out.id };
-}
-
-/** 插入：record in conn */
-async function insertRecordInConn(conn, userId, record) {
-  record = normalizeTaxRecordForSql(record);
-  var preferredId = record.id != null ? String(record.id).trim() : '';
-  var base =
-    preferredId !== ''
-      ? preferredId
-      : 'tr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
-  var id = base;
-  var n = 0;
-  var idReassigned = false;
-
-  while (true) {
-    const [rows] = await conn.execute(
-      'SELECT id, user_id, deleted_at FROM tax_records WHERE id = ? LIMIT 1',
-      [id]
-    );
-    if (rows.length === 0) {
-      break;
-    }
-    if (String(rows[0].user_id) === String(userId) && rows[0].deleted_at != null) {
-      record.id = id;
-      await saveRecordInConn(conn, userId, record);
-      return { id: id, id_reassigned: idReassigned };
-    }
-    n += 1;
-    idReassigned = true;
-    id = base + '_n' + n;
-    if (n > 80) {
-      id = base + '_r' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
-      break;
-    }
-  }
-
-  await conn.execute(
-    `
-      INSERT INTO tax_records (
-        id, user_id, year, month, income_type, income_subtype,
-        company_name, company_tax_id, tax_authority,
-        report_channel, report_date, tax_period,
-        income, tax_reported, income_this_period,
-        tax_free_income, deduction_fee, special_deduction,
-        other_deduction, donation_deduction,
-        pension_insurance, medical_insurance,
-        unemployment_insurance, housing_fund
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `,
-    taxRecordInsertParamRow(userId, id, record)
-  );
-  await insertTaxChangeLog(conn, userId, id, 'insert', null, taxRecordPayloadToSnapshot(record, id));
-  return {
-    id: id,
-    id_reassigned: idReassigned
-  };
 }
 
 /** 组装税务记录 INSERT 参数行 */
@@ -4158,7 +4898,7 @@ async function batchSaveRecords(userId, records) {
       var dedupeOut = await dedupeTaxRecordsScoped(userId, records);
       invalidateTaxRecordsListCache(userId);
       invalidateUserInfoApiCache(userId);
-      return {
+      var batchResult = {
         saved: out.saved.length,
         ids: out.saved.map(function (x) {
           return x.id;
@@ -4166,6 +4906,8 @@ async function batchSaveRecords(userId, records) {
         reassigned_ids: out.reassigned,
         auto_deduped: dedupeOut.deleted != null ? dedupeOut.deleted : 0
       };
+      maybeQueueAutoTaxDoneMessage(userId);
+      return batchResult;
     } catch (e) {
       try {
         await conn.rollback();
@@ -4214,7 +4956,7 @@ async function batchReplaceTaxRecords(userId, idsToDelete, records) {
       var dedupeOut = await dedupeTaxRecordsScoped(userId, records);
       invalidateTaxRecordsListCache(userId);
       invalidateUserInfoApiCache(userId);
-      return {
+      var replaceResult = {
         deleted: deleted,
         saved: out.saved.length,
         ids: out.saved.map(function (x) {
@@ -4223,6 +4965,8 @@ async function batchReplaceTaxRecords(userId, idsToDelete, records) {
         reassigned_ids: out.reassigned,
         auto_deduped: dedupeOut.deleted != null ? dedupeOut.deleted : 0
       };
+      maybeQueueAutoTaxDoneMessage(userId);
+      return replaceResult;
     } catch (e) {
       try {
         await conn.rollback();
@@ -4606,34 +5350,9 @@ function iitWithholdingBracket(cumulativeTaxable) {
   return { ratePct: 45, quick: 181920, rateStr: '45%' };
 }
 
-/** sum row money */
-function sumRowMoney(r, field) {
-  const v = r[field];
-  if (v == null || v === '') return 0;
-  const n = parseFloat(String(v).replace(/,/g, ''));
-  return Number.isNaN(n) ? 0 : n;
-}
+/** sum row money — 实现见 ../tax/deductionSplit */
 
-/** split basic and special additional deduction */
-function splitBasicAndSpecialAdditionalDeduction(rec) {
-  const sub = String(rec.income_subtype || '').trim();
-  if (sub === '全年一次性奖金收入') {
-    return { basic: sumRowMoney(rec, 'deduction_fee'), specialAdditional: 0 };
-  }
-  const df = sumRowMoney(rec, 'deduction_fee');
-  const other = sumRowMoney(rec, 'other_deduction');
-  if (other > 0) {
-    return {
-      basic: Math.min(5000, df > 0 ? df : 5000),
-      specialAdditional: other
-    };
-  }
-  if (df > 5000) {
-    const sadd = Math.max(0, Math.round((df - 5000) * 100) / 100);
-    return { basic: Math.round((df - sadd) * 100) / 100, specialAdditional: sadd };
-  }
-  return { basic: df, specialAdditional: 0 };
-}
+/** split basic and special additional deduction — 实现见 ../tax/deductionSplit */
 
 /** row period income */
 function rowPeriodIncome(r) {
@@ -4699,6 +5418,7 @@ async function getTaxCalculationData(userId, recordId) {
   let totalDeductionFee = 0;
   let totalSpecial = 0;
   let totalOther = 0;
+  let totalOtherDisplay = 0;
   let totalDonation = 0;
   let totalTaxPaidBefore = 0;
   /** 累计减除费用（基本减除 5000）与累计专项附加扣除（other_deduction，旧数据从 deduction_fee 拆分） */
@@ -4707,18 +5427,19 @@ async function getTaxCalculationData(userId, recordId) {
   const anchorMonth = month != null && !Number.isNaN(month) ? month : null;
 
   rows.forEach(function (r) {
+    /* 年终奖 / 解除劳动合同补偿：单独计税，不并入工资累计（否则 1 月奖金会把正常工资抬到 10%） */
+    if (isSeparateTaxIncomeSubtype(r.income_subtype)) return;
     totalIncome += rowPeriodIncome(r);
     totalTaxFree += sumRowMoney(r, 'tax_free_income');
     const split = splitBasicAndSpecialAdditionalDeduction(r);
     totalDeductionFee += sumRowMoney(r, 'deduction_fee');
     totalSpecial += sumRowMoney(r, 'special_deduction');
-    totalOther += sumRowMoney(r, 'other_deduction');
+    const otherRaw = sumRowMoney(r, 'other_deduction');
+    totalOther += otherRaw;
+    totalOtherDisplay += otherDeductionForDisplay(r, split);
     totalDonation += sumRowMoney(r, 'donation_deduction');
-    const sub = String(r.income_subtype || '').trim();
-    if (sub !== '全年一次性奖金收入') {
-      totalSpecialAdditionalFromFee += split.specialAdditional;
-      totalBasicDeductionFee += split.basic;
-    }
+    totalSpecialAdditionalFromFee += split.specialAdditional;
+    totalBasicDeductionFee += split.basic;
     const m = r.month != null ? parseInt(r.month, 10) : null;
     if (anchorMonth != null && m != null && !Number.isNaN(m) && m < anchorMonth) {
       totalTaxPaidBefore += sumRowMoney(r, 'tax_reported');
@@ -4740,8 +5461,17 @@ async function getTaxCalculationData(userId, recordId) {
 
   const br = iitWithholdingBracket(totalTaxableIncome);
   const totalTaxPayable = Math.max(0, (totalTaxableIncome * br.ratePct) / 100 - br.quick);
-
-  const currentTaxReported = sumRowMoney(anchor, 'tax_reported');
+  const totalTaxRelief = 0;
+  /*
+   * 本期申报税额必须用累计公式，不能直接读本条 tax_reported。
+   * 库里存的已申报税额可能过期/与累计重算不一致，页面展示的累计应纳税额−累计已缴会算不通。
+   * 公式：累计应纳税额 − 累计减免税额 − 累计已预缴税额（可为负表示应退）。
+   */
+  const currentTaxReported = currentPeriodDeclaredTax(
+    totalTaxPayable,
+    totalTaxPaidBefore,
+    totalTaxRelief
+  );
 
   return {
     total_income: totalIncome.toFixed(2),
@@ -4749,7 +5479,7 @@ async function getTaxCalculationData(userId, recordId) {
     total_deduction_fee: totalBasicDeductionFee.toFixed(2),
     total_special_deduction: totalSpecial.toFixed(2),
     total_special_additional: totalSpecialAdditional.toFixed(2),
-    total_other_deduction: totalOther.toFixed(2),
+    total_other_deduction: totalOtherDisplay.toFixed(2),
     total_personal_pension: totalPersonalPension.toFixed(2),
     total_donation: totalDonation.toFixed(2),
     total_taxable_income: totalTaxableIncome.toFixed(2),
@@ -4757,7 +5487,7 @@ async function getTaxCalculationData(userId, recordId) {
     quick_deduction: br.quick.toFixed(2),
     total_tax_payable: totalTaxPayable.toFixed(2),
     total_tax_paid: totalTaxPaidBefore.toFixed(2),
-    total_tax_relief: '0.00',
+    total_tax_relief: totalTaxRelief.toFixed(2),
     current_tax_reported: currentTaxReported.toFixed(2)
   };
 }
@@ -4793,10 +5523,8 @@ function formatTaxDetailResponse(rec, userIdStr) {
       return formatTaxAmt(sp.basic, '5000.00');
     })(),
     special_deduction: formatTaxAmt(rec.special_deduction, '0.00'),
-    other_deduction: (function () {
-      var sp = splitBasicAndSpecialAdditionalDeduction(rec);
-      return formatTaxAmt(sp.specialAdditional, '0.00');
-    })(),
+    /* 专项附加存在 other_deduction：本期明细不展示（对齐温馨提示），只在税款计算看累计专项附加 */
+    other_deduction: formatTaxAmt(periodOtherDeductionForDetail(rec), '0.00'),
     donation_deduction: formatTaxAmt(rec.donation_deduction, '0.00'),
     pension_insurance: formatTaxAmt(rec.pension_insurance, '0.00'),
     medical_insurance: formatTaxAmt(rec.medical_insurance, '0.00'),
@@ -4870,12 +5598,19 @@ function validatePassword(p) {
 }
 
 /** 合并：user risk info */
-function mergeUserRiskInfo(ipDistinctCount, deviceCount, plainPassword) {
-  var info = computeUserLoginRisk(ipDistinctCount, deviceCount);
+function mergeUserRiskInfo(ipDistinctCount, deviceCount, plainPassword, registerIpAccountCount, registerIpFirstUsername) {
+  var info = computeUserLoginRisk(
+    ipDistinctCount,
+    deviceCount,
+    registerIpAccountCount,
+    registerIpFirstUsername
+  );
   if (passwordLooksLikeSqlProbe(plainPassword)) {
     info = {
       distinct_ip_count: info.distinct_ip_count,
       device_count: info.device_count,
+      register_ip_account_count: info.register_ip_account_count,
+      register_ip_first_username: info.register_ip_first_username,
       risk: true,
       risk_messages: info.risk_messages.concat(['可疑密码(SQL探测)'])
     };
@@ -4992,12 +5727,68 @@ async function recoverCredentialsByActivationCode(rawCode) {
     if (Number(r.used_count) < 1 || !r.used_by_username) {
       throw new Error('该激活码尚未绑定账号，无法找回。请确认是否为已用于激活的激活码。');
     }
-    var pwd = r.plain_password != null ? String(r.plain_password) : '';
+    var pwd = plainPasswordStore.decodePlainPasswordForDisplay(r.plain_password);
+    var resetRequired = false;
+    if (!pwd) {
+      resetRequired = true;
+      pwd = crypto.randomBytes(6).toString('base64url').replace(/[^A-Za-z0-9]/g, '').slice(0, 10);
+      if (pwd.length < 8) {
+        pwd = (pwd + crypto.randomBytes(6).toString('hex')).slice(0, 10);
+      }
+      var saltBuf = crypto.randomBytes(16);
+      var saltHex = saltBuf.toString('hex');
+      var hashHex = hashPasswordWithSalt(pwd, saltBuf);
+      var storePlainVal = plainPasswordStore.encodePlainPasswordForStore(pwd);
+      await conn.execute(
+        'UPDATE users SET salt = ?, hash = ?, plain_password = ?, session_rev = session_rev + 1 WHERE username = ?',
+        [saltHex, hashHex, storePlainVal, r.used_by_username]
+      );
+      invalidateUserAuthCache(String(r.used_by_username));
+    }
+    return {
+      username: String(r.used_by_username),
+      password: pwd,
+      real_name: r.real_name != null ? String(r.real_name) : '',
+      reset_required: resetRequired
+    };
+  } finally {
+    conn.release();
+  }
+}
+
+/** recover credentials by username + identity (real_name or tax_id) */
+async function recoverCredentialsByIdentity(username, realName, taxId) {
+  var uname = String(username || '').trim();
+  var rName = String(realName || '').trim();
+  var tId = String(taxId || '').trim();
+  if (!uname) throw new Error('请输入账号');
+  if (!rName && !tId) throw new Error('请至少填写姓名或身份证号其中一项');
+  const conn = await pool.getConnection();
+  try {
+    var sql = 'SELECT username, plain_password, real_name, tax_id FROM users WHERE username = ?';
+    var params = [uname];
+    if (rName && tId) {
+      sql += ' AND real_name = ? AND tax_id = ?';
+      params.push(rName, tId);
+    } else if (rName) {
+      sql += ' AND real_name = ?';
+      params.push(rName);
+    } else {
+      sql += ' AND tax_id = ?';
+      params.push(tId);
+    }
+    sql += ' LIMIT 1';
+    const [rows] = await conn.execute(sql, params);
+    if (rows.length === 0) {
+      throw new Error('账号与身份信息不匹配，请检查后重试');
+    }
+    var r = rows[0];
+    var pwd = plainPasswordStore.decodePlainPasswordForDisplay(r.plain_password);
     if (!pwd) {
       throw new Error('已找到账号但无法显示密码，请联系管理员协助重置。');
     }
     return {
-      username: String(r.used_by_username),
+      username: String(r.username),
       password: pwd,
       real_name: r.real_name != null ? String(r.real_name) : ''
     };
@@ -5009,6 +5800,127 @@ async function recoverCredentialsByActivationCode(rawCode) {
 /** 应用：activation code（支持永久码与 grant_days 时效码） */
 async function applyActivationCode(username, rawCode) {
   await getInviteReward().applyActivationCodeExtended(username, rawCode, activationSourceFromCodeNote);
+}
+
+var _paymentOrderVariantColsReady = false;
+
+/** 加宽 payment_orders 增值字段，避免 tax_edit_unlimited 等超 VARCHAR(16) 写库失败 */
+async function ensurePaymentOrdersVariantColumns(connOrPool) {
+  if (_paymentOrderVariantColsReady || !connOrPool) return;
+  var owned = false;
+  var conn = connOrPool;
+  if (typeof connOrPool.getConnection === 'function') {
+    conn = await connOrPool.getConnection();
+    owned = true;
+  }
+  try {
+    await conn.query(
+      "ALTER TABLE payment_orders MODIFY COLUMN pricing_variant VARCHAR(32) NULL COMMENT 'control|treatment|tax_daily|rename'"
+    );
+    await conn.query(
+      "ALTER TABLE payment_orders MODIFY COLUMN grant_kind VARCHAR(32) NULL COMMENT 'trial|permanent|tax_edit_daily|rename_credit'"
+    );
+    _paymentOrderVariantColsReady = true;
+  } catch (eEnsure) {
+    console.error('ensurePaymentOrdersVariantColumns', eEnsure && eEnsure.sqlMessage ? eEnsure.sqlMessage : eEnsure);
+  } finally {
+    if (owned) {
+      try {
+        conn.release();
+      } catch (eRel) {}
+    }
+  }
+}
+
+function paymentDbErrorHint(err) {
+  var raw = err && (err.sqlMessage || err.message);
+  var hint = raw != null ? String(raw).replace(/\s+/g, ' ').trim() : '';
+  if (hint.length > 140) hint = hint.slice(0, 140);
+  return hint;
+}
+
+/** 查找 30 分钟内未支付的同 SKU 订单；缺列时降级查询 */
+async function findRecentPendingAddonOrder(conn, username, skuId) {
+  var tries = [
+    `SELECT id, out_trade_no, subject, amount, status, paid_at, pricing_variant, sku_id,
+            grant_kind, grant_days, grant_hours, grant_minutes
+     FROM payment_orders
+     WHERE username = ? AND status = 'pending' AND sku_id = ?
+       AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE)
+     ORDER BY id DESC LIMIT 1 FOR UPDATE`,
+    `SELECT id, out_trade_no, subject, amount, status, paid_at, pricing_variant, sku_id, grant_kind
+     FROM payment_orders
+     WHERE username = ? AND status = 'pending' AND sku_id = ?
+       AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE)
+     ORDER BY id DESC LIMIT 1 FOR UPDATE`
+  ];
+  var lastErr = null;
+  for (var i = 0; i < tries.length; i++) {
+    try {
+      const [rows] = await conn.execute(tries[i], [username, skuId]);
+      return rows;
+    } catch (eFind) {
+      lastErr = eFind;
+      if (!eFind || eFind.errno !== 1054) throw eFind;
+    }
+  }
+  throw lastErr;
+}
+
+/** 写入增值待支付订单；缺列或超长时降级再写 */
+async function insertPendingAddonOrder(conn, row) {
+  var tries = [
+    {
+      sql: `INSERT INTO payment_orders
+        (out_trade_no, username, subject, amount, status, pricing_variant, sku_id, grant_kind, grant_days, grant_hours, grant_minutes)
+        VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`,
+      params: [
+        row.out_trade_no,
+        row.username,
+        row.subject,
+        row.amount,
+        row.pricing_variant,
+        row.sku_id,
+        row.grant_kind,
+        row.grant_days || 0,
+        row.grant_hours || 0,
+        row.grant_minutes || 0
+      ]
+    },
+    {
+      sql: `INSERT INTO payment_orders
+        (out_trade_no, username, subject, amount, status, pricing_variant, sku_id, grant_kind)
+        VALUES (?, ?, ?, ?, 'pending', ?, ?, ?)`,
+      params: [
+        row.out_trade_no,
+        row.username,
+        row.subject,
+        row.amount,
+        row.pricing_variant,
+        row.sku_id,
+        row.grant_kind
+      ]
+    },
+    {
+      sql: `INSERT INTO payment_orders
+        (out_trade_no, username, subject, amount, status, sku_id)
+        VALUES (?, ?, ?, ?, 'pending', ?)`,
+      params: [row.out_trade_no, row.username, row.subject, row.amount, row.sku_id]
+    }
+  ];
+  var lastErr = null;
+  for (var i = 0; i < tries.length; i++) {
+    try {
+      await conn.execute(tries[i].sql, tries[i].params);
+      return;
+    } catch (eIns) {
+      lastErr = eIns;
+      var tooLong = eIns && (eIns.errno === 1406 || /too long/i.test(String(eIns.sqlMessage || eIns.message || '')));
+      var badCol = eIns && eIns.errno === 1054;
+      if (!tooLong && !badCol) throw eIns;
+    }
+  }
+  throw lastErr;
 }
 
 /** 生成支付宝商户订单号 */
@@ -5047,6 +5959,9 @@ function plainPaymentOrder(row) {
     out_trade_no: String(row.out_trade_no || ''),
     subject: String(row.subject || ''),
     amount: row.amount != null ? String(row.amount) : '',
+    list_amount: row.list_amount != null ? String(row.list_amount) : '',
+    discount_amount: row.discount_amount != null ? String(row.discount_amount) : '0.00',
+    share_discount_count: Math.max(0, parseInt(row.share_discount_count, 10) || 0),
     status: String(row.status || ''),
     paid_at: paidAt,
     pricing_variant: row.pricing_variant != null ? String(row.pricing_variant) : '',
@@ -5062,13 +5977,58 @@ var RENAME_FEE_SUBJECT = '改名服务（单次）';
 var RENAME_FREE_LIMIT = 5;
 var RENAME_FREQ_WINDOW_DAYS = 30;
 var RENAME_FREQ_MIN_ACTIVE_DAYS = 2;
-/** 豁免改名收费的账号（不限次数） */
-var RENAME_FEE_EXEMPT_USERNAMES = {
-  jing00001: true
-};
-
 function isRenameFeeSkuId(skuId) {
   return String(skuId || '') === RENAME_FEE_SKU_ID;
+}
+
+/** 离职证明：付一次终身无限次生成（不开通账号；金额以后台配置为准） */
+var LIZHI_CERT_SKU_ID = 'sku_lizhi_cert_50';
+var LIZHI_CERT_AMOUNT = lizhiCertFeePolicy.LIZHI_CERT_FEE_DEFAULT_AMOUNT;
+var LIZHI_CERT_SUBJECT = '离职证明生成（终身）';
+var ZAIZHI_CERT_SKU_ID = 'sku_zaizhi_cert_50';
+var ZAIZHI_CERT_AMOUNT = lizhiCertFeePolicy.LIZHI_CERT_FEE_DEFAULT_AMOUNT;
+var ZAIZHI_CERT_SUBJECT = '在职证明生成（终身）';
+var SBDY_DEMO_SKU_ID = 'sku_sbdy_demo_199';
+var SBDY_DEMO_AMOUNT = '199.00';
+var SBDY_DEMO_SUBJECT = '社保演示去水印（终身）';
+var NAJILU_QR_SKU_ID = najiluQrFeePolicy.NAJILU_QR_SKU_ID;
+var NAJILU_QR_AMOUNT = najiluQrFeePolicy.NAJILU_QR_FEE_DEFAULT_AMOUNT;
+var NAJILU_QR_SUBJECT = najiluQrFeePolicy.NAJILU_QR_SUBJECT;
+function isLizhiCertSkuId(skuId) {
+  return String(skuId || '') === LIZHI_CERT_SKU_ID;
+}
+function isZaizhiCertSkuId(skuId) {
+  return String(skuId || '') === ZAIZHI_CERT_SKU_ID;
+}
+function isSbdyDemoSkuId(skuId) {
+  return String(skuId || '') === SBDY_DEMO_SKU_ID;
+}
+function isNajiluQrSkuId(skuId) {
+  return najiluQrFeePolicy.isNajiluQrSkuId(skuId);
+}
+function isCmbPartnerSkuId(skuId) {
+  return String(skuId || '').indexOf('sku_cmb_') === 0;
+}
+function isCmbPartnerGrantKind(grantKind) {
+  return String(grantKind || '') === 'cmb_partner';
+}
+function isNonActivationSkuId(skuId, grantKind) {
+  return (
+    isRenameFeeSkuId(skuId) ||
+    isLizhiCertSkuId(skuId) ||
+    isZaizhiCertSkuId(skuId) ||
+    isSbdyDemoSkuId(skuId) ||
+    isNajiluQrSkuId(skuId) ||
+    isCmbPartnerSkuId(skuId) ||
+    taxEditFeePolicy.isTaxEditFeeSkuId(skuId) ||
+    String(grantKind || '') === 'rename_credit' ||
+    String(grantKind || '') === 'lizhi_cert' ||
+    String(grantKind || '') === 'zaizhi_cert' ||
+    String(grantKind || '') === 'sbdy_demo' ||
+    String(grantKind || '') === 'najilu_qr' ||
+    isCmbPartnerGrantKind(grantKind) ||
+    taxEditFeePolicy.isTaxEditFeeGrantKind(grantKind)
+  );
 }
 
 /** 统计用户历史改名次数 */
@@ -5111,29 +6071,248 @@ async function countUnusedRenameCredits(userId) {
   }
 }
 
-/** 改名收费策略 */
+/** 改名不再收费；保留接口字段供旧客户端兼容 */
 async function getRenameFeePolicy(userId) {
   var nameChanges = await countUserRealNameChanges(userId);
   var activeDays = await countUserActiveDaysRecent(userId, RENAME_FREQ_WINDOW_DAYS);
   var unused = await countUnusedRenameCredits(userId);
-  var isMidHigh = activeDays >= RENAME_FREQ_MIN_ACTIVE_DAYS;
-  var uname = String(userId || '').trim().toLowerCase();
-  var exempt = !!(uname && RENAME_FEE_EXEMPT_USERNAMES[uname]);
-  var needFee = !exempt && isMidHigh && nameChanges >= RENAME_FREE_LIMIT;
+  var exempt = await isRenameFeeExemptUser(userId);
   return {
-    need_fee: needFee,
-    can_rename_now: !needFee || unused > 0,
+    need_fee: false,
+    can_rename_now: true,
     unused_credits: unused,
     name_change_count: nameChanges,
     free_limit: RENAME_FREE_LIMIT,
     active_days: activeDays,
     activity_window_days: RENAME_FREQ_WINDOW_DAYS,
-    is_mid_high_frequency: isMidHigh,
+    is_mid_high_frequency: activeDays >= RENAME_FREQ_MIN_ACTIVE_DAYS,
     rename_fee_exempt: exempt,
-    fee_amount: RENAME_FEE_AMOUNT,
+    tax_edit_fee_exempt: exempt,
+    fee_amount: '0.00',
     fee_subject: RENAME_FEE_SUBJECT,
     sku_id: RENAME_FEE_SKU_ID
   };
+}
+
+/** 是否永久免改名费 / 个税修改费（同一白名单） */
+async function isRenameFeeExemptUser(userId) {
+  var uname = String(userId || '').trim();
+  if (!uname) return false;
+  try {
+    const [exemptRows] = await pool.execute(
+      'SELECT rename_fee_exempt FROM users WHERE username = ? LIMIT 1',
+      [uname]
+    );
+    return !!(
+      exemptRows.length &&
+      (exemptRows[0].rename_fee_exempt === true ||
+        Number(exemptRows[0].rename_fee_exempt) === 1)
+    );
+  } catch (eExempt) {
+    return false;
+  }
+}
+
+/** 有个税记录变更的不同北京日历天数 */
+async function countUserTaxModDistinctDays(userId) {
+  if (!userId) return 0;
+  try {
+    const [rows] = await pool.execute(
+      `SELECT COUNT(DISTINCT DATE(DATE_ADD(changed_at, INTERVAL 8 HOUR))) AS c
+       FROM tax_record_change_logs
+       WHERE user_id = ?`,
+      [String(userId)]
+    );
+    return Number((rows[0] || {}).c) || 0;
+  } catch (e) {
+    return 0;
+  }
+}
+
+async function hasTaxEditDailyUnlock(userId, dayKey) {
+  if (!userId || !dayKey) return false;
+  try {
+    const [rows] = await pool.execute(
+      `SELECT id FROM user_tax_edit_daily_unlocks
+       WHERE username = ? AND unlock_date = ? LIMIT 1`,
+      [String(userId), String(dayKey)]
+    );
+    return !!(rows && rows.length);
+  } catch (e) {
+    return false;
+  }
+}
+
+var _taxEditFeeConfigCache = null;
+var _taxEditFeeConfigCacheAt = 0;
+var TAX_EDIT_FEE_CONFIG_CACHE_MS = 10000;
+
+async function loadTaxEditFeeConfig(force) {
+  var now = Date.now();
+  if (!force && _taxEditFeeConfigCache && now - _taxEditFeeConfigCacheAt < TAX_EDIT_FEE_CONFIG_CACHE_MS) {
+    return _taxEditFeeConfigCache;
+  }
+  var out = taxEditFeePolicy.defaultTaxEditFeeConfig();
+  try {
+    const [rows] = await pool.execute(
+      'SELECT setting_value FROM app_settings WHERE setting_key = ? LIMIT 1',
+      [taxEditFeePolicy.SETTING_KEY_TAX_EDIT_FEE]
+    );
+    if (rows.length && rows[0].setting_value) {
+      out = taxEditFeePolicy.normalizeTaxEditFeeConfig(JSON.parse(String(rows[0].setting_value)));
+    }
+  } catch (eCfg) {
+    /* 保持默认当天无限金额 */
+  }
+  _taxEditFeeConfigCache = out;
+  _taxEditFeeConfigCacheAt = now;
+  return out;
+}
+
+async function saveTaxEditFeeConfigFromAdmin(body) {
+  var next = taxEditFeePolicy.parseTaxEditFeeConfigFromAdmin(body);
+  if (!next) {
+    var err = new Error('个税修改收费金额无效，请填写 0.01～99999.99');
+    err.statusCode = 400;
+    throw err;
+  }
+  const conn = await pool.getConnection();
+  try {
+    await upsertAppSetting(conn, taxEditFeePolicy.SETTING_KEY_TAX_EDIT_FEE, JSON.stringify(next));
+  } finally {
+    conn.release();
+  }
+  _taxEditFeeConfigCache = next;
+  _taxEditFeeConfigCacheAt = Date.now();
+  return next;
+}
+
+var _renameFeeConfigCache = null;
+var _renameFeeConfigCacheAt = 0;
+var RENAME_FEE_CONFIG_CACHE_MS = 10000;
+
+async function loadRenameFeeConfig(force) {
+  var now = Date.now();
+  if (!force && _renameFeeConfigCache && now - _renameFeeConfigCacheAt < RENAME_FEE_CONFIG_CACHE_MS) {
+    return _renameFeeConfigCache;
+  }
+  var out = renameFeePolicy.defaultRenameFeeConfig();
+  try {
+    const [rows] = await pool.execute(
+      'SELECT setting_value FROM app_settings WHERE setting_key = ? LIMIT 1',
+      [renameFeePolicy.SETTING_KEY_RENAME_FEE]
+    );
+    if (rows.length && rows[0].setting_value) {
+      out = renameFeePolicy.normalizeRenameFeeConfig(JSON.parse(String(rows[0].setting_value)));
+    }
+  } catch (eCfg) {
+    /* 保持默认改名金额 */
+  }
+  _renameFeeConfigCache = out;
+  _renameFeeConfigCacheAt = now;
+  return out;
+}
+
+async function saveRenameFeeConfigFromAdmin(body) {
+  var next = renameFeePolicy.parseRenameFeeConfigFromAdmin(body);
+  if (!next) {
+    var err = new Error('改名费用金额无效，请填写 0～99999.99（0 表示不用付款）');
+    err.statusCode = 400;
+    throw err;
+  }
+  const conn = await pool.getConnection();
+  try {
+    await upsertAppSetting(conn, renameFeePolicy.SETTING_KEY_RENAME_FEE, JSON.stringify(next));
+  } finally {
+    conn.release();
+  }
+  _renameFeeConfigCache = next;
+  _renameFeeConfigCacheAt = Date.now();
+  return next;
+}
+
+var _lizhiCertFeeConfigCache = null;
+var _lizhiCertFeeConfigCacheAt = 0;
+var LIZHI_CERT_FEE_CONFIG_CACHE_MS = 10000;
+
+async function loadLizhiCertFeeConfig(force) {
+  var now = Date.now();
+  if (
+    !force &&
+    _lizhiCertFeeConfigCache &&
+    now - _lizhiCertFeeConfigCacheAt < LIZHI_CERT_FEE_CONFIG_CACHE_MS
+  ) {
+    return _lizhiCertFeeConfigCache;
+  }
+  var out = lizhiCertFeePolicy.defaultLizhiCertFeeConfig();
+  try {
+    const [rows] = await pool.execute(
+      'SELECT setting_value FROM app_settings WHERE setting_key = ? LIMIT 1',
+      [lizhiCertFeePolicy.SETTING_KEY_LIZHI_CERT_FEE]
+    );
+    if (rows.length && rows[0].setting_value) {
+      out = lizhiCertFeePolicy.normalizeLizhiCertFeeConfig(JSON.parse(String(rows[0].setting_value)));
+    }
+  } catch (eCfg) {
+    /* 保持默认离职证明金额 */
+  }
+  _lizhiCertFeeConfigCache = out;
+  _lizhiCertFeeConfigCacheAt = now;
+  return out;
+}
+
+async function saveLizhiCertFeeConfigFromAdmin(body) {
+  var next = lizhiCertFeePolicy.parseLizhiCertFeeConfigFromAdmin(body);
+  if (!next) {
+    var err = new Error('证明金额无效，请填写 0.01～99999.99');
+    err.statusCode = 400;
+    throw err;
+  }
+  const conn = await pool.getConnection();
+  try {
+    await upsertAppSetting(conn, lizhiCertFeePolicy.SETTING_KEY_LIZHI_CERT_FEE, JSON.stringify(next));
+  } finally {
+    conn.release();
+  }
+  _lizhiCertFeeConfigCache = next;
+  _lizhiCertFeeConfigCacheAt = Date.now();
+  return next;
+}
+
+/** 个税修改收费策略（超限账号，白名单除外；金额以后台配置为准） */
+async function getTaxEditFeePolicy(userId) {
+  var nameChanges = await countUserRealNameChanges(userId);
+  var taxModDays = await countUserTaxModDistinctDays(userId);
+  var today = chinaDateKeyNow();
+  var hasDaily = await hasTaxEditDailyUnlock(userId, today);
+  var exempt = await isRenameFeeExemptUser(userId);
+  var amounts = await loadTaxEditFeeConfig(false);
+  return taxEditFeePolicy.buildTaxEditFeePolicyView({
+    nameChanges: nameChanges,
+    taxModDays: taxModDays,
+    hasDailyUnlock: hasDaily,
+    exempt: exempt,
+    today: today,
+    dailyAmount: amounts.daily_amount,
+    renameGt: amounts.rename_gt,
+    daysGt: amounts.days_gt
+  });
+}
+
+async function okTaxWrite(res, userId, policy, data) {
+  return res.json({ code: 200, data: data });
+}
+
+async function sendTaxEditFeeBlockIfNeeded(res, userId, action) {
+  if (!taxEditFeePolicy.isTaxEditFeeWriteAction(action) || !userId) return false;
+  var policy = await getTaxEditFeePolicy(userId);
+  if (!policy.need_fee) return false;
+  res.status(402).json({
+    code: 402,
+    msg: taxEditFeePolicy.taxEditFeeBlockMessage(policy),
+    data: Object.assign({ need_tax_edit_fee: true, peer_account: true }, policy)
+  });
+  return true;
 }
 
 /** 在事务中消耗一次改名额度；失败返回 false */
@@ -5166,16 +6345,269 @@ function readPreferredPurchaseAbc(req) {
   return '';
 }
 
+/* 支付页引流：1 次分享立减 ¥50。先下线展示与抵扣，开关打开即可恢复 */
+var BILIBILI_SHARE_DISCOUNT_ENABLED = false;
+var BILIBILI_SHARE_DISCOUNT_THRESHOLD = 1;
+var BILIBILI_SHARE_DISCOUNT_AMOUNT = '50.00';
+var BILIBILI_SHARE_SESSION_TTL_MINUTES = 30;
+var BILIBILI_SHARE_MIN_COMPLETE_SECONDS = 2;
+
+function buildBilibiliShareRewardStatus(row, pendingOrder) {
+  row = row || {};
+  var total = Math.max(0, parseInt(row.completed_count, 10) || 0);
+  var available = Math.max(0, parseInt(row.available_count, 10) || 0);
+  var reserved = Math.max(0, parseInt(row.reserved_count, 10) || 0);
+  var threshold = BILIBILI_SHARE_DISCOUNT_THRESHOLD;
+  var pendingDiscount = '0.00';
+  if (
+    pendingOrder &&
+    String(pendingOrder.status || '') === 'pending' &&
+    Number(pendingOrder.discount_amount) > 0 &&
+    Math.max(0, parseInt(pendingOrder.share_discount_count, 10) || 0) >= threshold
+  ) {
+    pendingDiscount = alipay.normalizeAmount(pendingOrder.discount_amount) || BILIBILI_SHARE_DISCOUNT_AMOUNT;
+  }
+  /* 仅在确有金额时才算「已用于待支付订单」；只有预占无金额会渲染成「自动减 ¥0.00」 */
+  var pendingApplied = Number(pendingDiscount) > 0;
+  return {
+    completed_count: total,
+    available_count: available,
+    reserved_count: reserved,
+    threshold: threshold,
+    /* 预占待支付时进度仍展示满格，避免页面误显示「0/N + 原价」 */
+    progress_count: pendingApplied
+      ? threshold
+      : Math.min(available, threshold),
+    remaining_count: pendingApplied
+      ? 0
+      : Math.max(0, threshold - available),
+    eligible: available >= threshold,
+    pending_discount_applied: pendingApplied,
+    pending_discount_amount: pendingApplied
+      ? pendingDiscount || BILIBILI_SHARE_DISCOUNT_AMOUNT
+      : '0.00',
+    discount_amount: BILIBILI_SHARE_DISCOUNT_AMOUNT
+  };
+}
+
+async function readBilibiliShareRewardStatus(username, conn) {
+  var db = conn || pool;
+  var user = String(username || '');
+  /* 预占口径须与下单时的释放逻辑一致：仅「未超时的 pending 订单」才算真占用，
+     否则已关闭/超时订单会把次数永久算成 reserved，页面误显示「优惠已用于待支付订单」 */
+  const [rows] = await db.execute(
+    `SELECT
+       SUM(CASE WHEN se.status = 'completed' THEN 1 ELSE 0 END) AS completed_count,
+       SUM(CASE
+         WHEN se.status = 'completed' AND se.consumed_at IS NULL
+           AND (se.reserved_order_no IS NULL OR po.id IS NULL) THEN 1
+         ELSE 0
+       END) AS available_count,
+       SUM(CASE
+         WHEN se.status = 'completed' AND se.consumed_at IS NULL
+           AND se.reserved_order_no IS NOT NULL AND po.id IS NOT NULL THEN 1
+         ELSE 0
+       END) AS reserved_count
+     FROM user_bilibili_share_events se
+     LEFT JOIN payment_orders po
+       ON po.out_trade_no = se.reserved_order_no
+      AND po.status = 'pending'
+      AND po.created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE)
+     WHERE se.username = ?`,
+    [user]
+  );
+  const [pendingRows] = await db.execute(
+    `SELECT status, amount, list_amount, discount_amount, share_discount_count
+     FROM payment_orders
+     WHERE username = ? AND status = 'pending'
+       AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE)
+     ORDER BY id DESC LIMIT 1`,
+    [user]
+  );
+  return buildBilibiliShareRewardStatus(rows[0], pendingRows[0] || null);
+}
+
+/** 支付页 B 站分享活动：开始一次服务端分享会话 */
+async function handleBilibiliShareStart(req, res) {
+  var username = String(req.authUserId || '');
+  var sessionId =
+    typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : crypto.randomBytes(16).toString('hex');
+  try {
+    var shareTtlMin = Math.max(
+      1,
+      Math.min(24 * 60, parseInt(BILIBILI_SHARE_SESSION_TTL_MINUTES, 10) || 30)
+    );
+    await pool.execute(
+      `UPDATE user_bilibili_share_events
+       SET status = 'expired'
+       WHERE username = ? AND status = 'pending'
+         AND created_at < DATE_SUB(CURRENT_TIMESTAMP, INTERVAL ${shareTtlMin} MINUTE)`,
+      [username]
+    );
+    await pool.execute(
+      `INSERT INTO user_bilibili_share_events
+       (username, share_session_id, status)
+       VALUES (?, ?, 'pending')`,
+      [username, sessionId]
+    );
+    var status = await readBilibiliShareRewardStatus(username);
+    return res.json({
+      code: 200,
+      data: Object.assign({ share_session_id: sessionId }, status)
+    });
+  } catch (e) {
+    console.error('start bilibili share reward', e);
+    return res.status(500).json({ code: 500, msg: '暂时无法开始分享活动，请稍后重试' });
+  }
+}
+
+/** 支付页 B 站分享活动：从 B 站/分享面板返回后确认本次分享 */
+async function handleBilibiliShareComplete(req, res) {
+  var username = String(req.authUserId || '');
+  var sessionId = String((req.body && req.body.share_session_id) || '').trim();
+  if (!/^[a-z0-9-]{16,64}$/i.test(sessionId)) {
+    return res.status(400).json({ code: 400, msg: '分享会话无效，请重新分享' });
+  }
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [rows] = await conn.execute(
+      `SELECT id, status, created_at
+       FROM user_bilibili_share_events
+       WHERE username = ? AND share_session_id = ?
+       LIMIT 1 FOR UPDATE`,
+      [username, sessionId]
+    );
+    if (!rows.length) {
+      await conn.rollback();
+      return res.status(404).json({ code: 404, msg: '分享会话不存在，请重新分享' });
+    }
+    if (String(rows[0].status) === 'completed') {
+      await conn.commit();
+      var existingStatus = await readBilibiliShareRewardStatus(username);
+      return res.json({ code: 200, data: existingStatus });
+    }
+    const [ageRows] = await conn.execute(
+      `SELECT TIMESTAMPDIFF(SECOND, created_at, CURRENT_TIMESTAMP) AS age_seconds
+       FROM user_bilibili_share_events WHERE id = ? LIMIT 1`,
+      [rows[0].id]
+    );
+    var age = Math.max(0, parseInt(ageRows[0] && ageRows[0].age_seconds, 10) || 0);
+    if (age < BILIBILI_SHARE_MIN_COMPLETE_SECONDS) {
+      await conn.rollback();
+      return res.status(409).json({ code: 409, msg: '请完成分享后再返回领取次数' });
+    }
+    if (age > BILIBILI_SHARE_SESSION_TTL_MINUTES * 60) {
+      await conn.execute(
+        `UPDATE user_bilibili_share_events SET status = 'expired' WHERE id = ?`,
+        [rows[0].id]
+      );
+      await conn.commit();
+      return res.status(410).json({ code: 410, msg: '分享会话已过期，请重新分享' });
+    }
+    await conn.execute(
+      `UPDATE user_bilibili_share_events
+       SET status = 'completed', completed_at = CURRENT_TIMESTAMP
+       WHERE id = ? AND status = 'pending'`,
+      [rows[0].id]
+    );
+    await conn.commit();
+    var status = await readBilibiliShareRewardStatus(username);
+    return res.json({ code: 200, data: status });
+  } catch (e) {
+    try {
+      await conn.rollback();
+    } catch (rollbackError) {}
+    console.error('complete bilibili share reward', e);
+    return res.status(500).json({ code: 500, msg: '分享次数领取失败，请稍后重试' });
+  } finally {
+    conn.release();
+  }
+}
+
+/** 支付页 B 站分享活动：查询进度和可用优惠 */
+async function handleBilibiliShareStatus(req, res) {
+  try {
+    var status = await readBilibiliShareRewardStatus(req.authUserId || '');
+    return res.json({ code: 200, data: status });
+  } catch (e) {
+    console.error('get bilibili share reward status', e);
+    return res.status(500).json({ code: 500, msg: '读取分享活动进度失败' });
+  }
+}
+
+/** C 端：查询我的心理价出价状态（enabled + 最近一条 + 返回拦截资格） */
+async function handlePriceBidGet(req, res) {
+  try {
+    var cfg = await getPriceBids().loadConfig();
+    var bid = await getPriceBids().getLatestBid(req.authUserId || '');
+    var backCtx = { within_48h: false, hours_since_register: null, visit_count: 0, eligible: false };
+    try {
+      if (typeof getPriceBids().getBackPromptContext === 'function') {
+        backCtx = await getPriceBids().getBackPromptContext(req.authUserId || '');
+      }
+    } catch (eCtx) {
+      /* ignore */
+    }
+    return res.json({
+      code: 200,
+      data: {
+        enabled: !!cfg.enabled,
+        min_amount: cfg.min_amount,
+        back_prompt: {
+          eligible: !!(cfg.enabled && backCtx.eligible && !(bid && bid.status === 'accepted')),
+          within_48h: !!backCtx.within_48h,
+          hours_since_register: backCtx.hours_since_register,
+          visit_count: Number(backCtx.visit_count) || 0,
+          registered_at: backCtx.registered_at || null
+        },
+        bid: bid
+          ? {
+              status: bid.status,
+              bid_amount: bid.bid_amount,
+              accepted_amount: bid.accepted_amount,
+              sku_label: bid.sku_label,
+              note: bid.note || '',
+              created_at: bid.created_at
+            }
+          : null
+      }
+    });
+  } catch (e) {
+    console.error('price bid get', e);
+    return res.status(500).json({ code: 500, msg: '读取出价状态失败' });
+  }
+}
+
+/** C 端：提交心理价（达线自动放价，未达线转人工） */
+async function handlePriceBidSubmit(req, res) {
+  try {
+    var body = req.body || {};
+    var out = await getPriceBids().submitBid(req.authUserId || '', {
+      sku_id: body.sku_id,
+      amount: body.amount,
+      note: body.note
+    });
+    var msg =
+      out.status === 'accepted'
+        ? '已按你的心理价 ¥' + out.accepted_amount + ' 生效，现在就能按新价开通'
+        : out.updated
+          ? '已更新出价，通过后会发站内信通知你'
+          : '已提交，通过后会发站内信通知你';
+    return res.json({ code: 200, msg: msg, data: out });
+  } catch (e) {
+    var code = e && e.statusCode ? e.statusCode : 500;
+    if (code === 500) console.error('price bid submit', e);
+    return res.status(code).json({ code: code, msg: (e && e.message) || '提交出价失败' });
+  }
+}
+
 /** 返回支付宝公开配置（含定价 A/B/C SKU 列表） */
 async function handleAlipayConfig(req, res) {
   var envProduct = getAlipayProductConfig();
   var baseEnabled = alipay.isConfigured() && !!envProduct.amount;
-  if (!baseEnabled) {
-    return res.json({
-      code: 200,
-      data: { enabled: false, subject: envProduct.subject, amount: envProduct.amount, skus: [] }
-    });
-  }
   try {
     var offer = await getPricingAb().resolveOfferForUser(
       req.authUserId || '',
@@ -5183,16 +6615,71 @@ async function handleAlipayConfig(req, res) {
       envProduct.subject,
       readPreferredPurchaseAbc(req)
     );
-    if (offer.abc_variant === 'c' || offer.variant === 'c') {
+    try {
+      offer = await applyAgentChannelPricesToOffer(offer, req.authUserId || '', req);
+    } catch (eChPrice) {
+      console.error('alipay config channel_price', eChPrice);
+    }
+    var customOffer = null;
+    try {
+      if (req.authUserId) {
+        var appliedCfg = await getUserPriceOffers().applyOfferToPricingOffer(
+          req.authUserId,
+          offer
+        );
+        offer = appliedCfg.offer || offer;
+        customOffer = appliedCfg.customOffer || null;
+      }
+    } catch (eCustomCfg) {
+      console.error('alipay config user_price_offer', eCustomCfg);
+    }
+    try {
+      if (req.authUserId && (await userMustHideSelfServePay(req.authUserId))) {
+        return res.json({
+          code: 200,
+          data: {
+            enabled: true,
+            subject: envProduct.subject,
+            amount: envProduct.amount,
+            pricing_variant: 'control',
+            abc_variant: 'b',
+            abc_source: 'agent_channel',
+            pricing_ab_enabled: !!offer.pricing_ab_enabled,
+            forced_by_channel: true,
+            force_client_abc: true,
+            code_only: false,
+            hide_self_serve_pay: false,
+            custom_offer: false,
+            skus: (DEFAULT_PRICING_AB.treatment_skus || []).map(function (s) {
+              return {
+                id: s.id,
+                amount: s.amount,
+                label: s.label,
+                subject: s.subject,
+                grant_kind: s.grant_kind,
+                grant_days: s.grant_days,
+                grant_hours: s.grant_hours,
+                grant_minutes: s.grant_minutes || 0
+              };
+            })
+          }
+        });
+      }
+    } catch (eHide) {}
+    if (!baseEnabled) {
       return res.json({
         code: 200,
         data: {
           enabled: false,
           subject: envProduct.subject,
           amount: envProduct.amount,
-          pricing_variant: 'c',
-          abc_variant: 'c',
+          pricing_variant: offer.variant || 'control',
+          abc_variant: offer.abc_variant || 'b',
+          abc_source: offer.abc_source || '',
           pricing_ab_enabled: !!offer.pricing_ab_enabled,
+          forced_by_channel: !!offer.forced_by_channel,
+          force_client_abc: !!offer.force_client_abc,
+          custom_offer: !!customOffer,
           skus: []
         }
       });
@@ -5201,6 +6688,9 @@ async function handleAlipayConfig(req, res) {
       return {
         id: s.id,
         amount: s.amount,
+        list_amount: s.list_amount || '',
+        psych_offer: !!s.psych_offer,
+        channel_price: !!s.channel_price,
         label: s.label,
         subject: s.subject,
         grant_kind: s.grant_kind,
@@ -5216,14 +6706,27 @@ async function handleAlipayConfig(req, res) {
         enabled: true,
         subject: primary ? primary.subject : envProduct.subject,
         amount: primary ? primary.amount : envProduct.amount,
-        pricing_variant: offer.variant,
+        pricing_variant: customOffer ? 'custom_offer' : offer.variant,
         abc_variant: offer.abc_variant || (offer.variant === 'treatment' ? 'b' : 'a'),
+        abc_source: offer.abc_source || '',
         pricing_ab_enabled: !!offer.pricing_ab_enabled,
+        forced_by_channel: !!offer.forced_by_channel,
+        force_client_abc: !!offer.force_client_abc,
+        custom_offer: !!customOffer,
+        github_entry: !!offer.github_entry,
+        channel_prices: !!offer.channel_prices,
+        channel_id: offer.channel_id || null,
         skus: skus
       }
     });
   } catch (e) {
     console.error('alipay config pricing_ab', e);
+    if (!baseEnabled) {
+      return res.json({
+        code: 200,
+        data: { enabled: false, subject: envProduct.subject, amount: envProduct.amount, skus: [] }
+      });
+    }
     return res.json({
       code: 200,
       data: {
@@ -5231,22 +6734,115 @@ async function handleAlipayConfig(req, res) {
         subject: envProduct.subject,
         amount: envProduct.amount,
         pricing_variant: 'control',
-        abc_variant: 'a',
+        abc_variant: 'b',
         pricing_ab_enabled: false,
-        skus: [
-          {
-            id: 'sku_199_perm_legacy',
-            amount: envProduct.amount,
-            label: '永久激活',
-            subject: envProduct.subject,
-            grant_kind: 'permanent',
-            grant_days: 0,
-            grant_hours: 0,
-            grant_minutes: 0
-          }
-        ]
+        skus: (DEFAULT_PRICING_AB.treatment_skus || []).map(function (s) {
+          return {
+            id: s.id,
+            amount: s.amount,
+            label: s.label,
+            subject: s.subject,
+            grant_kind: s.grant_kind,
+            grant_days: s.grant_days,
+            grant_hours: s.grant_hours,
+            grant_minutes: s.grant_minutes || 0
+          };
+        })
       }
     });
+  }
+}
+
+/** 增值商品（改名/个税修改等）当面付下单：复用 30 分钟内未支付订单 */
+async function createAddonFaceToFaceOrder(req, res, spec) {
+  if (!req.authUserId) {
+    return res.status(401).json({ code: 401, msg: '请先登录' });
+  }
+  var amount = alipay.normalizeAmount(spec.amount);
+  if (!amount) {
+    return res.status(503).json({ code: 503, msg: spec.invalidAmountMsg || '费用配置无效' });
+  }
+  const conn = await pool.getConnection();
+  var order = null;
+  try {
+    await conn.beginTransaction();
+    const [existing] = await conn.execute(
+      `SELECT id, out_trade_no, subject, amount, status, paid_at, pricing_variant, sku_id,
+              grant_kind, grant_days, grant_hours, grant_minutes
+       FROM payment_orders
+       WHERE username = ? AND status = 'pending' AND sku_id = ?
+         AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE)
+       ORDER BY id DESC LIMIT 1 FOR UPDATE`,
+      [req.authUserId, spec.skuId]
+    );
+    if (existing.length) {
+      order = existing[0];
+    } else {
+      order = {
+        out_trade_no: createAlipayOutTradeNo(),
+        subject: spec.subject,
+        amount: amount,
+        status: 'pending',
+        pricing_variant: spec.pricingVariant,
+        sku_id: spec.skuId,
+        grant_kind: spec.grantKind,
+        grant_days: 0,
+        grant_hours: 0,
+        grant_minutes: 0
+      };
+      await conn.execute(
+        `INSERT INTO payment_orders
+         (out_trade_no, username, subject, amount, status, pricing_variant, sku_id, grant_kind, grant_days, grant_hours, grant_minutes)
+         VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`,
+        [
+          order.out_trade_no,
+          req.authUserId,
+          order.subject,
+          order.amount,
+          order.pricing_variant,
+          order.sku_id,
+          order.grant_kind,
+          order.grant_days,
+          order.grant_hours,
+          order.grant_minutes
+        ]
+      );
+    }
+    await conn.commit();
+  } catch (eDb) {
+    try {
+      await conn.rollback();
+    } catch (eRb) {}
+    console.error('create addon order db', spec.product, eDb);
+    try {
+      conn.release();
+    } catch (eRel) {}
+    return res.status(500).json({ code: 500, msg: spec.dbFailMsg || '创建订单失败' });
+  }
+  try {
+    var pre = await alipay.createFaceToFaceQr({
+      outTradeNo: String(order.out_trade_no),
+      subject: String(order.subject),
+      amount: alipay.normalizeAmount(order.amount)
+    });
+    return res.json({
+      code: 200,
+      data: {
+        order: plainPaymentOrder(order),
+        qr_code: pre.qrCode,
+        payment_url: pre.qrCode,
+        pricing_variant: spec.pricingVariant,
+        sku_id: spec.skuId,
+        product: spec.product
+      }
+    });
+  } catch (ePay) {
+    console.error('create addon precreate', spec.product, ePay);
+    return res.status(500).json({ code: 500, msg: spec.payFailMsg || '创建支付宝订单失败' });
+  } finally {
+    try {
+      conn.release();
+    } catch (eRel2) {}
   }
 }
 
@@ -5260,13 +6856,388 @@ async function handleAlipayCreateOrder(req, res) {
   var skuIdReq = body.sku_id != null ? String(body.sku_id).trim() : '';
   var isRenameFee =
     product === 'rename_fee' || isRenameFeeSkuId(skuIdReq) || skuIdReq === 'rename_fee';
+  var isTaxEditDaily =
+    product === 'tax_edit_unlimited' ||
+    product === 'tax_edit_fee' ||
+    product === 'tax_edit_single' ||
+    taxEditFeePolicy.isTaxEditFeeSkuId(skuIdReq);
+
+  var isLizhiCert =
+    product === 'lizhi_cert' || isLizhiCertSkuId(skuIdReq) || skuIdReq === 'lizhi_cert';
+
+  /* —— 离职证明终身权益（不走开通激活逻辑） —— */
+  if (isLizhiCert) {
+    if (!req.authUserId) {
+      return res.status(401).json({ code: 401, msg: '请先登录' });
+    }
+    const [lizhiUsers] = await pool.execute(
+      'SELECT lizhi_cert_unlocked FROM users WHERE username = ? LIMIT 1',
+      [req.authUserId]
+    );
+    if (
+      lizhiUsers.length &&
+      (lizhiUsers[0].lizhi_cert_unlocked === true ||
+        Number(lizhiUsers[0].lizhi_cert_unlocked) === 1)
+    ) {
+      return res.status(409).json({ code: 409, msg: '离职证明无水印权益已开通，无需重复购买' });
+    }
+    var lizhiFeeCfg = await loadLizhiCertFeeConfig(false);
+    var lizhiAmount = alipay.normalizeAmount(lizhiFeeCfg.amount || LIZHI_CERT_AMOUNT);
+    if (!lizhiAmount) {
+      return res.status(503).json({ code: 503, msg: '离职证明费用配置无效' });
+    }
+    const connLizhi = await pool.getConnection();
+    var lizhiOrder = null;
+    try {
+      await connLizhi.beginTransaction();
+      const [existingLizhi] = await connLizhi.execute(
+        `SELECT id, out_trade_no, subject, amount, status, paid_at, pricing_variant, sku_id,
+                grant_kind, grant_days, grant_hours, grant_minutes
+         FROM payment_orders
+         WHERE username = ? AND status = 'pending' AND sku_id = ?
+           AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE)
+         ORDER BY id DESC LIMIT 1 FOR UPDATE`,
+        [req.authUserId, LIZHI_CERT_SKU_ID]
+      );
+      if (existingLizhi.length) {
+        lizhiOrder = existingLizhi[0];
+      } else {
+        lizhiOrder = {
+          out_trade_no: createAlipayOutTradeNo(),
+          subject: LIZHI_CERT_SUBJECT,
+          amount: lizhiAmount,
+          status: 'pending',
+          pricing_variant: 'lizhi_cert',
+          sku_id: LIZHI_CERT_SKU_ID,
+          grant_kind: 'lizhi_cert',
+          grant_days: 0,
+          grant_hours: 0,
+          grant_minutes: 0
+        };
+        await connLizhi.execute(
+          `INSERT INTO payment_orders
+           (out_trade_no, username, subject, amount, status, pricing_variant, sku_id, grant_kind, grant_days, grant_hours, grant_minutes)
+           VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`,
+          [
+            lizhiOrder.out_trade_no,
+            req.authUserId,
+            lizhiOrder.subject,
+            lizhiOrder.amount,
+            lizhiOrder.pricing_variant,
+            lizhiOrder.sku_id,
+            lizhiOrder.grant_kind,
+            lizhiOrder.grant_days,
+            lizhiOrder.grant_hours,
+            lizhiOrder.grant_minutes
+          ]
+        );
+      }
+      await connLizhi.commit();
+    } catch (eLizhiDb) {
+      try {
+        await connLizhi.rollback();
+      } catch (eRb) {}
+      console.error('create lizhi cert order db', eLizhiDb);
+      try {
+        connLizhi.release();
+      } catch (eRel) {}
+      return res.status(500).json({ code: 500, msg: '创建离职证明订单失败' });
+    }
+    try {
+      var lizhiPre = await alipay.createFaceToFaceQr({
+        outTradeNo: String(lizhiOrder.out_trade_no),
+        subject: String(lizhiOrder.subject),
+        amount: alipay.normalizeAmount(lizhiOrder.amount)
+      });
+      return res.json({
+        code: 200,
+        data: {
+          order: plainPaymentOrder(lizhiOrder),
+          qr_code: lizhiPre.qrCode,
+          payment_url: lizhiPre.qrCode,
+          pricing_variant: 'lizhi_cert',
+          sku_id: LIZHI_CERT_SKU_ID,
+          product: 'lizhi_cert'
+        }
+      });
+    } catch (eLizhiPay) {
+      console.error('create lizhi cert precreate', eLizhiPay);
+      return res.status(500).json({ code: 500, msg: '创建支付宝离职证明订单失败' });
+    } finally {
+      try {
+        connLizhi.release();
+      } catch (eRel2) {}
+    }
+  }
+
+  var isZaizhiCert =
+    product === 'zaizhi_cert' || isZaizhiCertSkuId(skuIdReq) || skuIdReq === 'zaizhi_cert';
+
+  /* —— 在职/工作证明终身权益（不走开通激活逻辑） —— */
+  if (isZaizhiCert) {
+    if (!req.authUserId) {
+      return res.status(401).json({ code: 401, msg: '请先登录' });
+    }
+    const [zaizhiUsers] = await pool.execute(
+      'SELECT zaizhi_cert_unlocked FROM users WHERE username = ? LIMIT 1',
+      [req.authUserId]
+    );
+    if (
+      zaizhiUsers.length &&
+      (zaizhiUsers[0].zaizhi_cert_unlocked === true ||
+        Number(zaizhiUsers[0].zaizhi_cert_unlocked) === 1)
+    ) {
+      return res.status(409).json({ code: 409, msg: '在职证明无水印权益已开通，无需重复购买' });
+    }
+    var zaizhiFeeCfg = await loadLizhiCertFeeConfig(false);
+    var zaizhiAmount = alipay.normalizeAmount(zaizhiFeeCfg.amount || ZAIZHI_CERT_AMOUNT);
+    if (!zaizhiAmount) {
+      return res.status(503).json({ code: 503, msg: '在职证明费用配置无效' });
+    }
+    const connZaizhi = await pool.getConnection();
+    var zaizhiOrder = null;
+    try {
+      await connZaizhi.beginTransaction();
+      const [existingZaizhi] = await connZaizhi.execute(
+        `SELECT id, out_trade_no, subject, amount, status, paid_at, pricing_variant, sku_id,
+                grant_kind, grant_days, grant_hours, grant_minutes
+         FROM payment_orders
+         WHERE username = ? AND status = 'pending' AND sku_id = ?
+           AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE)
+         ORDER BY id DESC LIMIT 1 FOR UPDATE`,
+        [req.authUserId, ZAIZHI_CERT_SKU_ID]
+      );
+      if (existingZaizhi.length) {
+        zaizhiOrder = existingZaizhi[0];
+      } else {
+        zaizhiOrder = {
+          out_trade_no: createAlipayOutTradeNo(),
+          subject: ZAIZHI_CERT_SUBJECT,
+          amount: zaizhiAmount,
+          status: 'pending',
+          pricing_variant: 'zaizhi_cert',
+          sku_id: ZAIZHI_CERT_SKU_ID,
+          grant_kind: 'zaizhi_cert',
+          grant_days: 0,
+          grant_hours: 0,
+          grant_minutes: 0
+        };
+        await connZaizhi.execute(
+          `INSERT INTO payment_orders
+           (out_trade_no, username, subject, amount, status, pricing_variant, sku_id, grant_kind, grant_days, grant_hours, grant_minutes)
+           VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`,
+          [
+            zaizhiOrder.out_trade_no,
+            req.authUserId,
+            zaizhiOrder.subject,
+            zaizhiOrder.amount,
+            zaizhiOrder.pricing_variant,
+            zaizhiOrder.sku_id,
+            zaizhiOrder.grant_kind,
+            zaizhiOrder.grant_days,
+            zaizhiOrder.grant_hours,
+            zaizhiOrder.grant_minutes
+          ]
+        );
+      }
+      await connZaizhi.commit();
+    } catch (eZaizhiDb) {
+      try {
+        await connZaizhi.rollback();
+      } catch (eRb) {}
+      console.error('create zaizhi cert order db', eZaizhiDb);
+      try {
+        connZaizhi.release();
+      } catch (eRel) {}
+      return res.status(500).json({ code: 500, msg: '创建在职证明订单失败' });
+    }
+    try {
+      var zaizhiPre = await alipay.createFaceToFaceQr({
+        outTradeNo: String(zaizhiOrder.out_trade_no),
+        subject: String(zaizhiOrder.subject),
+        amount: alipay.normalizeAmount(zaizhiOrder.amount)
+      });
+      return res.json({
+        code: 200,
+        data: {
+          order: plainPaymentOrder(zaizhiOrder),
+          qr_code: zaizhiPre.qrCode,
+          payment_url: zaizhiPre.qrCode,
+          pricing_variant: 'zaizhi_cert',
+          sku_id: ZAIZHI_CERT_SKU_ID,
+          product: 'zaizhi_cert'
+        }
+      });
+    } catch (eZaizhiPay) {
+      console.error('create zaizhi cert precreate', eZaizhiPay);
+      return res.status(500).json({ code: 500, msg: '创建支付宝在职证明订单失败' });
+    } finally {
+      try {
+        connZaizhi.release();
+      } catch (eRel2) {}
+    }
+  }
+
+  var isNajiluQr =
+    product === 'najilu_qr' || isNajiluQrSkuId(skuIdReq) || skuIdReq === 'najilu_qr';
+
+  /* —— 完税二维码去水印终身权益（不走开通激活逻辑） —— */
+  if (isNajiluQr) {
+    if (!req.authUserId) {
+      return res.status(401).json({ code: 401, msg: '请先登录' });
+    }
+    try {
+      await najiluQrMod.ensureNajiluQrUnlockedColumn(pool);
+    } catch (eCol) {}
+    var unlockedNajilu = false;
+    try {
+      unlockedNajilu = await najiluQrMod.userHasNajiluQrUnlocked(req.authUserId);
+    } catch (eUn) {
+      unlockedNajilu = false;
+    }
+    if (unlockedNajilu) {
+      return res.status(409).json({ code: 409, msg: '完税二维码去水印权益已开通，无需重复购买' });
+    }
+    var najiluFeeCfg = await najiluQrMod.loadNajiluQrFeeConfig(false);
+    var najiluAmount = alipay.normalizeAmount(
+      (najiluFeeCfg && najiluFeeCfg.amount) || NAJILU_QR_AMOUNT
+    );
+    return createAddonFaceToFaceOrder(req, res, {
+      product: 'najilu_qr',
+      skuId: NAJILU_QR_SKU_ID,
+      subject: NAJILU_QR_SUBJECT,
+      amount: najiluAmount,
+      grantKind: 'najilu_qr',
+      pricingVariant: 'najilu_qr',
+      invalidAmountMsg: '完税二维码费用配置无效',
+      dbFailMsg: '创建完税二维码订单失败',
+      payFailMsg: '创建支付宝完税二维码订单失败'
+    });
+  }
+
+  var isSbdyDemo =
+    product === 'sbdy_demo' || isSbdyDemoSkuId(skuIdReq) || skuIdReq === 'sbdy_demo';
+
+  /* —— 社保演示终身权益（不走开通激活逻辑） —— */
+  if (isSbdyDemo) {
+    if (!req.authUserId) {
+      return res.status(401).json({ code: 401, msg: '请先登录' });
+    }
+    var sbdyUnlockedRow = null;
+    try {
+      const [sbdyUsers] = await pool.execute(
+        'SELECT sbdy_demo_unlocked FROM users WHERE username = ? LIMIT 1',
+        [req.authUserId]
+      );
+      sbdyUnlockedRow = sbdyUsers.length ? sbdyUsers[0] : null;
+    } catch (eSbdyCol) {
+      sbdyUnlockedRow = null;
+    }
+    if (
+      sbdyUnlockedRow &&
+      (sbdyUnlockedRow.sbdy_demo_unlocked === true ||
+        Number(sbdyUnlockedRow.sbdy_demo_unlocked) === 1)
+    ) {
+      return res.status(409).json({ code: 409, msg: '社保演示去水印权益已开通，无需重复购买' });
+    }
+    var sbdyAmount = alipay.normalizeAmount(SBDY_DEMO_AMOUNT);
+    if (!sbdyAmount) {
+      return res.status(503).json({ code: 503, msg: '社保演示费用配置无效' });
+    }
+    const connSbdy = await pool.getConnection();
+    var sbdyOrder = null;
+    try {
+      await connSbdy.beginTransaction();
+      const [existingSbdy] = await connSbdy.execute(
+        `SELECT id, out_trade_no, subject, amount, status, paid_at, pricing_variant, sku_id,
+                grant_kind, grant_days, grant_hours, grant_minutes
+         FROM payment_orders
+         WHERE username = ? AND status = 'pending' AND sku_id = ?
+           AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE)
+         ORDER BY id DESC LIMIT 1 FOR UPDATE`,
+        [req.authUserId, SBDY_DEMO_SKU_ID]
+      );
+      if (existingSbdy.length) {
+        sbdyOrder = existingSbdy[0];
+      } else {
+        sbdyOrder = {
+          out_trade_no: createAlipayOutTradeNo(),
+          subject: SBDY_DEMO_SUBJECT,
+          amount: sbdyAmount,
+          status: 'pending',
+          pricing_variant: 'sbdy_demo',
+          sku_id: SBDY_DEMO_SKU_ID,
+          grant_kind: 'sbdy_demo',
+          grant_days: 0,
+          grant_hours: 0,
+          grant_minutes: 0
+        };
+        await connSbdy.execute(
+          `INSERT INTO payment_orders
+           (out_trade_no, username, subject, amount, status, pricing_variant, sku_id, grant_kind, grant_days, grant_hours, grant_minutes)
+           VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`,
+          [
+            sbdyOrder.out_trade_no,
+            req.authUserId,
+            sbdyOrder.subject,
+            sbdyOrder.amount,
+            sbdyOrder.pricing_variant,
+            sbdyOrder.sku_id,
+            sbdyOrder.grant_kind,
+            sbdyOrder.grant_days,
+            sbdyOrder.grant_hours,
+            sbdyOrder.grant_minutes
+          ]
+        );
+      }
+      await connSbdy.commit();
+    } catch (eSbdyDb) {
+      try {
+        await connSbdy.rollback();
+      } catch (eRb) {}
+      console.error('create sbdy demo order db', eSbdyDb);
+      try {
+        connSbdy.release();
+      } catch (eRel) {}
+      return res.status(500).json({ code: 500, msg: '创建社保演示订单失败' });
+    }
+    try {
+      var sbdyPre = await alipay.createFaceToFaceQr({
+        outTradeNo: String(sbdyOrder.out_trade_no),
+        subject: String(sbdyOrder.subject),
+        amount: alipay.normalizeAmount(sbdyOrder.amount)
+      });
+      return res.json({
+        code: 200,
+        data: {
+          order: plainPaymentOrder(sbdyOrder),
+          qr_code: sbdyPre.qrCode,
+          payment_url: sbdyPre.qrCode,
+          pricing_variant: 'sbdy_demo',
+          sku_id: SBDY_DEMO_SKU_ID,
+          product: 'sbdy_demo'
+        }
+      });
+    } catch (eSbdyPay) {
+      console.error('create sbdy demo precreate', eSbdyPay);
+      return res.status(500).json({ code: 500, msg: '创建支付宝社保演示订单失败' });
+    } finally {
+      try {
+        connSbdy.release();
+      } catch (eRel2) {}
+    }
+  }
 
   /* —— 改名单次费用（不走开通激活逻辑） —— */
   if (isRenameFee) {
     if (!req.authUserId) {
       return res.status(401).json({ code: 401, msg: '请先登录' });
     }
-    var renameAmount = alipay.normalizeAmount(RENAME_FEE_AMOUNT);
+    var renameFeeCfg = await loadRenameFeeConfig(false);
+    if (!renameFeePolicy.isRenameFeeCharged(renameFeeCfg.amount)) {
+      return res.status(409).json({ code: 409, msg: '改名费用为 0，无需付款' });
+    }
+    var renameAmount = alipay.normalizeAmount(renameFeeCfg.amount);
     if (!renameAmount) {
       return res.status(503).json({ code: 503, msg: '改名费用配置无效' });
     }
@@ -5354,6 +7325,91 @@ async function handleAlipayCreateOrder(req, res) {
     }
   }
 
+  /* —— 同行账号个税修改：当天无限（不走开通激活逻辑；旧单次 SKU 一律按当天无限下单） —— */
+  if (isTaxEditDaily) {
+    if (!req.authUserId) {
+      return res.status(401).json({ code: 401, msg: '请先登录' });
+    }
+    if (await hasTaxEditDailyUnlock(req.authUserId, chinaDateKeyNow())) {
+      return res.status(409).json({ code: 409, msg: '今日已开通个税无限修改，无需重复购买' });
+    }
+    var taxFeeSkuId = taxEditFeePolicy.TAX_EDIT_DAILY_SKU_ID;
+    var taxFeeAmounts = await loadTaxEditFeeConfig(false);
+    var taxFeeAmount = alipay.normalizeAmount(taxFeeAmounts.daily_amount);
+    var taxFeeSubject = taxEditFeePolicy.TAX_EDIT_DAILY_SUBJECT;
+    var taxFeeGrantKind = 'tax_edit_daily';
+    var taxFeeProduct = 'tax_edit_unlimited';
+    /* payment_orders.pricing_variant 历史列为 VARCHAR(16)，不可写入 tax_edit_unlimited(18) */
+    var taxFeePricingVariant = 'tax_daily';
+    if (!taxFeeAmount) {
+      return res.status(503).json({ code: 503, msg: '个税修改费用配置无效' });
+    }
+    await ensurePaymentOrdersVariantColumns(pool);
+    const connTaxFee = await pool.getConnection();
+    var taxFeeOrder = null;
+    try {
+      await connTaxFee.beginTransaction();
+      var existingTaxFee = await findRecentPendingAddonOrder(connTaxFee, req.authUserId, taxFeeSkuId);
+      if (existingTaxFee.length) {
+        taxFeeOrder = existingTaxFee[0];
+      } else {
+        taxFeeOrder = {
+          out_trade_no: createAlipayOutTradeNo(),
+          username: req.authUserId,
+          subject: taxFeeSubject,
+          amount: taxFeeAmount,
+          status: 'pending',
+          pricing_variant: taxFeePricingVariant,
+          sku_id: taxFeeSkuId,
+          grant_kind: taxFeeGrantKind,
+          grant_days: 0,
+          grant_hours: 0,
+          grant_minutes: 0
+        };
+        await insertPendingAddonOrder(connTaxFee, taxFeeOrder);
+      }
+      await connTaxFee.commit();
+    } catch (eTaxFeeDb) {
+      try {
+        await connTaxFee.rollback();
+      } catch (eRb) {}
+      console.error('create tax edit fee order db', eTaxFeeDb);
+      try {
+        connTaxFee.release();
+      } catch (eRel) {}
+      var dbHint = paymentDbErrorHint(eTaxFeeDb);
+      return res.status(500).json({
+        code: 500,
+        msg: dbHint ? '创建个税修改订单失败：' + dbHint : '创建个税修改订单失败'
+      });
+    }
+    try {
+      var taxFeePre = await alipay.createFaceToFaceQr({
+        outTradeNo: String(taxFeeOrder.out_trade_no),
+        subject: String(taxFeeOrder.subject),
+        amount: alipay.normalizeAmount(taxFeeOrder.amount)
+      });
+      return res.json({
+        code: 200,
+        data: {
+          order: plainPaymentOrder(taxFeeOrder),
+          qr_code: taxFeePre.qrCode,
+          payment_url: taxFeePre.qrCode,
+          pricing_variant: taxFeePricingVariant,
+          sku_id: taxFeeSkuId,
+          product: taxFeeProduct
+        }
+      });
+    } catch (eTaxFeePay) {
+      console.error('create tax edit fee precreate', eTaxFeePay);
+      return res.status(500).json({ code: 500, msg: '创建支付宝个税修改订单失败' });
+    } finally {
+      try {
+        connTaxFee.release();
+      } catch (eRel2) {}
+    }
+  }
+
   if (req.authUserRow && isUserPermanentActive(req.authUserRow)) {
     return res.status(409).json({ code: 409, msg: '当前账号已永久激活，无需重复购买' });
   }
@@ -5373,18 +7429,52 @@ async function handleAlipayCreateOrder(req, res) {
     console.error('pricing offer', eOffer);
     return res.status(500).json({ code: 500, msg: '读取定价配置失败' });
   }
-  if (offer.abc_variant === 'c' || offer.variant === 'c') {
-    return res.status(403).json({
-      code: 403,
-      msg: '当前方案仅支持激活码开通，请使用下载与激活码入口'
-    });
+  try {
+    offer = await applyAgentChannelPricesToOffer(offer, req.authUserId || '', req);
+  } catch (eChPriceCreate) {
+    console.error('create order channel_price', eChPriceCreate);
   }
+  var customOffer = null;
+  var halfPriceAll = false;
+  try {
+    var appliedCreate = await getUserPriceOffers().applyOfferToPricingOffer(
+      req.authUserId || '',
+      offer
+    );
+    offer = appliedCreate.offer || offer;
+    customOffer = appliedCreate.customOffer || null;
+    halfPriceAll = !!(appliedCreate && appliedCreate.halfPriceAll) || !!(offer && offer.half_price_all);
+  } catch (eCustomCreate) {
+    console.error('create order user_price_offer', eCustomCreate);
+  }
+  if (offer.abc_variant === 'c' || offer.variant === 'c') {
+    offer.abc_variant = 'b';
+    offer.variant = 'treatment';
+  }
+  try {
+    if (await userMustHideSelfServePay(req.authUserId || '')) {
+      return res.status(403).json({
+        code: 403,
+        msg: '当前渠道仅支持激活码开通，不支持在线支付'
+      });
+    }
+  } catch (eCodeOnly) {}
   var sku = getPricingAb().pickSkuFromOffer(offer, skuIdReq);
+  /* 半价铺满整架后必须按所选档下单，不能回落到库里那条周卡专属价 */
+  if (!sku && customOffer && !halfPriceAll) {
+    sku = getUserPriceOffers().buildSkuFromOffer(customOffer);
+  }
   if (!sku) {
     return res.status(400).json({ code: 400, msg: '请选择要购买的套餐' });
   }
-  var amount = alipay.normalizeAmount(sku.amount);
-  if (!amount) {
+  if (!halfPriceAll && customOffer && String(sku.id) !== String(customOffer.sku_id)) {
+    return res.status(400).json({
+      code: 400,
+      msg: '当前账号已设置专属报价，请按专属套餐支付'
+    });
+  }
+  var listAmount = alipay.normalizeAmount(sku.amount);
+  if (!listAmount) {
     return res.status(503).json({ code: 503, msg: '商品金额无效' });
   }
   /* 覆盖规则：若当前试用剩余更长，拒绝购买更短档 */
@@ -5402,9 +7492,27 @@ async function handleAlipayCreateOrder(req, res) {
   var order = null;
   try {
     await conn.beginTransaction();
+    /* 释放已关闭/超时订单占用的分享次数，再关闭超时订单 */
+    await conn.execute(
+      `UPDATE user_bilibili_share_events se
+       INNER JOIN payment_orders po ON po.out_trade_no = se.reserved_order_no
+       SET se.reserved_order_no = NULL
+       WHERE se.username = ? AND se.consumed_at IS NULL
+         AND (po.status <> 'pending'
+           OR po.created_at < DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE))`,
+      [req.authUserId]
+    );
+    await conn.execute(
+      `UPDATE payment_orders
+       SET status = 'closed'
+       WHERE username = ? AND status = 'pending'
+         AND created_at < DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE)`,
+      [req.authUserId]
+    );
     const [existingRows] = await conn.execute(
       `SELECT id, out_trade_no, subject, amount, status, paid_at, pricing_variant, sku_id,
-              grant_kind, grant_days, grant_hours, grant_minutes
+              grant_kind, grant_days, grant_hours, grant_minutes,
+              list_amount, discount_amount, share_discount_count
        FROM payment_orders
        WHERE username = ? AND status = 'pending'
          AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE)
@@ -5414,20 +7522,83 @@ async function handleAlipayCreateOrder(req, res) {
     if (existingRows.length) {
       var ex = existingRows[0];
       var sameSku = String(ex.sku_id || '') === String(sku.id);
-      var sameAmt = alipay.normalizeAmount(ex.amount) === amount;
-      if (sameSku && sameAmt) {
+      var sameListAmount =
+        alipay.normalizeAmount(ex.list_amount != null ? ex.list_amount : ex.amount) ===
+        listAmount;
+      var existingHasShareDiscount =
+        Math.max(0, parseInt(ex.share_discount_count, 10) || 0) >=
+        BILIBILI_SHARE_DISCOUNT_THRESHOLD;
+      var availableForUpgrade = 0;
+      if (sameSku && sameListAmount && !existingHasShareDiscount) {
+        const [upgradeRows] = await conn.execute(
+          `SELECT COUNT(*) AS c
+           FROM user_bilibili_share_events
+           WHERE username = ? AND status = 'completed'
+             AND consumed_at IS NULL AND reserved_order_no IS NULL`,
+          [req.authUserId]
+        );
+        availableForUpgrade = Number((upgradeRows[0] || {}).c) || 0;
+      }
+      if (
+        sameSku &&
+        sameListAmount &&
+        (existingHasShareDiscount ||
+          availableForUpgrade < BILIBILI_SHARE_DISCOUNT_THRESHOLD)
+      ) {
         order = ex;
       } else {
         await conn.execute(`UPDATE payment_orders SET status = 'closed' WHERE id = ?`, [ex.id]);
+        await conn.execute(
+          `UPDATE user_bilibili_share_events
+           SET reserved_order_no = NULL
+           WHERE username = ? AND reserved_order_no = ? AND consumed_at IS NULL`,
+          [req.authUserId, ex.out_trade_no]
+        );
       }
     }
     if (!order) {
+      /* mysql2 execute 不支持 LIMIT ?，需内联安全整数 */
+      var shareLimit = Math.max(
+        1,
+        Math.min(50, parseInt(BILIBILI_SHARE_DISCOUNT_THRESHOLD, 10) || 1)
+      );
+      const [shareRows] = BILIBILI_SHARE_DISCOUNT_ENABLED
+        ? await conn.execute(
+            `SELECT id
+             FROM user_bilibili_share_events
+             WHERE username = ? AND status = 'completed'
+               AND consumed_at IS NULL AND reserved_order_no IS NULL
+             ORDER BY completed_at ASC, id ASC
+             LIMIT ${shareLimit} FOR UPDATE`,
+            [req.authUserId]
+          )
+        : [[]];
+      var shareDiscountCount =
+        BILIBILI_SHARE_DISCOUNT_ENABLED &&
+        shareRows.length >= BILIBILI_SHARE_DISCOUNT_THRESHOLD
+          ? BILIBILI_SHARE_DISCOUNT_THRESHOLD
+          : 0;
+      var discountAmount =
+        shareDiscountCount >= BILIBILI_SHARE_DISCOUNT_THRESHOLD
+          ? BILIBILI_SHARE_DISCOUNT_AMOUNT
+          : '0.00';
+      var payableCents = Math.round(Number(listAmount) * 100);
+      if (shareDiscountCount) {
+        payableCents = Math.max(
+          1,
+          payableCents - Math.round(Number(discountAmount) * 100)
+        );
+      }
+      var amount = alipay.normalizeAmount((payableCents / 100).toFixed(2));
       order = {
         out_trade_no: createAlipayOutTradeNo(),
         subject: String(sku.subject || envProduct.subject).slice(0, 128),
         amount: amount,
+        list_amount: listAmount,
+        discount_amount: discountAmount,
+        share_discount_count: shareDiscountCount,
         status: 'pending',
-        pricing_variant: offer.variant,
+        pricing_variant: customOffer ? 'custom_offer' : offer.variant,
         sku_id: sku.id,
         grant_kind: sku.grant_kind,
         grant_days: sku.grant_days || 0,
@@ -5436,13 +7607,18 @@ async function handleAlipayCreateOrder(req, res) {
       };
       await conn.execute(
         `INSERT INTO payment_orders
-         (out_trade_no, username, subject, amount, status, pricing_variant, sku_id, grant_kind, grant_days, grant_hours, grant_minutes)
-         VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`,
+         (out_trade_no, username, subject, amount, list_amount, discount_amount,
+          share_discount_count, status, pricing_variant, sku_id, grant_kind,
+          grant_days, grant_hours, grant_minutes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`,
         [
           order.out_trade_no,
           req.authUserId,
           order.subject,
           order.amount,
+          order.list_amount,
+          order.discount_amount,
+          order.share_discount_count,
           order.pricing_variant,
           order.sku_id,
           order.grant_kind,
@@ -5451,6 +7627,19 @@ async function handleAlipayCreateOrder(req, res) {
           order.grant_minutes
         ]
       );
+      if (shareDiscountCount) {
+        var shareIds = shareRows.slice(0, shareDiscountCount).map(function (row) {
+          return Number(row.id);
+        });
+        await conn.query(
+          `UPDATE user_bilibili_share_events
+           SET reserved_order_no = ?
+           WHERE username = ? AND id IN (` +
+            shareIds.map(function () { return '?'; }).join(',') +
+            `) AND consumed_at IS NULL AND reserved_order_no IS NULL`,
+          [order.out_trade_no, req.authUserId].concat(shareIds)
+        );
+      }
     }
     await conn.commit();
   } catch (e) {
@@ -5499,7 +7688,8 @@ async function handleAlipayLatestOrder(req, res) {
   try {
     const [rows] = await conn.execute(
       `SELECT id, out_trade_no, subject, amount, status, paid_at, alipay_trade_no,
-              pricing_variant, sku_id, grant_kind, grant_days, grant_hours, grant_minutes
+              pricing_variant, sku_id, grant_kind, grant_days, grant_hours, grant_minutes,
+              list_amount, discount_amount, share_discount_count
        FROM payment_orders WHERE username = ?
        ORDER BY id DESC LIMIT 1`,
       [req.authUserId]
@@ -5527,7 +7717,8 @@ async function handleAlipayLatestOrder(req, res) {
             });
             const [fresh] = await conn.execute(
               `SELECT id, out_trade_no, subject, amount, status, paid_at, alipay_trade_no,
-                      pricing_variant, sku_id, grant_kind, grant_days, grant_hours, grant_minutes
+                      pricing_variant, sku_id, grant_kind, grant_days, grant_hours, grant_minutes,
+                      list_amount, discount_amount, share_discount_count
                FROM payment_orders WHERE id = ? LIMIT 1`,
               [order.id]
             );
@@ -5538,11 +7729,10 @@ async function handleAlipayLatestOrder(req, res) {
         console.warn('alipay trade query sync', syncErr && syncErr.message);
       }
     }
-    var isRenameOrder =
-      order &&
-      (isRenameFeeSkuId(order.sku_id) || String(order.grant_kind || '') === 'rename_credit');
+    var isAddonOrder =
+      order && isNonActivationSkuId(order.sku_id, order.grant_kind);
     var paidActivation =
-      !!(order && String(order.status) === 'paid' && !isRenameOrder);
+      !!(order && String(order.status) === 'paid' && !isAddonOrder);
     var freshToken = null;
     if (paidActivation && req.authUserId) {
       /* 付款开通后签发新 JWT，避免客户端仍拿着 act=0 的旧令牌（改名费订单不发开通令牌） */
@@ -5584,6 +7774,116 @@ function alipayNotifyPayloadHash(body) {
 }
 
 /**
+ * 激活退款副作用（封禁 + 隐藏 + 统计剔除）。调用方需已持有事务与用户行锁意图。
+ * @returns {Promise<{applied:boolean, already?:boolean, inactive?:boolean, missing?:boolean}>}
+ */
+async function applyActivationRefundForUser(conn, username, byLabel) {
+  var target = username != null ? String(username).trim() : '';
+  var by = byLabel != null ? String(byLabel).trim() : 'alipay_refund';
+  if (!target) return { applied: false, missing: true };
+  const [urows] = await conn.execute(
+    'SELECT id, account_active, activation_refunded_at FROM users WHERE username = ? FOR UPDATE',
+    [target]
+  );
+  if (!urows.length) return { applied: false, missing: true };
+  if (urows[0].activation_refunded_at) return { applied: false, already: true };
+  if (!(urows[0].account_active === 1 || urows[0].account_active === true)) {
+    return { applied: false, inactive: true };
+  }
+  await conn.execute(
+    `UPDATE users SET banned = 1, session_rev = session_rev + 1, account_active = 0,
+            list_hidden_at = NOW(3), list_hidden_by = ?,
+            activation_refunded_at = NOW(3), activation_refunded_by = ?
+     WHERE username = ?`,
+    [by, by, target]
+  );
+  return { applied: true };
+}
+
+/**
+ * 已支付订单全额退款：status=refunded（GMV 不再计入）并尽量做激活退款。
+ * 调用方需已持有连接；本函数自行开事务。幂等。
+ */
+async function markAlipayOrderRefunded(conn, order, info) {
+  if (!order || !order.id) return false;
+  var tradeNo = info && info.tradeNo != null ? String(info.tradeNo).trim() : '';
+  var tradeStatus = (info && info.tradeStatus) || 'TRADE_CLOSED';
+  var byLabel = (info && info.by) || 'alipay_refund';
+  await conn.beginTransaction();
+  try {
+    const [lockedRows] = await conn.execute(
+      `SELECT id, username, status, amount, out_trade_no, alipay_trade_no
+       FROM payment_orders WHERE id = ? FOR UPDATE`,
+      [order.id]
+    );
+    if (!lockedRows.length) {
+      await conn.rollback();
+      return false;
+    }
+    var locked = lockedRows[0];
+    if (String(locked.status) === 'refunded') {
+      await conn.commit();
+      return true;
+    }
+    if (String(locked.status) !== 'paid') {
+      await conn.rollback();
+      return false;
+    }
+    var outNo = String(locked.out_trade_no || order.out_trade_no || '');
+    var tradeForLog = tradeNo || String(locked.alipay_trade_no || '');
+    var payloadHash = alipayNotifyPayloadHash({
+      out_trade_no: outNo,
+      trade_no: tradeForLog,
+      trade_status: tradeStatus,
+      refund: '1',
+      source: (info && info.source) || 'notify'
+    });
+    if (tradeForLog) {
+      await conn.execute(
+        `INSERT IGNORE INTO payment_notify_logs
+         (out_trade_no, alipay_trade_no, payload_hash, trade_status)
+         VALUES (?, ?, ?, ?)`,
+        [outNo, tradeForLog, payloadHash, String(tradeStatus).slice(0, 64) || 'REFUND']
+      );
+    }
+    if (tradeNo) {
+      await conn.execute(`UPDATE payment_orders SET status = 'refunded', alipay_trade_no = ? WHERE id = ?`, [
+        tradeNo,
+        locked.id
+      ]);
+    } else {
+      await conn.execute(`UPDATE payment_orders SET status = 'refunded' WHERE id = ?`, [locked.id]);
+    }
+    await applyActivationRefundForUser(conn, locked.username, byLabel);
+    await conn.commit();
+    try {
+      invalidateUserAuthCache(locked.username);
+      invalidateUserInfoApiCache(locked.username);
+    } catch (eInv) {}
+    return true;
+  } catch (e) {
+    try {
+      await conn.rollback();
+    } catch (rollbackError) {}
+    throw e;
+  }
+}
+
+/** 通知是否表示对已支付订单的全额退款 */
+function isAlipayFullRefundNotify(body, orderAmountNormalized) {
+  if (!body || !orderAmountNormalized) return false;
+  var refundFee = alipay.normalizeAmount(body.refund_fee);
+  if (refundFee && Number(refundFee) + 1e-9 >= Number(orderAmountNormalized)) {
+    return true;
+  }
+  var gmtRefund = String(body.gmt_refund || '').trim();
+  var tradeStatus = String(body.trade_status || '').trim();
+  /* 全额退后常见 TRADE_CLOSED；若仅有 gmt_refund 且无部分退款额，也按全额处理 */
+  if (tradeStatus === 'TRADE_CLOSED' && gmtRefund) return true;
+  return false;
+}
+
+/**
  * 将 pending 订单标记为已支付并开通账号（回调与主动查单共用）。
  * 调用方需已持有连接；本函数自行开事务。
  */
@@ -5592,7 +7892,7 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
   await conn.beginTransaction();
   try {
     const [rows] = await conn.execute(
-      `SELECT id, username, amount, status, alipay_trade_no
+      `SELECT id, username, out_trade_no, amount, status, alipay_trade_no
        FROM payment_orders WHERE id = ? FOR UPDATE`,
       [order.id]
     );
@@ -5638,6 +7938,54 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
     var meta = orderMetaRows[0] || {};
     var grantKind = meta.grant_kind != null ? String(meta.grant_kind) : 'permanent';
 
+    /* 银行模拟器对接订单：只标记已付，由招行机轮询后本地激活；不开通个税账号 */
+    if (
+      isCmbPartnerSkuId(meta.sku_id) ||
+      isCmbPartnerGrantKind(grantKind) ||
+      String(meta.pricing_variant || '') === 'cmb_partner'
+    ) {
+      await conn.execute(
+        `UPDATE payment_orders
+         SET status = 'paid', alipay_trade_no = ?, buyer_logon_id = ?, paid_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [String(info.tradeNo), info.buyerLogonId ? String(info.buyerLogonId).slice(0, 128) : null, locked.id]
+      );
+      await conn.commit();
+      return true;
+    }
+
+    /* 个税修改：当天无限解锁；历史单次 SKU 到账也按当天无限发放，不开通账号 */
+    if (
+      taxEditFeePolicy.isTaxEditFeeSkuId(meta.sku_id) ||
+      taxEditFeePolicy.isTaxEditFeeGrantKind(grantKind)
+    ) {
+      await conn.execute(
+        `INSERT INTO user_tax_edit_daily_unlocks
+         (username, unlock_date, payment_order_id, out_trade_no)
+         VALUES (?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+           payment_order_id = VALUES(payment_order_id),
+           out_trade_no = VALUES(out_trade_no)`,
+        [
+          locked.username,
+          chinaDateKeyNow(),
+          locked.id,
+          String(locked.out_trade_no || order.out_trade_no || '')
+        ]
+      );
+      await conn.execute(
+        `UPDATE payment_orders
+         SET status = 'paid', alipay_trade_no = ?, buyer_logon_id = ?, paid_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [String(info.tradeNo), info.buyerLogonId ? String(info.buyerLogonId).slice(0, 128) : null, locked.id]
+      );
+      await conn.commit();
+      try {
+        invalidateUserInfoApiCache(locked.username);
+      } catch (eInvTax2) {}
+      return true;
+    }
+
     /* 改名费用：只发改名次数，不开通账号 */
     if (isRenameFeeSkuId(meta.sku_id) || grantKind === 'rename_credit') {
       await conn.execute(
@@ -5659,6 +8007,79 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
       try {
         invalidateUserInfoApiCache(locked.username);
       } catch (eInv) {}
+      return true;
+    }
+
+    /* 离职证明：标记终身权益，不开通账号 */
+    if (isLizhiCertSkuId(meta.sku_id) || grantKind === 'lizhi_cert') {
+      await conn.execute('UPDATE users SET lizhi_cert_unlocked = 1 WHERE username = ?', [
+        locked.username
+      ]);
+      await conn.execute(
+        `UPDATE payment_orders
+         SET status = 'paid', alipay_trade_no = ?, buyer_logon_id = ?, paid_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [String(info.tradeNo), info.buyerLogonId ? String(info.buyerLogonId).slice(0, 128) : null, locked.id]
+      );
+      await conn.commit();
+      try {
+        invalidateUserInfoApiCache(locked.username);
+      } catch (eInv2) {}
+      return true;
+    }
+
+    /* 在职/工作证明：标记终身权益，不开通账号 */
+    if (isZaizhiCertSkuId(meta.sku_id) || grantKind === 'zaizhi_cert') {
+      await conn.execute('UPDATE users SET zaizhi_cert_unlocked = 1 WHERE username = ?', [
+        locked.username
+      ]);
+      await conn.execute(
+        `UPDATE payment_orders
+         SET status = 'paid', alipay_trade_no = ?, buyer_logon_id = ?, paid_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [String(info.tradeNo), info.buyerLogonId ? String(info.buyerLogonId).slice(0, 128) : null, locked.id]
+      );
+      await conn.commit();
+      try {
+        invalidateUserInfoApiCache(locked.username);
+      } catch (eInv3) {}
+      return true;
+    }
+
+    /* 完税二维码：标记终身权益，不开通账号 */
+    if (isNajiluQrSkuId(meta.sku_id) || grantKind === 'najilu_qr') {
+      try {
+        await najiluQrMod.ensureNajiluQrUnlockedColumn(conn);
+      } catch (eColPay) {}
+      await najiluQrMod.markNajiluQrUnlocked(conn, locked.username);
+      await conn.execute(
+        `UPDATE payment_orders
+         SET status = 'paid', alipay_trade_no = ?, buyer_logon_id = ?, paid_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [String(info.tradeNo), info.buyerLogonId ? String(info.buyerLogonId).slice(0, 128) : null, locked.id]
+      );
+      await conn.commit();
+      try {
+        invalidateUserInfoApiCache(locked.username);
+      } catch (eInvNq) {}
+      return true;
+    }
+
+    /* 社保演示：标记终身权益，不开通账号 */
+    if (isSbdyDemoSkuId(meta.sku_id) || grantKind === 'sbdy_demo') {
+      await conn.execute('UPDATE users SET sbdy_demo_unlocked = 1 WHERE username = ?', [
+        locked.username
+      ]);
+      await conn.execute(
+        `UPDATE payment_orders
+         SET status = 'paid', alipay_trade_no = ?, buyer_logon_id = ?, paid_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [String(info.tradeNo), info.buyerLogonId ? String(info.buyerLogonId).slice(0, 128) : null, locked.id]
+      );
+      await conn.commit();
+      try {
+        invalidateUserInfoApiCache(locked.username);
+      } catch (eInvSbdy) {}
       return true;
     }
 
@@ -5710,6 +8131,8 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
          SET account_active = 1,
              activation_kind = 'permanent',
              active_until = NULL,
+             activation_cancelled_at = NULL,
+             activation_cancelled_by = NULL,
              activation_source_channel = CASE
                WHEN activation_source_channel IS NULL OR activation_source_channel = '' THEN 'alipay'
                ELSE activation_source_channel END
@@ -5722,6 +8145,8 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
          SET account_active = 1,
              activation_kind = 'trial',
              active_until = ?,
+             activation_cancelled_at = NULL,
+             activation_cancelled_by = NULL,
              activation_source_channel = CASE
                WHEN activation_source_channel IS NULL OR activation_source_channel = '' THEN 'alipay'
                ELSE activation_source_channel END
@@ -5750,6 +8175,12 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
         codeResult.insertId,
         locked.id
       ]
+    );
+    await conn.execute(
+      `UPDATE user_bilibili_share_events
+       SET consumed_at = CURRENT_TIMESTAMP
+       WHERE username = ? AND reserved_order_no = ? AND consumed_at IS NULL`,
+      [locked.username, String(locked.out_trade_no || order.out_trade_no || '')]
     );
     await conn.commit();
     invalidateUserAuthCache(locked.username);
@@ -5802,6 +8233,24 @@ async function handleAlipayNotify(req, res) {
       return res.status(400).type('text/plain').send('failure');
     }
 
+    var orderStatus = String(order.status || '');
+    /* 已支付订单全额退款：TRADE_CLOSED，或带退款金额/退款时间的通知 */
+    if (
+      orderStatus === 'paid' &&
+      (tradeStatus === 'TRADE_CLOSED' || isAlipayFullRefundNotify(body, expectedAmount))
+    ) {
+      await markAlipayOrderRefunded(conn, order, {
+        tradeNo: tradeNo,
+        tradeStatus: tradeStatus || 'TRADE_CLOSED',
+        source: 'notify',
+        by: 'alipay_refund'
+      });
+      return res.type('text/plain').send('success');
+    }
+    if (orderStatus === 'refunded') {
+      return res.type('text/plain').send('success');
+    }
+
     if (tradeStatus === 'TRADE_CLOSED') {
       await conn.beginTransaction();
       try {
@@ -5813,6 +8262,12 @@ async function handleAlipayNotify(req, res) {
           await conn.execute(
             `UPDATE payment_orders SET status = 'closed', alipay_trade_no = ? WHERE id = ?`,
             [tradeNo, order.id]
+          );
+          await conn.execute(
+            `UPDATE user_bilibili_share_events
+             SET reserved_order_no = NULL
+             WHERE username = ? AND reserved_order_no = ? AND consumed_at IS NULL`,
+            [order.username, outTradeNo]
           );
         }
         await conn.commit();
@@ -5886,13 +8341,67 @@ function matchesUserApiResource(path, resource) {
   return false;
 }
 
+/**
+ * 仅保留运营核心埋点：激活 / 支付 / 注册登录 / 邀请分享 / 安装获客漏斗。
+ * 其余 track_*（跳转、接口性能、个税工具、教程、其它转化 UX 等）不再入库统计。
+ */
+function isRetainedTrackAction(action) {
+  var act = String(action || '').trim().toLowerCase();
+  if (!/^track_[a-z0-9_]{1,80}$/.test(act)) return false;
+  if (
+    act.indexOf('track_activate_') === 0 ||
+    act.indexOf('track_activation_') === 0 ||
+    act.indexOf('track_purchase_') === 0 ||
+    act.indexOf('track_alipay_') === 0 ||
+    act.indexOf('track_pricing_ab_') === 0 ||
+    act.indexOf('track_kufaka_') === 0 ||
+    act.indexOf('track_xianyu_') === 0 ||
+    act.indexOf('track_online_chat_') === 0 ||
+    act.indexOf('track_qq_') === 0 ||
+    act.indexOf('track_register_') === 0 ||
+    act.indexOf('track_share_') === 0 ||
+    act.indexOf('track_mine_share_') === 0 ||
+    act.indexOf('track_page_load_') === 0 ||
+    act.indexOf('track_tab_shell_') === 0 ||
+    act.indexOf('track_install_') === 0 ||
+    act.indexOf('track_landing_') === 0 ||
+    act.indexOf('track_app_') === 0 ||
+    act.indexOf('track_guest_') === 0 ||
+    act.indexOf('track_wechat_') === 0 ||
+    act.indexOf('track_browser_') === 0 ||
+    act.indexOf('track_refund_ad_') === 0 ||
+    act.indexOf('track_douyin_yuefu_ad_') === 0 ||
+    act.indexOf('track_gjj_extract_ad_') === 0 ||
+    act.indexOf('track_najilu_qr_') === 0
+  ) {
+    return true;
+  }
+  return act === 'track_conversion_gate_activate' || act === 'track_conversion_activate_success';
+}
+
+/**
+ * 试用已过期但仍允许的自助续开路径。
+ * 与激活码 action=activate 同等放行：过期账号可在开通页拉价、下单、轮询、心理价与相关增长活动，
+ * 避免 JWT 仍带 act=1 时被 requireAuth 401 踢登录导致无法复购。
+ */
+function isTrialExpiredSelfServeAllowedRequest(req) {
+  var path = normalizeUserApiPath(req);
+  if (path.indexOf('/api/payments/alipay') === 0) return true;
+  if (path === '/api/payments/price-bid' || path.indexOf('/api/payments/price-bid/') === 0) {
+    return true;
+  }
+  if (path.indexOf('/api/growth/bilibili-share') === 0) return true;
+  if (path.indexOf('/api/growth/purchase-price-survey') === 0) return true;
+  /* 开通页标价文案会回退请求此接口 */
+  if (path === '/api/lizhi-cert/status') return true;
+  return false;
+}
+
 /** 是否：unactivated allowed request */
 function isUnactivatedAllowedRequest(req) {
   var path = normalizeUserApiPath(req);
   if (
-    matchesUserApiResource(path, 'feedback') ||
     matchesUserApiResource(path, 'tax') ||
-    matchesUserApiResource(path, 'chat') ||
     matchesUserApiResource(path, 'user') ||
     matchesUserApiResource(path, 'message')
   ) {
@@ -5924,10 +8433,26 @@ function signAdminToken(username) {
 
 /** 按名加载管理员账号 */
 async function loadAdminAccountByUsername(conn, username) {
-  const [rows] = await conn.execute(
-    'SELECT id, username, full_name, salt, hash, is_super, banned, created_at FROM admin_accounts WHERE username = ? LIMIT 1',
-    [username]
-  );
+  var selects = [
+    'SELECT id, username, full_name, parent_admin_username, email, salt, hash, is_super, banned, login_fail_count, locked_until, created_at FROM admin_accounts WHERE username = ? LIMIT 1',
+    'SELECT id, username, full_name, email, salt, hash, is_super, banned, login_fail_count, locked_until, created_at FROM admin_accounts WHERE username = ? LIMIT 1',
+    'SELECT id, username, full_name, salt, hash, is_super, banned, created_at FROM admin_accounts WHERE username = ? LIMIT 1'
+  ];
+  var rows = [];
+  var lastErr = null;
+  var si;
+  for (si = 0; si < selects.length; si++) {
+    try {
+      const r = await conn.execute(selects[si], [username]);
+      rows = r[0];
+      lastErr = null;
+      break;
+    } catch (eCol) {
+      lastErr = eCol;
+      if (!eCol || eCol.errno !== 1054) throw eCol;
+    }
+  }
+  if (lastErr) throw lastErr;
   if (!rows.length) {
     return null;
   }
@@ -5940,10 +8465,15 @@ async function loadAdminAccountByUsername(conn, username) {
     id: Number(row.id) || 0,
     username: String(row.username),
     full_name: row.full_name != null ? String(row.full_name) : '',
+    parent_admin_username:
+      row.parent_admin_username != null ? String(row.parent_admin_username).trim() : '',
+    email: row.email != null ? String(row.email).trim() : '',
     salt: row.salt != null ? String(row.salt) : '',
     hash: row.hash != null ? String(row.hash) : '',
     is_super: row.is_super === 1 || row.is_super === true,
     banned: row.banned === 1 || row.banned === true,
+    login_fail_count: Number(row.login_fail_count) || 0,
+    locked_until: row.locked_until || null,
     created_at: row.created_at ? row.created_at.toISOString() : '',
     menus: normalizeAdminMenuList(
       menuRows.map(function (m) {
@@ -5954,12 +8484,128 @@ async function loadAdminAccountByUsername(conn, username) {
   };
 }
 
+/** 管理账号是否仍在锁定窗口内 */
+function adminAccountIsLocked(admin) {
+  if (!admin || !admin.locked_until) return false;
+  var t = new Date(admin.locked_until).getTime();
+  return !isNaN(t) && t > Date.now();
+}
+
+/** 记录管理登录失败并可能锁定 */
+async function bumpAdminLoginFailure(conn, admin) {
+  if (!admin || !admin.id) return { locked: false, fails: 0 };
+  var fails = (Number(admin.login_fail_count) || 0) + 1;
+  var maxFails = ADMIN_LOGIN_MAX_FAILS > 0 ? ADMIN_LOGIN_MAX_FAILS : 5;
+  var lockMin = ADMIN_LOGIN_LOCK_MINUTES > 0 ? ADMIN_LOGIN_LOCK_MINUTES : 30;
+  if (fails >= maxFails) {
+    await conn.execute(
+      'UPDATE admin_accounts SET login_fail_count = ?, locked_until = DATE_ADD(NOW(), INTERVAL ? MINUTE) WHERE id = ?',
+      [fails, lockMin, admin.id]
+    );
+    return { locked: true, fails: fails, lock_minutes: lockMin };
+  }
+  await conn.execute('UPDATE admin_accounts SET login_fail_count = ?, locked_until = NULL WHERE id = ?', [
+    fails,
+    admin.id
+  ]);
+  return { locked: false, fails: fails };
+}
+
+/** 登录成功后清零失败计数 */
+async function clearAdminLoginFailure(conn, adminId) {
+  if (!adminId) return;
+  await conn.execute('UPDATE admin_accounts SET login_fail_count = 0, locked_until = NULL WHERE id = ?', [
+    adminId
+  ]);
+}
+
+/** 掩码邮箱展示 */
+var { maskEmailAddress, maskBankCardNo, maskBankCardNoShort } = require('../domain/masking');
+
+/** 解析管理登录 OTP 收件邮箱 */
+function resolveAdminOtpEmail(admin) {
+  if (admin && admin.email) return String(admin.email).trim();
+  return String(ADMIN_OTP_EMAIL || '').trim();
+}
+
+/** 签发并邮件发送管理登录 OTP */
+async function issueAdminLoginEmailOtp(admin) {
+  var email = resolveAdminOtpEmail(admin);
+  if (!email) {
+    throw new Error('未配置 OTP 收件邮箱（账号 email 或 ADMIN_OTP_EMAIL）');
+  }
+  if (!mail.isMailConfigured()) {
+    throw new Error('未配置 SMTP，无法发送登录验证码');
+  }
+  var code = String(100000 + Math.floor(Math.random() * 900000));
+  var challengeId = crypto.randomBytes(16).toString('hex');
+  var hash = crypto
+    .createHash('sha256')
+    .update(code + ':' + admin.username + ':' + challengeId)
+    .digest('hex');
+  await kvSet(
+    'admin-otp:' + challengeId,
+    JSON.stringify({ username: admin.username, hash: hash, fails: 0 }),
+    ADMIN_OTP_TTL_SEC * 1000
+  );
+  await mail.sendMail({
+    to: email,
+    subject: '管理后台登录验证码',
+    text:
+      '您的登录验证码是：' +
+      code +
+      '\n有效期 ' +
+      Math.max(1, Math.floor(ADMIN_OTP_TTL_SEC / 60)) +
+      ' 分钟。如非本人操作请忽略本邮件。'
+  });
+  return { challenge_id: challengeId, email_masked: maskEmailAddress(email) };
+}
+
+/** 校验管理登录 OTP */
+async function verifyAdminLoginEmailOtp(username, challengeId, otpCode) {
+  var cid = String(challengeId || '').trim();
+  var code = String(otpCode || '').trim();
+  if (!cid || !code) return { ok: false, msg: '请输入邮件验证码' };
+  var raw = await kvGet('admin-otp:' + cid);
+  if (!raw) return { ok: false, msg: '验证码已过期，请重新登录' };
+  var payload;
+  try {
+    payload = JSON.parse(raw);
+  } catch (e) {
+    return { ok: false, msg: '验证码无效' };
+  }
+  if (!payload || String(payload.username) !== String(username)) {
+    return { ok: false, msg: '验证码无效' };
+  }
+  var expect = crypto
+    .createHash('sha256')
+    .update(code + ':' + username + ':' + cid)
+    .digest('hex');
+  if (expect !== String(payload.hash || '')) {
+    var fails = (Number(payload.fails) || 0) + 1;
+    if (fails >= 5) {
+      await kvDel('admin-otp:' + cid);
+      return { ok: false, msg: '验证码错误次数过多，请重新登录' };
+    }
+    payload.fails = fails;
+    await kvSet('admin-otp:' + cid, JSON.stringify(payload), ADMIN_OTP_TTL_SEC * 1000);
+    return { ok: false, msg: '验证码错误' };
+  }
+  await kvDel('admin-otp:' + cid);
+  return { ok: true };
+}
+
 /** 管理辅助：has menu */
 function adminHasMenu(admin, menuKey) {
   if (!admin || !menuKey) {
     return false;
   }
   if (admin.is_super) {
+    return true;
+  }
+  if (
+    adminMenuRegistry.getRequiredSubadminMenuKeys().indexOf(String(menuKey)) >= 0
+  ) {
     return true;
   }
   if (!Array.isArray(admin.menus)) {
@@ -6015,19 +8661,55 @@ function requireAdminAnyMenu(menuKeys) {
 /** 管理辅助：can access target user */
 async function adminCanAccessTargetUser(conn, admin, username) {
   if (!username) return false;
-  if (!admin || admin.is_super) return true;
+  if (!admin) return false;
+  if (isAbcChannelViewerAdmin(admin)) return true;
+  /* abc 渠道：截止后新注册仅 admin 可见；历史账号按原规则 */
+  try {
+    const [newAbcRows] = await conn.execute(
+      `SELECT id FROM users
+       WHERE username = ?
+         AND LOWER(TRIM(IFNULL(sales_promo_channel, ''))) IN ('abc')
+         AND created_at >= ?
+       LIMIT 1`,
+      [String(username), abcChannelAdminOnlySinceUtc()]
+    );
+    if (newAbcRows.length) return false;
+    if (!adminHasFullUserScope(admin)) {
+      const [anyAbcRows] = await conn.execute(
+        `SELECT id FROM users
+         WHERE username = ?
+           AND LOWER(TRIM(IFNULL(sales_promo_channel, ''))) IN ('abc')
+         LIMIT 1`,
+        [String(username)]
+      );
+      if (anyAbcRows.length) return false;
+    }
+  } catch (eCh) {
+    console.error('adminCanAccessTargetUser channel check', eCh);
+  }
+  if (adminHasFullUserScope(admin)) return true;
+  var owners = adminDownline.adminScopeUsernames(admin);
+  if (!owners.length) return false;
+  var codeParams = [];
+  var codeOwnerSql = adminDownline.ownerAdminInSql('owner_admin_username', codeParams, owners);
+  codeParams.push(username);
   const [rows] = await conn.execute(
-    `SELECT id FROM activation_codes
-     WHERE owner_admin_username = ? AND used_by_username = ?
-     LIMIT 1`,
-    [admin.username, username]
+    'SELECT id FROM activation_codes WHERE ' + codeOwnerSql + ' AND used_by_username = ? LIMIT 1',
+    codeParams
   );
   if (rows.length > 0) return true;
+  var ownedParams = [username];
+  var agentSql = adminDownline.ownerAdminInSql('owner_agent_admin', ownedParams, owners);
+  const [owned] = await conn.execute(
+    'SELECT username FROM users WHERE username = ? AND ' + agentSql + ' LIMIT 1',
+    ownedParams
+  );
+  if (owned.length > 0) return true;
   /* 运营子账号 admin：可操作「新注册可见」期内的注册用户（仅配合注册用户页） */
   if (isOpsNamedAdmin(admin)) {
     const [nu] = await conn.execute(
       'SELECT id FROM users WHERE username = ? AND created_at >= ? LIMIT 1',
-      [String(username), adminOpsSeeRegisteredSinceUtc()]
+      [String(username), adminOpsSeeRegisteredSinceUtc(admin)]
     );
     return nu.length > 0;
   }
@@ -6063,6 +8745,7 @@ async function requireAdminAuth(req, res, next) {
       if (admin.banned) {
         return res.status(403).json({ code: 403, msg: '管理账号已被停用' });
       }
+      await adminDownline.attachAdminDownlineScope(conn, admin);
       req.admin = admin;
       if (!res.__adminJsonHooked) {
         var oldJson = res.json.bind(res);
@@ -6120,12 +8803,20 @@ async function requireAuth(req, res, next) {
     if ((tokSrv === null || isNaN(tokSrv)) && dbSrv > 0) {
       return res.status(401).json({ code: 401, msg: '登录已失效，请重新登录', session_revoked: true });
     }
-    /* 令牌签发时仍为已激活，但试用已过期 → 强制 C 端重新登录 */
+    /* 令牌签发时仍为已激活，但试用已过期 → 强制 C 端重新登录。
+       例外：激活码续开 + 支付宝/心理价等自助续开路径必须放行，否则过期用户无法复购。 */
     var tokAct = payload.act != null && payload.act !== '' ? Number(payload.act) : null;
+    var isActivateAction =
+      req.body &&
+      (String(req.body.action || '') === 'activate' ||
+        String(req.query && req.query.action ? req.query.action : '') === 'activate');
+    var allowExpiredSelfServe =
+      isActivateAction || isTrialExpiredSelfServeAllowedRequest(req);
     if (
       tokAct === 1 &&
       !rowUserTypeIsGuest(row) &&
-      isTrialExpired(row)
+      isTrialExpired(row) &&
+      !allowExpiredSelfServe
     ) {
       return res.status(401).json({
         code: 401,
@@ -6159,131 +8850,18 @@ function parseTaxRecordIncome(raw) {
   return isNaN(n) || n < 0 ? 0 : n;
 }
 
-/** 格式化：avg salary6m label */
-function formatAvgSalary6mLabel(avg, monthCount) {
-  if (avg == null || isNaN(avg)) return '未填写';
-  var n = Number(avg);
-  var base = n.toFixed(2) + ' 元';
-  if (monthCount > 0 && monthCount < 6) {
-    return base + '（' + monthCount + '个月平均）';
-  }
-  return base;
-}
-
-/** 解析：salary range filter param */
-function parseSalaryRangeFilterParam(raw) {
-  if (raw == null || raw === '') return null;
-  var n = Number(String(raw).replace(/,/g, '').trim());
-  if (isNaN(n) || n < 0) return null;
-  return Math.round(n * 100) / 100;
-}
-
-/** 用户辅助：matches salary range */
-function userMatchesSalaryRange(salInfo, minVal, maxVal) {
-  if (minVal == null && maxVal == null) return true;
-  var avg =
-    salInfo && salInfo.avg_salary_6m != null && !isNaN(Number(salInfo.avg_salary_6m))
-      ? Number(salInfo.avg_salary_6m)
-      : null;
-  if (avg == null) return false;
-  if (minVal != null && avg < minVal) return false;
-  if (maxVal != null && avg > maxVal) return false;
-  return true;
-}
-
-/** compute tax records avg salary6m */
-function computeTaxRecordsAvgSalary6m(records) {
-  if (!records || !records.length) {
-    return { avg_salary_6m: null, avg_salary_6m_label: '未填写', salary_month_count: 0 };
-  }
-  var byMonth = {};
-  records.forEach(function (r) {
-    var y = r.year != null ? Number(r.year) : null;
-    var m = r.month != null ? Number(r.month) : null;
-    if (!y || !m) {
-      var tp = r.tax_period != null ? String(r.tax_period).trim() : '';
-      var mm = tp.match(/^(\d{4})-(\d{1,2})/);
-      if (mm) {
-        y = Number(mm[1]);
-        m = Number(mm[2]);
-      }
-    }
-    if (!y || !m || isNaN(y) || isNaN(m)) return;
-    var key = y + '-' + String(m).padStart(2, '0');
-    var inc = parseTaxRecordIncome(r.income);
-    if (!byMonth[key]) byMonth[key] = { y: y, m: m, total: 0 };
-    byMonth[key].total += inc;
-  });
-  var months = Object.keys(byMonth).map(function (k) {
-    return byMonth[k];
-  });
-  months.sort(function (a, b) {
-    if (a.y !== b.y) return b.y - a.y;
-    return b.m - a.m;
-  });
-  var withIncome = months.filter(function (x) {
-    return x.total > 0;
-  });
-  var pick = withIncome.slice(0, 6);
-  if (!pick.length) {
-    return { avg_salary_6m: null, avg_salary_6m_label: '未填写', salary_month_count: 0 };
-  }
-  var sum = 0;
-  for (var i = 0; i < pick.length; i++) {
-    sum += pick[i].total;
-  }
-  var avg = Math.round((sum / pick.length) * 100) / 100;
-  return {
-    avg_salary_6m: avg,
-    avg_salary_6m_label: formatAvgSalary6mLabel(avg, pick.length),
-    salary_month_count: pick.length
-  };
-}
-
-/** 构建：user tax avg salary map */
-async function buildUserTaxAvgSalaryMap(conn, usernames) {
-  var map = {};
-  if (!conn || !usernames || !usernames.length) return map;
-  var uniq = [];
-  var seen = {};
-  for (var i = 0; i < usernames.length; i++) {
-    var u = String(usernames[i] || '').trim();
-    if (!u || seen[u]) continue;
-    seen[u] = 1;
-    uniq.push(u);
-  }
-  if (!uniq.length) return map;
-  var ph = uniq.map(function () {
-    return '?';
-  }).join(',');
-  const [rows] = await conn.execute(
-    'SELECT user_id, year, month, income, tax_period FROM tax_records WHERE user_id IN (' +
-      ph +
-      ') AND ' +
-      TAX_RECORD_NOT_DELETED_SQL,
-    uniq
-  );
-  var byUser = {};
-  rows.forEach(function (r) {
-    var uid = String(r.user_id);
-    if (!byUser[uid]) byUser[uid] = [];
-    byUser[uid].push({
-      year: r.year,
-      month: r.month,
-      income: r.income,
-      tax_period: r.tax_period
-    });
-  });
-  uniq.forEach(function (uname) {
-    map[uname] = computeTaxRecordsAvgSalary6m(byUser[uname] || []);
-  });
-  return map;
-}
-
 /**
  * 注册：无需激活码，账号默认为未激活（account_active=0），需在个人中心填写激活码开通。
  */
-async function registerUser(username, password, registerSourceChannel, fromInstallGuide, salesPromoChannel) {
+async function registerUser(
+  username,
+  password,
+  registerSourceChannel,
+  fromInstallGuide,
+  salesPromoChannel,
+  fromShare,
+  email
+) {
   var u = validateUsername(username);
   if (u) {
     throw new Error(u);
@@ -6301,9 +8879,19 @@ async function registerUser(username, password, registerSourceChannel, fromInsta
       ? String(registerSourceChannel).trim()
       : null;
   salesPromoChannel = sanitizeSalesChannelId(salesPromoChannel);
+  /* abc 等 URL-only：仅显式 ch 或安装下载埋点写入 sales_promo_channel；
+   * 不挂 owner_agent_admin。绑定后开通价认账号留存。 */
   username = username.trim();
   if (username.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
     throw new Error('该账号名保留，请换一个');
+  }
+  var emailNorm = email != null ? String(email).trim() : '';
+  if (emailNorm) {
+    if (!isValidUserEmail(emailNorm)) {
+      throw new Error('邮箱格式不正确，请填写常用邮箱（如 QQ/163）');
+    }
+  } else {
+    emailNorm = null;
   }
 
   const saltBuf = crypto.randomBytes(16);
@@ -6317,12 +8905,11 @@ async function registerUser(username, password, registerSourceChannel, fromInsta
     if (existing.length > 0) {
       throw new Error('该账号已注册');
     }
-    /* 管理后台需展示用户密码；默认存明文，仅当 REGISTER_STORE_PLAIN_PASSWORD=0 时关闭 */
-    var storePlain =
-      String(process.env.REGISTER_STORE_PLAIN_PASSWORD || '1') === '0' ? null : password;
+    /* plain_password：默认关闭；1=明文；encrypt=AES 加密 */
+    var storePlain = plainPasswordStore.encodePlainPasswordForStore(password);
     await conn.execute(
-      `INSERT INTO users (username, salt, hash, real_name, account_active, user_type, plain_password, register_source_channel, registered_from_install_guide, sales_promo_channel)
-       VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?)`,
+      `INSERT INTO users (username, salt, hash, real_name, account_active, user_type, plain_password, register_source_channel, registered_from_install_guide, registered_from_share, sales_promo_channel, email)
+       VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)`,
       [
         username,
         saltHex,
@@ -6332,7 +8919,9 @@ async function registerUser(username, password, registerSourceChannel, fromInsta
         storePlain,
         registerSourceChannel,
         fromInstallGuide ? 1 : 0,
-        salesPromoChannel || null
+        fromShare ? 1 : 0,
+        salesPromoChannel || null,
+        emailNorm
       ]
     );
     // 注册成功埋点（用于后台接口统计看转化）
@@ -6345,7 +8934,8 @@ async function registerUser(username, password, registerSourceChannel, fromInsta
     real_name: displayName,
     username: username,
     account_active: false,
-    is_test_account: false
+    is_test_account: false,
+    has_email: !!emailNorm
   };
 }
 
@@ -6380,6 +8970,18 @@ function guestProfileFieldHasValue(field, val) {
 }
 
 /**
+ * 正式账号是否已有「有效」姓名：有中文名/非空且不等于用户名、游客占位时，禁止游客合并覆盖。
+ */
+function formalUserHasOwnedRealName(username, realName) {
+  var u = username != null ? String(username).trim() : '';
+  var s = realName != null ? String(realName).trim() : '';
+  if (!s) return false;
+  if (s === '游客用户' || s === '点击这里修改！' || s === '点击修改个人信息') return false;
+  if (u && s === u) return false;
+  return true;
+}
+
+/**
  * 同设备注册成功后，将游客沙盒数据迁移至正式账号（按 client_id 对应 __guest_* 账号）。
  */
 async function migrateGuestDataToRegisteredUser(guestUsername, newUsername) {
@@ -6407,13 +9009,22 @@ async function migrateGuestDataToRegisteredUser(guestUsername, newUsername) {
       return { migrated: false, summary: {}, reason: 'already_merged' };
     }
     const [newRows] = await conn.execute(
-      'SELECT username, merged_from_guest FROM users WHERE username = ? LIMIT 1',
+      `SELECT username, merged_from_guest, real_name, tax_id FROM users WHERE username = ? LIMIT 1`,
       [newU]
     );
     if (!newRows.length) {
       await conn.rollback();
       return { migrated: false, summary: {}, reason: 'new_user_missing' };
     }
+    var formalRow = newRows[0] || {};
+    var formalKeepsRealName = formalUserHasOwnedRealName(
+      formalRow.username,
+      formalRow.real_name
+    );
+    var formalKeepsTaxId =
+      formalRow.tax_id != null &&
+      String(formalRow.tax_id).trim() !== '' &&
+      !isPlaceholderTaxId(formalRow.tax_id);
 
     var summary = {};
     var ti;
@@ -6505,6 +9116,13 @@ async function migrateGuestDataToRegisteredUser(guestUsername, newUsername) {
         }
         return;
       }
+      /* 正式账号已有自有姓名/证件号时，绝不用游客沙盒覆盖（避免串台） */
+      if (field === 'real_name' && formalKeepsRealName) {
+        return;
+      }
+      if (field === 'tax_id' && formalKeepsTaxId) {
+        return;
+      }
       if (guestProfileFieldHasValue(field, g[field])) {
         profileSets.push(field + ' = ?');
         profileParams.push(String(g[field]).trim());
@@ -6522,6 +9140,10 @@ async function migrateGuestDataToRegisteredUser(guestUsername, newUsername) {
     await conn.execute('UPDATE users SET merged_from_guest = ? WHERE username = ?', [guestU, newU]);
 
     await conn.commit();
+    try {
+      invalidateUserInfoApiCache(newU);
+      invalidateUserAuthCache(newU);
+    } catch (eInv) {}
     var totalRows = 0;
     Object.keys(summary).forEach(function (k) {
       totalRows += Number(summary[k]) || 0;
@@ -6584,44 +9206,44 @@ async function seedGuestSampleTaxRecords(conn, userId) {
   }
   var guestOrgs = [
     {
-      company: '北京华示例软件有限公司',
-      companyTaxId: '91110108MA01ABCD2X',
+      company: '北京中关村科创信息技术有限公司',
+      companyTaxId: '91110108MA01KCT8XR',
       taxAuthority: '国家税务总局北京市海淀区税务局'
     },
     {
-      company: '示例科技有限公司',
-      companyTaxId: '91110108MA01EFGH7Y',
-      taxAuthority: '国家税务总局北京市朝阳区税务局'
-    },
-    {
-      company: '上海云示例网络科技有限公司',
-      companyTaxId: '91310000MA1K2B3C4D',
+      company: '上海浦东智联网络科技有限公司',
+      companyTaxId: '91310000MA1FL2N67P',
       taxAuthority: '国家税务总局上海市浦东新区税务局'
     },
     {
-      company: '深圳创示例智能有限公司',
-      companyTaxId: '91440300MA5F6G7H8J',
+      company: '深圳市南山云创软件有限公司',
+      companyTaxId: '91440300MA5F9K2H3R',
       taxAuthority: '国家税务总局深圳市南山区税务局'
     },
     {
-      company: '杭州数示例信息技术有限公司',
-      companyTaxId: '91330108MA2B9C0D1E',
+      company: '杭州西湖数据服务有限公司',
+      companyTaxId: '91330106MA2B8C7D5E',
       taxAuthority: '国家税务总局杭州市西湖区税务局'
     },
     {
-      company: '成都汇示例商贸有限公司',
-      companyTaxId: '91510100MA6K3L4M5N',
-      taxAuthority: '国家税务总局成都市高新区税务局'
-    },
-    {
-      company: '广州联示例电子有限公司',
-      companyTaxId: '91440101MA9P2Q3R4S',
+      company: '广州市天河汇通商贸有限公司',
+      companyTaxId: '91440106MA9P4Q2R8S',
       taxAuthority: '国家税务总局广州市天河区税务局'
     },
     {
-      company: '南京智示例软件有限公司',
-      companyTaxId: '91320105MA7T8U9V0W',
+      company: '成都高新区瑞达实业有限公司',
+      companyTaxId: '91510100MA6K5L8M2N',
+      taxAuthority: '国家税务总局成都高新技术产业开发区税务局'
+    },
+    {
+      company: '南京鼓楼博雅咨询有限公司',
+      companyTaxId: '91320106MA7T3U9V1W',
       taxAuthority: '国家税务总局南京市鼓楼区税务局'
+    },
+    {
+      company: '苏州工业园区精工电子有限公司',
+      companyTaxId: '91320594MA1Y2B3C5D',
+      taxAuthority: '国家税务总局苏州工业园区税务局'
     }
   ];
   var org = guestOrgs[Math.floor(Math.random() * guestOrgs.length)];
@@ -6773,10 +9395,10 @@ async function handlePublicGuestSession(req, res) {
   if (!clientId || clientId.length < 8) {
     return res.status(400).json({ code: 400, msg: '缺少有效的游客设备标识' });
   }
-  var rate = consumeMemoryRateLimit(
+  var rate = await consumeRateLimit(
     'guest-session-ip',
     getClientIp(req) || 'unknown',
-    30,
+    GUEST_SESSION_RATE_PER_IP_MIN,
     60 * 1000
   );
   if (!rate.ok) {
@@ -6794,8 +9416,14 @@ async function handlePublicGuestSession(req, res) {
     .digest('hex');
   var salesCh = '';
   try {
-    salesCh = await resolveEffectiveSalesChannel(req);
-  } catch (eSales) {}
+    /* 游客永久绑渠道：显式 ?ch= / header / UA，禁止裸 IP 归因写进账号 */
+    salesCh = readSalesChannelFromRequest(req);
+    if (isUrlOnlySalesChannel(salesCh)) {
+      salesCh = '';
+    }
+  } catch (eSales) {
+    salesCh = '';
+  }
   const conn = await pool.getConnection();
   try {
     await conn.execute(
@@ -6893,7 +9521,7 @@ async function loginUser(username, password) {
   
   if (rows.length === 0) {
     conn.release();
-    throw new Error('账号或密码错误，可以使用激活码找回账号密码');
+    throw new Error('账号不存在 请注册');
   }
   
   const rec = rows[0];
@@ -6904,12 +9532,13 @@ async function loginUser(username, password) {
     throw new Error('密码错误，可以使用激活码找回账号密码');
   }
 
-  /* 历史账号未存明文时，登录成功即回填，供管理后台展示 */
-  if (String(process.env.REGISTER_STORE_PLAIN_PASSWORD || '1') !== '0') {
-    var plainCur = rec.plain_password != null ? String(rec.plain_password) : '';
-    if (plainCur !== password) {
+  /* 历史账号未存明文时，登录成功按策略回填（关闭则跳过） */
+  if (plainPasswordStore.isPlainPasswordStoreEnabled()) {
+    var plainCur = plainPasswordStore.decodePlainPasswordForDisplay(rec.plain_password);
+    var encoded = plainPasswordStore.encodePlainPasswordForStore(password);
+    if (plainCur !== password && encoded) {
       try {
-        await conn.execute('UPDATE users SET plain_password = ? WHERE username = ?', [password, username]);
+        await conn.execute('UPDATE users SET plain_password = ? WHERE username = ?', [encoded, username]);
       } catch (plainErr) {
         console.warn('plain_password backfill failed for', username, plainErr.message);
       }
@@ -6956,7 +9585,7 @@ async function getUserSummaryForApi(userId) {
   try {
     const [rows] = await conn.execute(
       `SELECT real_name, tax_id, gender, account_active, employer_count, family_count, bank_card_count, user_type,
-              activation_kind, active_until, created_at,
+              activation_kind, active_until, created_at, register_source_channel, sales_promo_channel, email,
               TIMESTAMPDIFF(HOUR, created_at, UTC_TIMESTAMP()) AS hours_since_register
        FROM users WHERE username = ? LIMIT 1`,
       [uid]
@@ -6975,10 +9604,13 @@ async function getUserSummaryForApi(userId) {
         family_count: 0,
         bank_card_count: 0,
         tax_record_count: 0,
+        register_source_channel: '',
+        sales_promo_channel: '',
         user_type: USER_TYPE_NORMAL,
         is_guest: false,
         created_at: null,
-        hours_since_register: 0
+        hours_since_register: 0,
+        has_email: false
       };
       _userSummaryApiCache.set(uid, { v: empty, t: now });
       return empty;
@@ -6999,15 +9631,20 @@ async function getUserSummaryForApi(userId) {
       activation_kind: actFields.activation_kind,
       active_until: actFields.active_until,
       active_days_left: actFields.active_days_left,
-      employer_count: rec.employer_count != null ? Number(rec.employer_count) : 0,
+      employer_count: await countActiveEmployersForUser(conn, uid),
       family_count: rec.family_count != null ? Number(rec.family_count) : 0,
       bank_card_count: rec.bank_card_count != null ? Number(rec.bank_card_count) : 0,
       tax_record_count: taxCountRows && taxCountRows[0] ? Number(taxCountRows[0].c) || 0 : 0,
+      register_source_channel:
+        rec.register_source_channel != null ? String(rec.register_source_channel).trim() : '',
+      sales_promo_channel:
+        rec.sales_promo_channel != null ? String(rec.sales_promo_channel).trim() : '',
       user_type: ut,
       is_test_account: ut === USER_TYPE_TEST,
       is_guest: ut === USER_TYPE_GUEST,
       created_at: rec.created_at ? rec.created_at.toISOString() : null,
-      hours_since_register: Number(rec.hours_since_register) || 0
+      hours_since_register: Number(rec.hours_since_register) || 0,
+      has_email: isValidUserEmail(rec.email)
     };
     _userSummaryApiCache.set(uid, { v: out, t: now });
     if (_userSummaryApiCache.size > 800) {
@@ -7048,6 +9685,24 @@ async function listEmployersForUser(userId) {
   }
 }
 
+/** 任职记录数（我的页角标：加过单位即计数，含已离职） */
+async function countActiveEmployersForUser(conn, userId) {
+  if (!conn || userId == null || String(userId).trim() === '') {
+    return 0;
+  }
+  const [rows] = await conn.execute(
+    'SELECT COUNT(*) AS count FROM employers WHERE user_id = ?',
+    [String(userId).trim()]
+  );
+  return rows && rows[0] ? Number(rows[0].count) || 0 : 0;
+}
+
+async function syncUserEmployerCount(conn, userId) {
+  var n = await countActiveEmployersForUser(conn, userId);
+  await conn.execute('UPDATE users SET employer_count = ? WHERE username = ?', [n, String(userId).trim()]);
+  return n;
+}
+
 /** 组装用户 info 接口数据 */
 async function getUserInfoForApi(userId) {
   if (userId == null || String(userId).trim() === '') {
@@ -7080,6 +9735,7 @@ async function getUserInfoForApi(userId) {
     'SELECT COUNT(*) AS c FROM tax_records WHERE user_id = ? AND ' + TAX_RECORD_NOT_DELETED_SQL,
     [uid]
   );
+  var activeEmployerCount = await countActiveEmployersForUser(conn, uid);
   conn.release();
 
   const defaults = {
@@ -7142,7 +9798,7 @@ async function getUserInfoForApi(userId) {
     username: uid,
     real_name: rec.real_name != null ? String(rec.real_name) : uid,
     tax_id: normalizeTaxIdForApi(rec.tax_id != null ? String(rec.tax_id) : ''),
-    employer_count: rec.employer_count != null ? Number(rec.employer_count) : 0,
+    employer_count: activeEmployerCount,
     family_count: rec.family_count != null ? Number(rec.family_count) : 0,
     bank_card_count: rec.bank_card_count != null ? Number(rec.bank_card_count) : 0,
     tax_record_count: taxCountRows && taxCountRows[0] ? Number(taxCountRows[0].c) || 0 : 0,
@@ -7291,43 +9947,6 @@ function parseFamilyMemberBody(body) {
   };
 }
 
-/** mask bank card no */
-function maskBankCardNo(cardNo) {
-  var d = String(cardNo || '').replace(/\D/g, '');
-  if (!d) return '—';
-  if (d.length < 8) return '****';
-  return d.slice(0, 4) + ' **** ' + d.slice(-4);
-}
-
-/** mask bank card no short */
-function maskBankCardNoShort(cardNo) {
-  var d = String(cardNo || '').replace(/\D/g, '');
-  if (!d) return '—';
-  if (d.length < 4) return '****';
-  var tail = d.slice(-4);
-  var prefix = d.slice(0, -4);
-  if (d.length <= 16) {
-    var parts = [];
-    for (var i = 0; i < prefix.length; i += 4) {
-      parts.push('****');
-    }
-    parts.push(tail);
-    return parts.join(' ');
-  }
-  var groups = [];
-  var j = 0;
-  while (j + 4 <= prefix.length - 3) {
-    groups.push('****');
-    j += 4;
-  }
-  groups.push('***' + tail.charAt(0));
-  var tailRest = tail.slice(1);
-  if (tailRest) {
-    groups.push(tailRest);
-  }
-  return groups.join(' ');
-}
-
 /** list bank cards for user */
 async function listBankCardsForUser(userId) {
   const conn = await pool.getConnection();
@@ -7474,6 +10093,7 @@ async function handleUserGet(req, res) {
     action !== 'info' &&
     action !== 'summary' &&
     action !== 'rename_policy' &&
+    action !== 'tax_edit_policy' &&
     action !== 'employers' &&
     action !== 'family_members' &&
     action !== 'family_member' &&
@@ -7490,6 +10110,10 @@ async function handleUserGet(req, res) {
     if (action === 'rename_policy') {
       var renamePol = await getRenameFeePolicy(userId);
       return res.json({ code: 200, data: renamePol });
+    }
+    if (action === 'tax_edit_policy') {
+      var taxEditPol = await getTaxEditFeePolicy(userId);
+      return res.json({ code: 200, data: taxEditPol });
     }
     if (action === 'summary') {
       var summary = await getUserSummaryForApi(userId);
@@ -7546,7 +10170,26 @@ async function handleUserPost(req, res) {
   
   try {
     if (/^track_[a-z0-9_]{1,80}$/i.test(String(action || ''))) {
+      var trackRateUser = await checkTrackRate(req);
+      if (!trackRateUser.ok) {
+        return sendRateLimited(res, trackRateUser, '埋点请求过于频繁，请稍后再试');
+      }
+      if (!isRetainedTrackAction(action)) {
+        return res.json({ code: 200, data: { ok: true, ignored: true } });
+      }
       maybeRecordClientApiPerfTrack(req, action, body.meta);
+      recordInstallGuideTrackEvent(req, action, body.meta);
+      recordAdPageTrackEvent(req, action, body.meta);
+      try {
+        purchaseUxMonitor.recordFromTrack(req, action, body.meta, pool);
+      } catch (ePux) {}
+      var trackActUser = String(action || '').trim().toLowerCase();
+      if (
+        userId &&
+        (trackActUser === 'track_purchase_page_leave' || trackActUser === 'track_purchase_back_click')
+      ) {
+        queueAutoPurchaseExitMessage(userId);
+      }
       return res.json({ code: 200, data: { ok: true } });
     }
 
@@ -7583,13 +10226,23 @@ async function handleUserPost(req, res) {
         employerData.position, employerData.hire_date, employerData.leave_date, employerData.status
       ]);
       
-      const [employerCount] = await conn.execute('SELECT COUNT(*) as count FROM employers WHERE user_id = ?', [userId]);
+      const [employerCount] = await conn.execute(
+        'SELECT COUNT(*) as count FROM employers WHERE user_id = ?',
+        [userId]
+      );
       await conn.execute('UPDATE users SET employer_count = ? WHERE username = ?', [employerCount[0].count, userId]);
       
       conn.release();
       invalidateUserInfoApiCache(userId);
       
-      return res.json({ code: 200, data: { success: true, employer: employerData } });
+      return res.json({
+        code: 200,
+        data: {
+          success: true,
+          employer: employerData,
+          employer_count: Number(employerCount[0].count) || 0
+        }
+      });
     }
 
     if (action === 'update_employer') {
@@ -7618,11 +10271,13 @@ async function handleUserPost(req, res) {
         if (!updRows || !updRows.affectedRows) {
           return res.status(404).json({ code: 404, msg: '任职受雇记录不存在' });
         }
+        var employerCountAfterUpd = await syncUserEmployerCount(connUpd, userId);
         invalidateUserInfoApiCache(userId);
         return res.json({
           code: 200,
           data: {
             success: true,
+            employer_count: employerCountAfterUpd,
             employer: {
               id: body.employer_id,
               company_name: body.company_name || '',
@@ -7758,6 +10413,10 @@ async function handleUserPost(req, res) {
         }
         var pfEmail = profileField(body, 'email', 255);
         if (pfEmail !== undefined) {
+          if (pfEmail && !isValidUserEmail(pfEmail)) {
+            await conn.rollback();
+            return res.status(400).json({ code: 400, msg: '邮箱格式不正确，请填写常用邮箱（如 QQ/163）' });
+          }
           updateFields.push('email = ?');
           updateParams.push(pfEmail);
         }
@@ -7774,22 +10433,6 @@ async function handleUserPost(req, res) {
           var renamePolicy = null;
           if (renaming) {
             renamePolicy = await getRenameFeePolicy(userId);
-            if (renamePolicy.need_fee) {
-              var consumed = await consumeRenameCreditInConn(conn, userId);
-              if (!consumed) {
-                await conn.rollback();
-                return res.status(402).json({
-                  code: 402,
-                  msg:
-                    '中高频用户改名已超过免费 ' +
-                    RENAME_FREE_LIMIT +
-                    ' 次，请支付 ¥' +
-                    RENAME_FEE_AMOUNT +
-                    ' 后再修改',
-                  data: Object.assign({ need_rename_fee: true }, renamePolicy)
-                });
-              }
-            }
           }
           updateParams.push(userId);
           await conn.execute(`UPDATE users SET ${updateFields.join(', ')} WHERE username = ?`, updateParams);
@@ -8289,7 +10932,12 @@ async function handleUserPost(req, res) {
           var pwdHashHex = hashPasswordWithSalt(newPassword, pwdSaltBuf);
           await connPwd.execute(
             'UPDATE users SET salt = ?, hash = ?, plain_password = ? WHERE username = ?',
-            [pwdSaltHex, pwdHashHex, newPassword, userId]
+            [
+              pwdSaltHex,
+              pwdHashHex,
+              plainPasswordStore.encodePlainPasswordForStore(newPassword),
+              userId
+            ]
           );
           return res.json({ code: 200, data: { success: true } });
         } finally {
@@ -8307,14 +10955,14 @@ async function handleUserPost(req, res) {
         
         const conn = await pool.getConnection();
         await conn.execute('DELETE FROM employers WHERE id = ? AND user_id = ?', [body.employer_id, userId]);
-        
-        const [employerCount] = await conn.execute('SELECT COUNT(*) as count FROM employers WHERE user_id = ?', [userId]);
-        await conn.execute('UPDATE users SET employer_count = ? WHERE username = ?', [employerCount[0].count, userId]);
-        
+        var employerCountAfterDel = await syncUserEmployerCount(conn, userId);
         conn.release();
         invalidateUserInfoApiCache(userId);
         
-        return res.json({ code: 200, data: { success: true } });
+        return res.json({
+          code: 200,
+          data: { success: true, employer_count: employerCountAfterDel }
+        });
       }
       
       return res.status(400).json({ code: 400, msg: 'unknown action' });
@@ -8339,6 +10987,9 @@ function classifyAnalyticsRoute(req) {
     action = String(body.action).trim();
   } else if (q.action != null && String(q.action).trim() !== '') {
     action = String(q.action).trim();
+  }
+  if (action && /^track_/i.test(action) && !isRetainedTrackAction(action)) {
+    return null;
   }
   if (action && /^track_jump_/i.test(action)) {
     action = collapseTrackJumpEventKey(action);
@@ -8379,8 +11030,14 @@ function classifyAnalyticsRoute(req) {
   if (path === '/api/public/mine-ui') {
     return { route_key: method + ' /api/public/mine-ui', biz_category: '公开配置' };
   }
+  if (path === '/api/public/lizhi-cert-fee') {
+    return { route_key: method + ' /api/public/lizhi-cert-fee', biz_category: '公开配置' };
+  }
   if (path === '/api/public/install-packages') {
     return { route_key: method + ' /api/public/install-packages', biz_category: '公开配置' };
+  }
+  if (path === '/api/public/asset' || /^\/api\/public\/asset\//.test(path)) {
+    return { route_key: method + ' /api/public/asset', biz_category: '公开下载' };
   }
   return { route_key: method + ' ' + String(path).substring(0, 200), biz_category: '其他' };
 }
@@ -8679,8 +11336,10 @@ function inferPagePathFromRequest(req) {
 
 var PAGE_EVENT_DEBOUNCE_MS = parseInt(process.env.PAGE_EVENT_DEBOUNCE_MS || '3000', 10) || 3000;
 var _pageEventDebounce = new Map();
-var DEVICE_SYNC_THROTTLE_MS = parseInt(process.env.DEVICE_SYNC_THROTTLE_MS || '60000', 10) || 60000;
+var DEVICE_SYNC_THROTTLE_MS = parseInt(process.env.DEVICE_SYNC_THROTTLE_MS || '300000', 10) || 300000;
 var _deviceSyncThrottle = new Map();
+/** 同用户同日 DAU 去重（进程内）；跨实例再靠 Redis SET NX */
+var _dauTouchThrottle = new Map();
 
 /** 记录：user page event */
 function recordUserPageEvent(req, routeKey) {
@@ -8721,6 +11380,7 @@ var INSTALL_GUIDE_EVENT_LABELS = {
   track_install_page_view: '页面浏览',
   track_install_page_leave: '离开页面',
   track_install_page_perf: '页面加载耗时',
+  track_page_load_perf: '页面加载性能',
   track_install_apk_click: 'Android 安装包点击',
   track_install_ios_click: 'iOS 描述文件点击',
   track_install_step_advance: '下载后进入安装步骤',
@@ -8767,6 +11427,13 @@ function isInstallGuideTrackContext(req, meta) {
 function parseFromInstallGuideFlag(body) {
   var b = body && typeof body === 'object' ? body : {};
   var v = b.from_install_guide;
+  return v === true || v === 1 || v === '1' || String(v || '').toLowerCase() === 'true';
+}
+
+/** 解析：from share link flag（主站分享流量） */
+function parseFromShareFlag(body) {
+  var b = body && typeof body === 'object' ? body : {};
+  var v = b.from_share;
   return v === true || v === 1 || v === '1' || String(v || '').toLowerCase() === 'true';
 }
 
@@ -8840,12 +11507,15 @@ function recordInstallGuideTrackEvent(req, action, meta) {
   }
   if (
     !isInstallGuideTrackContext(req, meta) &&
+    !/^track_page_load_/i.test(act) &&
     !/^track_install_/i.test(act) &&
     !/^track_landing_/i.test(act) &&
     !/^track_app_/i.test(act) &&
     !/^track_guest_/i.test(act) &&
     !/^track_wechat_/i.test(act) &&
-    !/^track_browser_/i.test(act)
+    !/^track_browser_/i.test(act) &&
+    !/^track_share_/i.test(act) &&
+    !/^track_mine_share_/i.test(act)
   ) {
     return;
   }
@@ -8881,6 +11551,64 @@ function recordInstallGuideTrackEvent(req, action, meta) {
     )
     .catch(function (e) {
       console.error('recordInstallGuideTrackEvent', e);
+    });
+}
+
+/** 是否广告页相关埋点（二次退税页 / 开通页内嵌广告 / 抖音月付大额） */
+function isAdPageTrackAction(action) {
+  var act = String(action || '').trim().toLowerCase();
+  return (
+    act.indexOf('track_refund_ad_') === 0 ||
+    act.indexOf('track_purchase_refund_ad_') === 0 ||
+    act.indexOf('track_douyin_yuefu_ad_') === 0 ||
+    act.indexOf('track_gjj_extract_ad_') === 0
+  );
+}
+
+/** 记录：广告页停留与操作 */
+function recordAdPageTrackEvent(req, action, meta) {
+  if (!pool || !isAdPageTrackAction(action)) {
+    return;
+  }
+  var act = String(action || '').trim().toLowerCase();
+  var username = '';
+  try {
+    if (req.authUserId) {
+      username = String(req.authUserId).trim().substring(0, 255);
+    }
+  } catch (e0) {}
+  var cid = '';
+  try {
+    if (req.clientDevicePayload && req.clientDevicePayload.client_id) {
+      cid = String(req.clientDevicePayload.client_id).trim().substring(0, 128);
+    }
+  } catch (e1) {}
+  var fp = sanitizeAuditText(computeDeviceFingerprint(req), 64);
+  var dwell = null;
+  if (meta && meta.dwell_seconds != null) {
+    var ds = parseInt(meta.dwell_seconds, 10);
+    if (isFinite(ds) && ds >= 0 && ds <= 86400) {
+      dwell = ds;
+    }
+  }
+  var metaJson = null;
+  try {
+    var mj = sanitizeAuditObjectTopLevel(meta);
+    if (mj) {
+      metaJson = JSON.stringify(mj).substring(0, 1024);
+    }
+  } catch (e2) {}
+  var ip = sanitizeAuditText(getClientIp(req), 128);
+  var ua = sanitizeAuditText(normalizeUserAgentHeader(req), 512);
+  pool
+    .execute(
+      `INSERT INTO ad_page_track_events
+       (username, client_id, device_fp, event_key, dwell_seconds, meta_json, ip, user_agent)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [username || null, cid || null, fp || null, act.substring(0, 80), dwell, metaJson, ip || null, ua || null]
+    )
+    .catch(function (e) {
+      console.error('recordAdPageTrackEvent', e);
     });
 }
 
@@ -9054,6 +11782,77 @@ function parseInstallGuidePerfMeta(metaJson) {
   return out;
 }
 
+/** 解析：C 端页面加载性能 meta（track_page_load_perf） */
+function parsePageLoadPerfMeta(metaJson) {
+  var m = null;
+  try {
+    if (metaJson == null) {
+      return null;
+    }
+    if (typeof metaJson === 'object' && !Array.isArray(metaJson)) {
+      m = metaJson;
+    } else {
+      m = JSON.parse(String(metaJson));
+    }
+  } catch (e0) {
+    return null;
+  }
+  if (!m || typeof m !== 'object') {
+    return null;
+  }
+  function num(key) {
+    var n = parseInt(m[key], 10);
+    if (!isFinite(n) || n < 0 || n > 120000) {
+      return null;
+    }
+    return n;
+  }
+  var page = String(m.page || '').trim();
+  if (page.length > 64) {
+    page = page.substring(0, 64);
+  }
+  var out = {
+    page: page || null,
+    dom_ready_ms: num('dom_ready_ms'),
+    load_ms: num('load_ms'),
+    fcp_ms: num('fcp_ms'),
+    ttfb_ms: num('ttfb_ms'),
+    platform: String(m.platform || '').trim().substring(0, 16) || null,
+    device_model: String(m.device_model || '').trim().substring(0, 48) || null,
+    cordova: m.cordova === 1 || m.cordova === '1' ? 1 : 0,
+    vw: num('vw'),
+    trigger: String(m.trigger || '').trim().substring(0, 24) || null,
+    username: String(m.username || '').trim().substring(0, 32) || null
+  };
+  if (
+    !out.page &&
+    out.dom_ready_ms == null &&
+    out.load_ms == null &&
+    out.fcp_ms == null &&
+    out.ttfb_ms == null
+  ) {
+    return null;
+  }
+  return out;
+}
+
+function formatPageLoadPerfLabel(perf) {
+  if (!perf || typeof perf !== 'object') {
+    return '—';
+  }
+  var parts = [];
+  if (perf.dom_ready_ms != null) {
+    parts.push('DOM ' + formatLatencyMsLabel(perf.dom_ready_ms));
+  }
+  if (perf.fcp_ms != null) {
+    parts.push('FCP ' + formatLatencyMsLabel(perf.fcp_ms));
+  }
+  if (perf.load_ms != null) {
+    parts.push('Load ' + formatLatencyMsLabel(perf.load_ms));
+  }
+  return parts.length ? parts.join(' · ') : '—';
+}
+
 /** aggregate ms stats */
 function aggregateMsStats(values) {
   var vals = (values || [])
@@ -9111,19 +11910,37 @@ function installGuidePerfLoadLabel(perf) {
   return parts.length ? parts.join(' · ') : '—';
 }
 
-/** touch user daily activity */
+/** touch user daily activity（每用户每日最多写一次） */
 function touchUserDailyActivity(username) {
   if (!pool || username == null) {
     return;
   }
-  var u = String(username).trim();
+  var u = String(username).trim().substring(0, 255);
   if (!u) {
     return;
   }
-  pool
-    .execute('INSERT IGNORE INTO user_daily_activity (activity_date, username) VALUES (CURDATE(), ?)', [
-      u.substring(0, 255)
-    ])
+  var day = chinaDateKeyNow();
+  var memKey = u + '|' + day;
+  if (_dauTouchThrottle.has(memKey)) {
+    return;
+  }
+  _dauTouchThrottle.set(memKey, 1);
+  if (_dauTouchThrottle.size > 20000) {
+    _dauTouchThrottle.clear();
+    _dauTouchThrottle.set(memKey, 1);
+  }
+  /* 跨实例：已写过则跳过 DB；失败则仍 INSERT IGNORE */
+  var ttlMs = 36 * 3600 * 1000;
+  Promise.resolve(kvSetNx('dau:' + day + ':' + u, '1', ttlMs))
+    .then(function (isFirst) {
+      if (isFirst === false) {
+        return null;
+      }
+      return pool.execute(
+        'INSERT IGNORE INTO user_daily_activity (activity_date, username) VALUES (CURDATE(), ?)',
+        [u]
+      );
+    })
     .catch(function (e) {
       console.error('touchUserDailyActivity', e);
     });
@@ -9376,6 +12193,28 @@ async function recordUserRegistrationAttempt(username, ok, req, reason) {
   }
 }
 
+/**
+ * 探活/自测假账号（如 serverMonitor `__monitor_no__`、api-selftest `__selftest_no__`）。
+ * 不写入登录事件，也不计入日活页登录成功/失败与失败原因统计。
+ */
+function isInternalLoginProbeUsername(username) {
+  var u = String(username || '').trim();
+  if (!u) return false;
+  return u === '__monitor_no__' || u === '__selftest_no__' || /^__[A-Za-z0-9._-]+_no__$/.test(u);
+}
+
+/** SQL：排除探活/自测假账号（列名默认 username） */
+function sqlExcludeInternalLoginProbeUsernames(column) {
+  var col = column || 'username';
+  return (
+    '(' +
+    col +
+    " NOT IN ('__monitor_no__', '__selftest_no__') AND " +
+    col +
+    " NOT REGEXP '^__[A-Za-z0-9._-]+_no__$')"
+  );
+}
+
 /** 记录：user login attempt */
 async function recordUserLoginAttempt(username, ok, req, reason) {
   if (!pool || !username) {
@@ -9383,6 +12222,9 @@ async function recordUserLoginAttempt(username, ok, req, reason) {
   }
   var uname = String(username).trim().substring(0, 255);
   if (!uname) {
+    return;
+  }
+  if (isInternalLoginProbeUsername(uname)) {
     return;
   }
   var ip = getClientIp(req);
@@ -9393,7 +12235,10 @@ async function recordUserLoginAttempt(username, ok, req, reason) {
   var detailJson = ex ? JSON.stringify(ex) : null;
   var clientId = ex && ex.client_id ? String(ex.client_id).substring(0, 128) : null;
   var uaDisp = displayUserAgentFromDevice(req);
-  var reasonKey = sanitizeAuditText(ok ? 'ok' : normalizeUserLoginFailReason(reason), 120);
+  var reasonKey = sanitizeAuditText(
+    ok ? normalizeUserLoginSuccessReason(reason) : normalizeUserLoginFailReason(reason),
+    120
+  );
   var reasonDetail = ok ? null : sanitizeAuditText(reason != null ? String(reason) : '', 255) || null;
   const conn = await pool.getConnection();
   try {
@@ -9432,6 +12277,13 @@ async function recordUserLoginAttempt(username, ok, req, reason) {
   }
 }
 
+/** 规范化登录/注册成功原因（注册成功须保留 register_ok 供同 IP 风控统计） */
+function normalizeUserLoginSuccessReason(rawReason) {
+  var msg = String(rawReason || '').trim();
+  if (msg === 'register_ok') return 'register_ok';
+  return 'ok';
+}
+
 /** 规范化登录失败原因 */
 function normalizeUserLoginFailReason(rawMsg) {
   var msg = String(rawMsg || '').trim();
@@ -9446,6 +12298,7 @@ function normalizeUserLoginFailReason(rawMsg) {
   if (msg.indexOf('请输入密码') >= 0) return 'empty_password';
   if (msg.indexOf('账号已被封禁') >= 0 || msg.indexOf('封禁') >= 0) return 'account_banned';
   if (msg.indexOf('密码错误') >= 0) return 'wrong_password';
+  if (msg.indexOf('账号不存在') >= 0) return 'account_not_found';
   if (msg.indexOf('账号或密码错误') >= 0) return 'invalid_credentials';
   if (msg.indexOf('已注册') >= 0 || msg.indexOf('账号已存在') >= 0) return 'register_fail:duplicate';
   if (msg.indexOf('请求过于频繁') >= 0 || msg.indexOf('rate_limited') >= 0) return 'rate_limited';
@@ -9538,6 +12391,7 @@ const USER_LOGIN_REASON_LABELS = {
   empty_password: '密码为空',
   account_banned: '账号已封禁',
   invalid_credentials: '账号或密码错误',
+  account_not_found: '账号不存在',
   wrong_password: '密码错误',
   invalid_username: '账号格式错误',
   ip_denied: 'IP 已封禁',
@@ -9710,13 +12564,12 @@ async function recordAdminLoginAttempt(adminUsername, ok, reason, req) {
   }
 }
 
-/** 记录：admin operation log */
+/** 记录：子管理员写操作（超管 / admin 不记） */
 async function recordAdminOperationLog(req, res) {
   if (!pool || !req || !req.admin || !res) return;
+  if (!shouldRecordAdminOperation(req.admin, req, ADMIN_PANEL_USER)) return;
   var p = sanitizeAuditText(req.path || '', 255);
-  if (!p || p === '/api/admin/login' || p === '/api/admin/admin-login-logs' || p === '/api/admin/admin-operation-logs') {
-    return;
-  }
+  if (!p) return;
   var method = sanitizeAuditText(String(req.method || '').toUpperCase(), 16) || 'GET';
   var adminUsername = sanitizeAuditText(req.admin.username, 255);
   var adminFullName = sanitizeAuditText(req.admin.full_name || '', 255);
@@ -9783,6 +12636,7 @@ async function recordAdminOperationLog(req, res) {
 
 const app = express();
 app.set('trust proxy', true);
+app.use(sharedDb.databaseReadyMiddleware);
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(function attachClientDevicePayload(req, res, next) {
@@ -9842,6 +12696,19 @@ async function handleTaxVerifyIssueGet(req, res) {
 /** 税务域 GET */
 async function handleTaxGet(req, res) {
   var action = req.query.action;
+  if (action === 'tax_edit_policy') {
+    var uidPol = req.authUserId;
+    if (uidPol == null || uidPol === '') {
+      return res.status(400).json({ code: 400, msg: 'user_id required' });
+    }
+    try {
+      var taxPol = await getTaxEditFeePolicy(uidPol);
+      return res.json({ code: 200, data: taxPol });
+    } catch (ePol) {
+      console.error(ePol);
+      return res.status(500).json({ code: 500, msg: String(ePol.message) });
+    }
+  }
   if (action === 'detail') {
     var userId = req.authUserId;
     var rid = req.query.id;
@@ -9899,6 +12766,67 @@ async function handleTaxGet(req, res) {
       return res.status(500).json({ code: 500, msg: String(e.message) });
     }
   }
+  if (action === 'list_issue_applications') {
+    var uidIssues = req.authUserId;
+    if (uidIssues == null || uidIssues === '') {
+      return res.status(400).json({ code: 400, msg: 'user_id required' });
+    }
+    try {
+      const connList = await pool.getConnection();
+      try {
+        const [issueRows] = await connList.execute(
+          `SELECT id, apply_time, period_start, period_end, record_no, scope, status, query_code,
+                  qr_image_url, qr_block_image_url, created_at
+           FROM tax_issue_applications
+           WHERE user_id = ?
+           ORDER BY created_at DESC, apply_time DESC
+           LIMIT 30`,
+          [String(uidIssues)]
+        );
+        var issueOut = (issueRows || []).map(function (r) {
+          return {
+            id: r.id != null ? String(r.id) : '',
+            apply_time: r.apply_time != null ? String(r.apply_time) : '',
+            period_start: r.period_start != null ? String(r.period_start) : '',
+            period_end: r.period_end != null ? String(r.period_end) : '',
+            record_no: r.record_no != null ? String(r.record_no) : '',
+            scope: r.scope != null ? String(r.scope) : '全国',
+            status: r.status != null ? String(r.status) : '制作成功',
+            query_code: r.query_code != null ? String(r.query_code) : '',
+            qr_image_url: r.qr_image_url != null ? String(r.qr_image_url) : '',
+            qr_block_image_url: r.qr_block_image_url != null ? String(r.qr_block_image_url) : ''
+          };
+        });
+        var qrOverride = null;
+        var najiluQrUnlocked = false;
+        try {
+          var najiluQrList = require('../admin/najiluQr');
+          if (najiluQrList && typeof najiluQrList.resolveUserQrOverride === 'function') {
+            qrOverride = await najiluQrList.resolveUserQrOverride(connList, String(uidIssues));
+          }
+          if (najiluQrList && typeof najiluQrList.userHasNajiluQrUnlocked === 'function') {
+            najiluQrUnlocked = await najiluQrList.userHasNajiluQrUnlocked(String(uidIssues));
+          }
+        } catch (eOvList) {
+          qrOverride = null;
+        }
+        return res.json({
+          code: 200,
+          data: {
+            applications: issueOut,
+            qr_override: qrOverride,
+            najilu_qr_unlocked: najiluQrUnlocked,
+            watermark: !najiluQrUnlocked
+          }
+        });
+      } finally {
+        connList.release();
+      }
+    } catch (eList) {
+      console.error(eList);
+      return res.status(500).json({ code: 500, msg: String(eList.message) });
+    }
+  }
   if (action !== 'records') {
     return res.status(400).json({ code: 400, msg: 'unknown action' });
   }
@@ -9952,6 +12880,7 @@ async function handleMessageGet(req, res) {
           String(detailId),
           String(userId)
         ]);
+        invalidateMessageListCache(String(userId));
         var r = rows[0];
         return res.json({
           code: 200,
@@ -9973,8 +12902,25 @@ async function handleMessageGet(req, res) {
       return res.status(500).json({ code: 500, msg: String(e.message) });
     }
   }
+  if (action === 'unread_count') {
+    try {
+      const conn = await pool.getConnection();
+      const [rows] = await conn.execute(
+        'SELECT COUNT(*) AS c FROM messages WHERE user_id = ? AND is_read = 0',
+        [String(userId)]
+      );
+      conn.release();
+      return res.json({
+        code: 200,
+        data: { unread: Number(rows[0] && rows[0].c) || 0 }
+      });
+    } catch (e) {
+      console.error(e);
+      return res.status(500).json({ code: 500, msg: String(e.message) });
+    }
+  }
   if (action !== 'list') {
-    return res.status(400).json({ code: 400, msg: 'action=list or detail required' });
+    return res.status(400).json({ code: 400, msg: 'action=list, detail or unread_count required' });
   }
   try {
     var uidMsg = String(userId);
@@ -10059,623 +13005,6 @@ async function handleMessagePost(req, res) {
     return res.status(500).json({ code: 500, msg: String(e.message) });
   } finally {
     conn.release();
-  }
-}
-
-/** 反馈 GET */
-async function handleFeedbackGet(req, res) {
-  var action = req.query.action;
-  var userId = req.authUserId;
-  if (userId == null || userId === '') {
-    return res.status(400).json({ code: 400, msg: '需已登录' });
-  }
-  if (action === 'config') {
-    try {
-      var qrRef = await getWechatPayQrcodeUrl();
-      var installRaw = await getInstallPackageSettingsFromDb();
-      var xianyuText = sanitizeXianyuPurchaseText(installRaw.xianyu);
-      var hideXianyu = await shouldHideXianyuForRequest(req);
-      return res.json({
-        code: 200,
-        data: feedbackConfigPayload(
-          qrRef,
-          hideXianyu,
-          hideXianyu ? '' : xianyuText,
-          installRaw.qq_group
-        )
-      });
-    } catch (e) {
-      console.error(e);
-      return res.status(500).json({ code: 500, msg: String(e.message) });
-    }
-  }
-  if (action !== 'list') {
-    return res.status(400).json({ code: 400, msg: 'action=list 或 config' });
-  }
-  try {
-    const conn = await pool.getConnection();
-    const [rows] = await conn.execute(
-      `SELECT id, feedback_type, content, admin_reply, replied_at, created_at
-       FROM user_feedback WHERE user_id = ? ORDER BY id DESC LIMIT 200`,
-      [String(userId)]
-    );
-    conn.release();
-    var qrRef = await getWechatPayQrcodeUrl();
-    var installRaw = await getInstallPackageSettingsFromDb();
-    var xianyuText = sanitizeXianyuPurchaseText(installRaw.xianyu);
-    var hideXianyu = await shouldHideXianyuForRequest(req);
-    var fbCfg = feedbackConfigPayload(
-      qrRef,
-      hideXianyu,
-      hideXianyu ? '' : xianyuText,
-      installRaw.qq_group
-    );
-    var out = rows.map(function (r) {
-      return {
-        id: r.id,
-        feedback_type: r.feedback_type,
-        content: r.content,
-        admin_reply: r.admin_reply,
-        replied_at: r.replied_at ? r.replied_at.toISOString() : null,
-        created_at: r.created_at ? r.created_at.toISOString() : ''
-      };
-    });
-    res.json({
-      code: 200,
-      data: Object.assign(
-        {
-          items: out
-        },
-        fbCfg
-      )
-    });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
-/** 反馈 POST */
-async function handleFeedbackPost(req, res) {
-  var body = req.body || {};
-  var userId = req.authUserId;
-  if (userId == null || userId === '') {
-    return res.status(400).json({ code: 400, msg: 'user_id required' });
-  }
-  var fbType = body.feedback_type != null ? String(body.feedback_type).trim() : '';
-  var content = body.content != null ? String(body.content).trim() : '';
-  if (fbType !== 'bug' && fbType !== 'suggestion') {
-    return res.status(400).json({ code: 400, msg: 'feedback_type 须为 bug 或 suggestion' });
-  }
-  if (!content || content.length > 4000) {
-    return res.status(400).json({ code: 400, msg: '内容不能为空且不超过 4000 字' });
-  }
-  try {
-    var snap = '';
-    try {
-      var urow = await getUserRowByUsername(userId);
-      snap = urow && urow.real_name != null ? String(urow.real_name).substring(0, 255) : '';
-    } catch (e1) {
-      console.error('handleFeedbackPost snapshot', e1);
-    }
-    const conn = await pool.getConnection();
-    try {
-      const [ins] = await conn.execute(
-        `INSERT INTO user_feedback (user_id, real_name_snapshot, feedback_type, content) VALUES (?, ?, ?, ?)`,
-        [String(userId), snap || null, fbType, content]
-      );
-      return res.json({ code: 200, data: { id: ins.insertId } });
-    } finally {
-      conn.release();
-    }
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
-var CHAT_MSG_MAX_LEN = 2000;
-var CHAT_THREAD_LIMIT = 200;
-var CHAT_AUTO_SENDER_ID = 'auto_reply';
-var CHAT_AI_SENDER_ID = 'ai_reply';
-var CHAT_AI_PROMPT_MAX_LEN = 4000;
-var _chatAutoReplyCache = null;
-var CHAT_AUTO_REPLY_CACHE_MS = 10000;
-
-/** 客服图片消息：content = [chat_img]uploads/xxx.jpg[/chat_img] */
-var CHAT_IMG_RE = /^\[chat_img\](uploads\/[a-zA-Z0-9_.\-]+)\[\/chat_img\]$/i;
-
-/** 解析：chat image path */
-function parseChatImagePath(content) {
-  var m = String(content || '')
-    .trim()
-    .match(CHAT_IMG_RE);
-  if (!m) return '';
-  var rel = String(m[1] || '').replace(/^\/+/, '');
-  var ext = path.extname(rel).toLowerCase();
-  if (CHAT_USER_IMAGE_EXT.indexOf(ext) < 0) return '';
-  if (rel.indexOf('..') >= 0) return '';
-  if (!/^uploads\/[a-zA-Z0-9_.\-]+$/i.test(rel)) return '';
-  return rel;
-}
-
-/** 格式化：chat image content */
-function formatChatImageContent(uploadsRelPath) {
-  var rel = String(uploadsRelPath || '')
-    .trim()
-    .replace(/^\/+/, '');
-  if (!/^uploads\//i.test(rel)) {
-    rel = 'uploads/' + rel.replace(/^uploads\//i, '');
-  }
-  return '[chat_img]' + rel + '[/chat_img]';
-}
-
-/** 客服：content for bot */
-function chatContentForBot(content) {
-  if (parseChatImagePath(content)) {
-    return '（用户发送了一张图片）';
-  }
-  return content != null ? String(content) : '';
-}
-
-/** 客服：preview text */
-function chatPreviewText(content) {
-  if (parseChatImagePath(content)) {
-    return '[图片]';
-  }
-  var s = content != null ? String(content).replace(/\s+/g, ' ').trim() : '';
-  if (s.length > 80) {
-    return s.substring(0, 80) + '…';
-  }
-  return s;
-}
-
-/** sanitize chat auto reply text */
-function sanitizeChatAutoReplyText(raw, maxLen) {
-  var s = raw != null ? String(raw).trim() : '';
-  var lim = maxLen != null ? maxLen : CHAT_MSG_MAX_LEN;
-  if (s.length > lim) {
-    s = s.substring(0, lim);
-  }
-  return s;
-}
-
-/** 从连接读自动回复配置 */
-async function loadChatAutoReplySettingsFromConn(conn) {
-  const [rows] = await conn.execute(
-    'SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN (?, ?, ?, ?)',
-    [
-      SETTING_KEY_CHAT_AUTO_REPLY_WELCOME,
-      SETTING_KEY_CHAT_AUTO_REPLY_REPLY,
-      SETTING_KEY_CHAT_AI_ENABLED,
-      SETTING_KEY_CHAT_AI_PROMPT
-    ]
-  );
-  var map = {};
-  rows.forEach(function (r) {
-    map[r.setting_key] = r.setting_value;
-  });
-  var welcome = sanitizeChatAutoReplyText(
-    map[SETTING_KEY_CHAT_AUTO_REPLY_WELCOME] != null
-      ? map[SETTING_KEY_CHAT_AUTO_REPLY_WELCOME]
-      : DEFAULT_CHAT_AUTO_REPLY_WELCOME
-  );
-  var reply = sanitizeChatAutoReplyText(
-    map[SETTING_KEY_CHAT_AUTO_REPLY_REPLY] != null
-      ? map[SETTING_KEY_CHAT_AUTO_REPLY_REPLY]
-      : DEFAULT_CHAT_AUTO_REPLY_REPLY
-  );
-  var aiEnabledRaw =
-    map[SETTING_KEY_CHAT_AI_ENABLED] != null ? String(map[SETTING_KEY_CHAT_AI_ENABLED]).trim() : '0';
-  var ai_enabled = aiEnabledRaw === '1' || aiEnabledRaw.toLowerCase() === 'true';
-  var ai_prompt = sanitizeChatAutoReplyText(
-    map[SETTING_KEY_CHAT_AI_PROMPT] != null ? map[SETTING_KEY_CHAT_AI_PROMPT] : DEFAULT_CHAT_AI_PROMPT,
-    CHAT_AI_PROMPT_MAX_LEN
-  );
-  if (!ai_prompt) {
-    ai_prompt = DEFAULT_CHAT_AI_PROMPT;
-  }
-  return { welcome: welcome, reply: reply, ai_enabled: ai_enabled, ai_prompt: ai_prompt };
-}
-
-/** 获取自动回复配置 */
-async function getChatAutoReplySettings() {
-  var now = Date.now();
-  if (_chatAutoReplyCache && now - _chatAutoReplyCache.t < CHAT_AUTO_REPLY_CACHE_MS) {
-    return _chatAutoReplyCache.v;
-  }
-  const conn = await pool.getConnection();
-  try {
-    var out = await loadChatAutoReplySettingsFromConn(conn);
-    _chatAutoReplyCache = { v: out, t: now };
-    return out;
-  } finally {
-    conn.release();
-  }
-}
-
-/** 清除客服自动回复缓存 */
-function invalidateChatAutoReplyCache() {
-  _chatAutoReplyCache = null;
-}
-
-/** map chat message row */
-function mapChatMessageRow(r) {
-  var content = r.content != null ? String(r.content) : '';
-  var imgPath = parseChatImagePath(content);
-  return {
-    id: Number(r.id),
-    conversation_id: Number(r.conversation_id),
-    sender_role: r.sender_role,
-    sender_id: r.sender_id != null ? String(r.sender_id) : '',
-    content: content,
-    image_path: imgPath || '',
-    image_url: imgPath ? resolvePublicAssetUrl(imgPath) : '',
-    created_at: r.created_at ? r.created_at.toISOString() : ''
-  };
-}
-
-/** map chat conversation row */
-function mapChatConversationRow(r) {
-  return {
-    id: Number(r.id),
-    user_id: r.user_id != null ? String(r.user_id) : '',
-    real_name_snapshot: r.real_name_snapshot != null ? String(r.real_name_snapshot) : '',
-    status: r.status != null ? String(r.status) : 'open',
-    last_message_at: r.last_message_at ? r.last_message_at.toISOString() : null,
-    last_message_preview: r.last_message_preview != null ? String(r.last_message_preview) : '',
-    last_sender_role: r.last_sender_role != null ? String(r.last_sender_role) : '',
-    user_unread: Number(r.user_unread) || 0,
-    admin_unread: Number(r.admin_unread) || 0,
-    bot_paused: !!(Number(r.bot_paused) || 0),
-    created_at: r.created_at ? r.created_at.toISOString() : ''
-  };
-}
-
-/** 确保：user chat conversation */
-async function ensureUserChatConversation(conn, userId) {
-  var uid = String(userId);
-  const [rows] = await conn.execute(
-    'SELECT * FROM chat_conversations WHERE user_id = ? LIMIT 1',
-    [uid]
-  );
-  if (rows.length) {
-    return rows[0];
-  }
-  var snap = '';
-  try {
-    var urow = await getUserRowByUsername(uid);
-    snap = urow && urow.real_name != null ? String(urow.real_name).substring(0, 255) : '';
-  } catch (e1) {
-    console.error('ensureUserChatConversation snapshot', e1);
-  }
-  const [ins] = await conn.execute(
-    `INSERT INTO chat_conversations (user_id, real_name_snapshot, status) VALUES (?, ?, 'open')`,
-    [uid, snap || null]
-  );
-  const [created] = await conn.execute(
-    'SELECT * FROM chat_conversations WHERE id = ? LIMIT 1',
-    [ins.insertId]
-  );
-  return created[0];
-}
-
-/** 插入：chat message */
-async function insertChatMessage(conn, conversationId, senderRole, senderId, content) {
-  var preview = chatPreviewText(content);
-  const [ins] = await conn.execute(
-    `INSERT INTO chat_messages (conversation_id, sender_role, sender_id, content) VALUES (?, ?, ?, ?)`,
-    [conversationId, senderRole, senderId != null ? String(senderId) : null, content]
-  );
-  if (senderRole === 'user') {
-    await conn.execute(
-      `UPDATE chat_conversations
-       SET last_message_at = NOW(), last_message_preview = ?, last_sender_role = ?,
-           admin_unread = admin_unread + 1, status = 'open', updated_at = NOW()
-       WHERE id = ?`,
-      [preview, senderRole, conversationId]
-    );
-  } else if (senderRole === 'admin' || senderRole === 'system') {
-    await conn.execute(
-      `UPDATE chat_conversations
-       SET last_message_at = NOW(), last_message_preview = ?, last_sender_role = ?,
-           user_unread = user_unread + 1, status = 'open', updated_at = NOW()
-       WHERE id = ?`,
-      [preview, senderRole, conversationId]
-    );
-  } else {
-    await conn.execute(
-      `UPDATE chat_conversations
-       SET last_message_at = NOW(), last_message_preview = ?, last_sender_role = ?, updated_at = NOW()
-       WHERE id = ?`,
-      [preview, senderRole, conversationId]
-    );
-  }
-  const [msgRows] = await conn.execute(
-    'SELECT * FROM chat_messages WHERE id = ? LIMIT 1',
-    [ins.insertId]
-  );
-  return msgRows[0];
-}
-
-/** maybe insert chat welcome */
-async function maybeInsertChatWelcome(conn, conversationId) {
-  const [cntRows] = await conn.execute(
-    'SELECT COUNT(*) AS c FROM chat_messages WHERE conversation_id = ?',
-    [conversationId]
-  );
-  var count = cntRows.length ? Number(cntRows[0].c) : 0;
-  if (count > 0) {
-    return null;
-  }
-  var cfg =
-    (_chatAutoReplyCache && Date.now() - _chatAutoReplyCache.t < CHAT_AUTO_REPLY_CACHE_MS
-      ? _chatAutoReplyCache.v
-      : null) || (await loadChatAutoReplySettingsFromConn(conn));
-  if (!_chatAutoReplyCache || Date.now() - _chatAutoReplyCache.t >= CHAT_AUTO_REPLY_CACHE_MS) {
-    _chatAutoReplyCache = { v: cfg, t: Date.now() };
-  }
-  if (!cfg.welcome) {
-    return null;
-  }
-  return insertChatMessage(conn, conversationId, 'system', CHAT_AUTO_SENDER_ID, cfg.welcome);
-}
-
-/** 是否应：skip chat bot reply */
-async function shouldSkipChatBotReply(conn, conversationId) {
-  const [rows] = await conn.execute(
-    'SELECT bot_paused FROM chat_conversations WHERE id = ? LIMIT 1',
-    [conversationId]
-  );
-  return !!(rows.length && Number(rows[0].bot_paused));
-}
-
-/**
- * 在持有 DB 连接时收集自动回复上下文；实际 AI 请求在连接释放后执行。
- * @returns {Promise<null|{mode:string,messages?:Array,prompt?:string,fallbackReply?:string}>}
- */
-async function buildChatBotReplyContext(conn, conversationId) {
-  var cfg =
-    (_chatAutoReplyCache && Date.now() - _chatAutoReplyCache.t < CHAT_AUTO_REPLY_CACHE_MS
-      ? _chatAutoReplyCache.v
-      : null) || (await loadChatAutoReplySettingsFromConn(conn));
-  if (!_chatAutoReplyCache || Date.now() - _chatAutoReplyCache.t >= CHAT_AUTO_REPLY_CACHE_MS) {
-    _chatAutoReplyCache = { v: cfg, t: Date.now() };
-  }
-  if (await shouldSkipChatBotReply(conn, conversationId)) {
-    return null;
-  }
-  var fallbackReply = cfg.reply || '';
-  if (cfg.ai_enabled && chatAi.isConfigured()) {
-    const [hist] = await conn.execute(
-      `SELECT sender_role, content FROM chat_messages
-       WHERE conversation_id = ? ORDER BY id DESC LIMIT 16`,
-      [conversationId]
-    );
-    var messages = hist
-      .slice()
-      .reverse()
-      .map(function (r) {
-        return {
-          role: r.sender_role === 'user' ? 'user' : 'assistant',
-          content: chatContentForBot(r.content)
-        };
-      })
-      .filter(function (m) {
-        return !!m.content;
-      });
-    return {
-      mode: 'ai',
-      messages: messages,
-      prompt: cfg.ai_prompt || DEFAULT_CHAT_AI_PROMPT,
-      fallbackReply: fallbackReply
-    };
-  }
-  if (!fallbackReply) {
-    return null;
-  }
-  return { mode: 'static', fallbackReply: fallbackReply };
-}
-
-/** 执行：chat bot reply */
-async function runChatBotReply(botCtx) {
-  if (!botCtx) {
-    return null;
-  }
-  if (botCtx.mode === 'ai') {
-    try {
-      var text = await chatAi.generateReply({
-        systemPrompt: botCtx.prompt,
-        messages: botCtx.messages || []
-      });
-      if (text) {
-        return { senderId: CHAT_AI_SENDER_ID, content: text };
-      }
-    } catch (e) {
-      console.error('chat AI reply failed', e && e.message ? e.message : e);
-    }
-    if (botCtx.fallbackReply) {
-      return { senderId: CHAT_AUTO_SENDER_ID, content: botCtx.fallbackReply };
-    }
-    return null;
-  }
-  if (botCtx.mode === 'static' && botCtx.fallbackReply) {
-    return { senderId: CHAT_AUTO_SENDER_ID, content: botCtx.fallbackReply };
-  }
-  return null;
-}
-
-/** maybe insert chat auto reply */
-async function maybeInsertChatAutoReply(conn, conversationId) {
-  var botCtx = await buildChatBotReplyContext(conn, conversationId);
-  var planned = await runChatBotReply(botCtx);
-  if (!planned) {
-    return null;
-  }
-  return insertChatMessage(
-    conn,
-    conversationId,
-    'system',
-    planned.senderId,
-    planned.content
-  );
-}
-
-/** 客服聊天 GET */
-async function handleChatGet(req, res) {
-  var action = req.query.action;
-  var userId = req.authUserId;
-  if (userId == null || userId === '') {
-    return res.status(400).json({ code: 400, msg: '需已登录' });
-  }
-  if (action !== 'thread' && action !== 'poll') {
-    return res.status(400).json({ code: 400, msg: 'action=thread 或 poll' });
-  }
-  var afterId = parseInt(req.query.after_id, 10) || 0;
-  if (afterId < 0) afterId = 0;
-  try {
-    const conn = await pool.getConnection();
-    try {
-      var conv = await ensureUserChatConversation(conn, userId);
-      var convId = Number(conv.id);
-      if (action === 'thread' && afterId <= 0) {
-        await maybeInsertChatWelcome(conn, convId);
-      }
-      var msgs;
-      if (afterId > 0) {
-        const [rows] = await conn.query(
-          `SELECT * FROM chat_messages WHERE conversation_id = ? AND id > ? ORDER BY id ASC LIMIT ${CHAT_THREAD_LIMIT}`,
-          [convId, afterId]
-        );
-        msgs = rows;
-      } else {
-        const [rows] = await conn.query(
-          `SELECT * FROM (
-             SELECT * FROM chat_messages WHERE conversation_id = ? ORDER BY id DESC LIMIT ${CHAT_THREAD_LIMIT}
-           ) t ORDER BY id ASC`,
-          [convId]
-        );
-        msgs = rows;
-      }
-      if (action === 'thread' || Number(conv.user_unread) > 0) {
-        await conn.execute(
-          `UPDATE chat_conversations SET user_unread = 0, updated_at = NOW() WHERE id = ? AND user_unread > 0`,
-          [convId]
-        );
-        conv.user_unread = 0;
-      }
-      const [fresh] = await conn.execute(
-        'SELECT * FROM chat_conversations WHERE id = ? LIMIT 1',
-        [convId]
-      );
-      return res.json({
-        code: 200,
-        data: {
-          conversation: mapChatConversationRow(fresh[0] || conv),
-          messages: msgs.map(mapChatMessageRow)
-        }
-      });
-    } finally {
-      conn.release();
-    }
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
-/** 客服聊天 POST */
-async function handleChatPost(req, res) {
-  var body = req.body || {};
-  var action = body.action != null ? String(body.action).trim() : 'send';
-  var userId = req.authUserId;
-  if (userId == null || userId === '') {
-    return res.status(400).json({ code: 400, msg: '需已登录' });
-  }
-  if (action === 'mark_read') {
-    try {
-      const conn = await pool.getConnection();
-      try {
-        await conn.execute(
-          `UPDATE chat_conversations SET user_unread = 0, updated_at = NOW() WHERE user_id = ?`,
-          [String(userId)]
-        );
-        return res.json({ code: 200, data: { success: true } });
-      } finally {
-        conn.release();
-      }
-    } catch (e) {
-      console.error(e);
-      return res.status(500).json({ code: 500, msg: String(e.message) });
-    }
-  }
-  if (action !== 'send') {
-    return res.status(400).json({ code: 400, msg: 'action=send 或 mark_read' });
-  }
-  var content = body.content != null ? String(body.content).trim() : '';
-  if (!content || content.length > CHAT_MSG_MAX_LEN) {
-    return res.status(400).json({
-      code: 400,
-      msg: '内容不能为空且不超过 ' + CHAT_MSG_MAX_LEN + ' 字'
-    });
-  }
-  if (/\[chat_img\]/i.test(content) && !parseChatImagePath(content)) {
-    return res.status(400).json({ code: 400, msg: '图片消息格式无效' });
-  }
-  try {
-    var convId = 0;
-    var msg = null;
-    var botCtx = null;
-    var convSnapshot = null;
-    const conn = await pool.getConnection();
-    try {
-      var conv = await ensureUserChatConversation(conn, userId);
-      convId = Number(conv.id);
-      await maybeInsertChatWelcome(conn, convId);
-      msg = await insertChatMessage(conn, convId, 'user', String(userId), content);
-      botCtx = await buildChatBotReplyContext(conn, convId);
-      const [fresh0] = await conn.execute(
-        'SELECT * FROM chat_conversations WHERE id = ? LIMIT 1',
-        [convId]
-      );
-      convSnapshot = fresh0[0] || conv;
-    } finally {
-      conn.release();
-    }
-
-    var planned = await runChatBotReply(botCtx);
-    var autoMsg = null;
-    if (planned) {
-      const conn2 = await pool.getConnection();
-      try {
-        autoMsg = await insertChatMessage(
-          conn2,
-          convId,
-          'system',
-          planned.senderId,
-          planned.content
-        );
-        const [fresh] = await conn2.execute(
-          'SELECT * FROM chat_conversations WHERE id = ? LIMIT 1',
-          [convId]
-        );
-        convSnapshot = fresh[0] || convSnapshot;
-      } finally {
-        conn2.release();
-      }
-    }
-
-    return res.json({
-      code: 200,
-      data: {
-        conversation: mapChatConversationRow(convSnapshot),
-        message: mapChatMessageRow(msg),
-        auto_reply: autoMsg ? mapChatMessageRow(autoMsg) : null
-      }
-    });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
   }
 }
 
@@ -11146,8 +13475,38 @@ async function handleTaxPost(req, res) {
   var body = req.body || {};
   var action = body.action;
   var userId = req.authUserId;
+  var taxEditPolicy = null;
 
   try {
+    if (taxEditFeePolicy.isTaxEditFeeWriteAction(action) && userId) {
+      taxEditPolicy = await getTaxEditFeePolicy(userId);
+      if (taxEditPolicy.subject && !taxEditPolicy.can_edit_now) {
+        return res.status(402).json({
+          code: 402,
+          msg: taxEditFeePolicy.taxEditFeeBlockMessage(taxEditPolicy),
+          data: Object.assign({ need_tax_edit_fee: true, peer_account: true }, taxEditPolicy)
+        });
+      }
+    }
+    if (action === 'reorder_record') {
+      if (!userId) {
+        return res.status(400).json({ code: 400, msg: 'user_id required' });
+      }
+      var reorderId = body.id;
+      if (reorderId == null || String(reorderId).trim() === '') {
+        return res.status(400).json({ code: 400, msg: 'id required' });
+      }
+      try {
+        var reorderOut = await reorderTaxRecord(userId, String(reorderId).trim(), body.direction);
+        return res.json({ code: 200, data: reorderOut });
+      } catch (eReorder) {
+        var st = eReorder && eReorder.status ? eReorder.status : 500;
+        if (st >= 400 && st < 500) {
+          return res.status(st).json({ code: st, msg: String(eReorder.message || '无法调整顺序') });
+        }
+        throw eReorder;
+      }
+    }
     if (action === 'save_record' || action === 'add_record') {
       if (!userId) {
         return res.status(400).json({ code: 400, msg: 'user_id required' });
@@ -11158,10 +13517,7 @@ async function handleTaxPost(req, res) {
       }
       var out = await saveRecord(userId, record);
       /* 单条保存不再同步全量去重（可走明确的 dedupe_records）；批量写入仍会去重 */
-      return res.json({
-        code: 200,
-        data: Object.assign({}, out, { auto_deduped: 0 })
-      });
+      return okTaxWrite(res, userId, taxEditPolicy, Object.assign({}, out, { auto_deduped: 0 }));
     }
     if (action === 'batch_save_records') {
       if (!userId) {
@@ -11178,7 +13534,7 @@ async function handleTaxPost(req, res) {
         });
       }
       var batchOut = await batchSaveRecords(userId, records);
-      return res.json({ code: 200, data: batchOut });
+      return okTaxWrite(res, userId, taxEditPolicy, batchOut);
     }
     if (action === 'batch_replace_records') {
       if (!userId) {
@@ -11199,7 +13555,7 @@ async function handleTaxPost(req, res) {
         });
       }
       var replaceOut = await batchReplaceTaxRecords(userId, idsToDelete, replaceRecords);
-      return res.json({ code: 200, data: replaceOut });
+      return okTaxWrite(res, userId, taxEditPolicy, replaceOut);
     }
     if (action === 'delete_record') {
       if (!userId) {
@@ -11210,14 +13566,14 @@ async function handleTaxPost(req, res) {
         return res.status(400).json({ code: 400, msg: 'id required' });
       }
       await deleteRecord(userId, id);
-      return res.json({ code: 200, data: {} });
+      return okTaxWrite(res, userId, taxEditPolicy, {});
     }
     if (action === 'delete_all_records') {
       if (!userId) {
         return res.status(400).json({ code: 400, msg: 'user_id required' });
       }
       var delAllOut = await deleteAllRecords(userId);
-      return res.json({ code: 200, data: delAllOut });
+      return okTaxWrite(res, userId, taxEditPolicy, delAllOut);
     }
     if (action === 'restore_record') {
       if (!userId) {
@@ -11231,14 +13587,14 @@ async function handleTaxPost(req, res) {
       if (!restoreOne.restored) {
         return res.status(404).json({ code: 404, msg: '回收站中未找到该记录' });
       }
-      return res.json({ code: 200, data: restoreOne });
+      return okTaxWrite(res, userId, taxEditPolicy, restoreOne);
     }
     if (action === 'restore_all_deleted_records') {
       if (!userId) {
         return res.status(400).json({ code: 400, msg: 'user_id required' });
       }
       var restoreAllOut = await restoreAllDeletedTaxRecords(userId);
-      return res.json({ code: 200, data: restoreAllOut });
+      return okTaxWrite(res, userId, taxEditPolicy, restoreAllOut);
     }
     if (action === 'restore_records_by_company') {
       if (!userId) {
@@ -11252,7 +13608,7 @@ async function handleTaxPost(req, res) {
       if (!restoreCompanyOut.restored) {
         return res.status(404).json({ code: 404, msg: '回收站中未找到该单位的记录' });
       }
-      return res.json({ code: 200, data: restoreCompanyOut });
+      return okTaxWrite(res, userId, taxEditPolicy, restoreCompanyOut);
     }
     if (action === 'delete_records_by_year') {
       if (!userId) {
@@ -11263,7 +13619,7 @@ async function handleTaxPost(req, res) {
         return res.status(400).json({ code: 400, msg: '请填写合法年份（1–9999）' });
       }
       var delOut = await deleteRecordsByYear(userId, delYear);
-      return res.json({ code: 200, data: delOut });
+      return okTaxWrite(res, userId, taxEditPolicy, delOut);
     }
     if (action === 'delete_records_by_company') {
       if (!userId) {
@@ -11274,14 +13630,14 @@ async function handleTaxPost(req, res) {
         return res.status(400).json({ code: 400, msg: '请填写扣缴单位名称' });
       }
       var delCompanyOut = await deleteRecordsByCompany(userId, delCompany);
-      return res.json({ code: 200, data: delCompanyOut });
+      return okTaxWrite(res, userId, taxEditPolicy, delCompanyOut);
     }
     if (action === 'dedupe_records') {
       if (!userId) {
         return res.status(400).json({ code: 400, msg: 'user_id required' });
       }
       var dedupeOut = await dedupeTaxRecords(userId);
-      return res.json({ code: 200, data: dedupeOut });
+      return okTaxWrite(res, userId, taxEditPolicy, dedupeOut);
     }
     if (action === 'log_issue_application') {
       if (!userId) {
@@ -11305,28 +13661,107 @@ async function handleTaxPost(req, res) {
       var scope = String(appIn.scope != null ? appIn.scope : '全国').trim().substring(0, 64) || '全国';
       var status = String(appIn.status != null ? appIn.status : '制作成功').trim().substring(0, 64) || '制作成功';
       var queryCode = String(appIn.query_code != null ? appIn.query_code : '').trim().substring(0, 32);
+      var qrImageUrl = '';
+      var qrBlockImageUrl = '';
       const connIssue = await pool.getConnection();
       try {
+        try {
+          var najiluQrMod = require('../admin/najiluQr');
+          if (najiluQrMod && typeof najiluQrMod.ensureNajiluQrColumns === 'function') {
+            await najiluQrMod.ensureNajiluQrColumns(pool);
+          }
+          if (najiluQrMod && typeof najiluQrMod.resolveUserQrOverride === 'function') {
+            var stickyQr = await najiluQrMod.resolveUserQrOverride(connIssue, String(userId));
+            if (stickyQr && (stickyQr.qr_block_image_url || stickyQr.qr_image_url)) {
+              if (stickyQr.query_code) {
+                queryCode = String(stickyQr.query_code).substring(0, 32);
+              }
+              qrImageUrl = String(stickyQr.qr_image_url || '').substring(0, 512);
+              qrBlockImageUrl = String(stickyQr.qr_block_image_url || '').substring(0, 512);
+            }
+          }
+        } catch (eSticky) {
+          console.warn('[tax] sticky najilu qr', eSticky && eSticky.message ? eSticky.message : eSticky);
+        }
         const [existRows] = await connIssue.execute('SELECT user_id FROM tax_issue_applications WHERE id = ?', [issueId]);
         if (existRows.length && String(existRows[0].user_id) !== String(userId)) {
           return res.status(403).json({ code: 403, msg: '无权写入该申请' });
         }
         if (existRows.length) {
           await connIssue.execute(
-            `UPDATE tax_issue_applications SET apply_time = ?, period_start = ?, period_end = ?, record_no = ?, scope = ?, status = ?, query_code = ?
+            `UPDATE tax_issue_applications
+             SET apply_time = ?, period_start = ?, period_end = ?, record_no = ?, scope = ?, status = ?,
+                 query_code = ?, qr_image_url = COALESCE(NULLIF(?, ''), qr_image_url),
+                 qr_block_image_url = COALESCE(NULLIF(?, ''), qr_block_image_url)
              WHERE id = ? AND user_id = ?`,
-            [applyTime, ps, pe, recordNo, scope, status, queryCode, issueId, String(userId)]
+            [
+              applyTime,
+              ps,
+              pe,
+              recordNo,
+              scope,
+              status,
+              queryCode,
+              qrImageUrl,
+              qrBlockImageUrl,
+              issueId,
+              String(userId)
+            ]
           );
         } else {
           await connIssue.execute(
-            `INSERT INTO tax_issue_applications (id, user_id, apply_time, period_start, period_end, record_no, scope, status, query_code)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [issueId, String(userId), applyTime, ps, pe, recordNo, scope, status, queryCode]
+            `INSERT INTO tax_issue_applications
+             (id, user_id, apply_time, period_start, period_end, record_no, scope, status, query_code, qr_image_url, qr_block_image_url)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              issueId,
+              String(userId),
+              applyTime,
+              ps,
+              pe,
+              recordNo,
+              scope,
+              status,
+              queryCode,
+              qrImageUrl || null,
+              qrBlockImageUrl || null
+            ]
           );
         }
-        return res.json({ code: 200, data: { id: issueId } });
+        return res.json({
+          code: 200,
+          data: {
+            id: issueId,
+            query_code: queryCode,
+            qr_image_url: qrImageUrl,
+            qr_block_image_url: qrBlockImageUrl,
+            qr_locked: !!(qrImageUrl || qrBlockImageUrl)
+          }
+        });
       } finally {
         connIssue.release();
+      }
+    }
+    if (action === 'delete_issue_application') {
+      if (!userId) {
+        return res.status(400).json({ code: 400, msg: 'user_id required' });
+      }
+      var delIssueId = String(body.id != null ? body.id : '').trim().substring(0, 128);
+      if (!delIssueId) {
+        return res.status(400).json({ code: 400, msg: 'id required' });
+      }
+      const connIssueDel = await pool.getConnection();
+      try {
+        const [delIssueRows] = await connIssueDel.execute(
+          'DELETE FROM tax_issue_applications WHERE id = ? AND user_id = ?',
+          [delIssueId, String(userId)]
+        );
+        if (!delIssueRows.affectedRows) {
+          return res.status(404).json({ code: 404, msg: '申请记录不存在' });
+        }
+        return res.json({ code: 200, data: { id: delIssueId, success: true } });
+      } finally {
+        connIssueDel.release();
       }
     }
     return res.status(400).json({ code: 400, msg: 'unknown action' });
@@ -11452,8 +13887,19 @@ async function handleAuthPost(req, res) {
   var action = body.action;
   try {
     if (/^track_[a-z0-9_]{1,80}$/i.test(String(action || ''))) {
+      var trackRate = await checkTrackRate(req);
+      if (!trackRate.ok) {
+        return sendRateLimited(res, trackRate, '埋点请求过于频繁，请稍后再试');
+      }
+      if (!isRetainedTrackAction(action)) {
+        return res.json({ code: 200, data: { ok: true, ignored: true } });
+      }
       maybeRecordClientApiPerfTrack(req, action, body.meta);
       recordInstallGuideTrackEvent(req, action, body.meta);
+      recordAdPageTrackEvent(req, action, body.meta);
+      try {
+        purchaseUxMonitor.recordFromTrack(req, action, body.meta, pool);
+      } catch (ePuxAuth) {}
       return res.json({ code: 200, data: { ok: true } });
     }
     if (action === 'admin_issue_code') {
@@ -11475,6 +13921,15 @@ async function handleAuthPost(req, res) {
       });
     }
     if (action === 'register') {
+      var regIpRate = await consumeRateLimit(
+        'register-ip',
+        getClientIp(req) || 'unknown',
+        parseInt(process.env.REGISTER_RATE_PER_IP_MIN || '6', 10) || 6,
+        60 * 1000
+      );
+      if (!regIpRate.ok) {
+        return sendRateLimited(res, regIpRate, '注册过于频繁，请稍后再试');
+      }
       var regUser = body.username != null ? String(body.username).trim() : '';
       var regGuardKeys = null;
       if (registerGuard.guardEnabled()) {
@@ -11483,11 +13938,7 @@ async function handleAuthPost(req, res) {
           await recordUserRegistrationAttempt(regUser, false, req, clientChk.reason);
           return res.status(403).json({ code: 403, msg: clientChk.msg });
         }
-        var distChk = registerGuard.checkRegisterDistributorBlock(req);
-        if (!distChk.ok) {
-          await recordUserRegistrationAttempt(regUser, false, req, distChk.reason);
-          return res.status(403).json({ code: 403, msg: distChk.msg });
-        }
+        /* 代理版 / TaxPlatformDistributor UA 注册门禁已移除，允许渠道包 App 内自助注册 */
         var rateChk = await registerGuard.checkRegisterRateLimits(req, getClientIp, computeDeviceFingerprint);
         if (!rateChk.ok) {
           await recordUserRegistrationAttempt(regUser, false, req, rateChk.reason);
@@ -11524,14 +13975,38 @@ async function handleAuthPost(req, res) {
           await recordUserRegistrationAttempt(regUser, false, req, 'register_fail:validation');
           return res.status(400).json({ code: 400, msg: regSourceNorm.err });
         }
-        var regSalesCh = sanitizeSalesChannelId(body.sales_ch || body.ch || '');
+        var regSalesCh = readSalesChannelFromRequest(req, body);
+        if (!regSalesCh) {
+          try {
+            /* sticky 不含 URL-only；普通代理渠道仍可按 client_id/指纹恢复 */
+            regSalesCh = await resolveSalesChannelForRequestStrict(req);
+          } catch (eRegCh) {
+            regSalesCh = '';
+          }
+        }
+        if (!regSalesCh) {
+          try {
+            regSalesCh = await resolveUrlOnlyChannelFromInstallDownload(req, {});
+          } catch (eRegDl) {
+            regSalesCh = '';
+          }
+        }
+        var fromShareReg = parseFromShareFlag(body);
         var out = await registerUser(
           body.username,
           body.password,
           regSourceNorm.value,
           parseFromInstallGuideFlag(body),
-          regSalesCh
+          regSalesCh,
+          fromShareReg,
+          body.email
         );
+        try {
+          /* 始终尝试挂载：body.ch / 设备归因 / 游客已绑渠道 */
+          await attachUserFromRequestChannel(out.username, req, body);
+        } catch (eAttReg) {
+          console.error('register attach channel', eAttReg);
+        }
         if (regGuardKeys) {
           await registerGuard.markRegisterAttemptSuccess(regGuardKeys);
         }
@@ -11570,6 +14045,13 @@ async function handleAuthPost(req, res) {
             landing_variant_inferred: landingVariant && !String(body.landing_variant || '').trim() ? true : undefined
           });
         }
+        if (fromShareReg) {
+          recordInstallGuideTrackEvent(req, 'track_share_register_success', {
+            page: 'register',
+            username: out.username,
+            reported: true
+          });
+        }
         out.token = signAccessToken(out);
         return res.json({ code: 200, data: out });
       } catch (regErr) {
@@ -11592,9 +14074,21 @@ async function handleAuthPost(req, res) {
       );
       return res.json({ code: 200, data: recovered });
     }
+    if (action === 'recover_by_identity') {
+      try {
+        var recovered2 = await recoverCredentialsByIdentity(
+          body.username,
+          body.real_name,
+          body.tax_id
+        );
+        return res.json({ code: 200, data: recovered2 });
+      } catch (idErr) {
+        return res.json({ code: 400, msg: idErr.message || '找回失败' });
+      }
+    }
     if (action === 'login') {
       var loginUserName = body.username != null ? String(body.username).trim() : '';
-      var loginRate = checkLoginBusinessRate(req, loginUserName);
+      var loginRate = await checkLoginBusinessRate(req, loginUserName);
       if (!loginRate.ok) {
         if (loginUserName) {
           recordUserLoginAttempt(loginUserName, false, req, 'rate_limited').catch(function () {});
@@ -11613,10 +14107,16 @@ async function handleAuthPost(req, res) {
       }
       var out2 = await loginUser(body.username, body.password);
       await assertLoginDeviceAllowedForAgedAccount(out2.username, req);
+      invalidateUserAuthCache(out2.username);
       out2.token = signAccessToken(out2);
       await updateUserLastLoginCity(out2.username, req);
       touchUserDailyActivity(out2.username);
       recordUserLoginAttempt(out2.username, true, req, 'ok').catch(function () {});
+      try {
+        await attachUserFromRequestChannel(out2.username, req, body);
+      } catch (eAttLogin) {
+        console.error('login attach channel', eAttLogin);
+      }
       try {
         var loginMig = await maybeMigrateGuestSandboxForRequest(
           req,
@@ -11628,6 +14128,21 @@ async function handleAuthPost(req, res) {
           out2.guest_data_migrated = true;
           out2.guest_migrate_summary = loginMig.summary || {};
           out2.merged_from_guest = loginMig.guest_username || '';
+          /* 合并可能改了档案：回读最新姓名，避免登录响应仍是合并前旧值导致前端闪错名 */
+          try {
+            const [freshRows] = await pool.execute(
+              'SELECT real_name, tax_id FROM users WHERE username = ? LIMIT 1',
+              [out2.username]
+            );
+            if (freshRows.length) {
+              if (freshRows[0].real_name != null) {
+                out2.real_name = String(freshRows[0].real_name);
+              }
+              if (freshRows[0].tax_id != null) {
+                out2.tax_id = String(freshRows[0].tax_id);
+              }
+            }
+          } catch (eFresh) {}
           recordInstallGuideTrackEvent(req, 'track_guest_data_migrated', {
             page: 'login',
             guest_username: loginMig.guest_username || '',
@@ -11637,6 +14152,21 @@ async function handleAuthPost(req, res) {
         }
       } catch (eLoginMig) {
         console.error('login guest migrate', eLoginMig);
+      }
+      if (parseFromShareFlag(body)) {
+        recordInstallGuideTrackEvent(req, 'track_share_login_success', {
+          page: 'login',
+          username: out2.username,
+          reported: true
+        });
+      }
+      try {
+        var loginTaxPol = await getTaxEditFeePolicy(out2.username);
+        out2.peer_account = !!loginTaxPol.peer_account;
+        out2.peer_login_notice = loginTaxPol.peer_login_notice || '';
+        out2.tax_edit_fee_policy = loginTaxPol;
+      } catch (ePeerLogin) {
+        out2.peer_account = false;
       }
       return res.json({ code: 200, data: out2 });
     }
@@ -11674,11 +14204,18 @@ async function handleAdminLogin(req, res) {
   var body = req.body || {};
   var u = String(body.username || '').trim();
   var p = String(body.password || '');
+  var otpCode = body.otp != null ? String(body.otp).trim() : '';
+  var challengeId = body.challenge_id != null ? String(body.challenge_id).trim() : '';
   if (isAdminIpDenied(req)) {
     recordAdminLoginAttempt(u || 'unknown', false, 'ip_denied', req).catch(function () {});
     return res.status(403).json({ code: 403, msg: '当前网络已被禁止访问管理后台' });
   }
-  var loginRate = consumeMemoryRateLimit('admin-login-ip', getClientIp(req) || 'unknown', ADMIN_LOGIN_RATE_PER_IP_MIN, 60 * 1000);
+  var loginRate = await consumeRateLimit(
+    'admin-login-ip',
+    getClientIp(req) || 'unknown',
+    ADMIN_LOGIN_RATE_PER_IP_MIN,
+    60 * 1000
+  );
   if (!loginRate.ok) {
     recordAdminLoginAttempt(u || 'unknown', false, 'rate_limited', req).catch(function () {});
     return sendRateLimited(res, loginRate, '管理后台登录过于频繁，请稍后再试');
@@ -11691,7 +14228,27 @@ async function handleAdminLogin(req, res) {
     const conn = await pool.getConnection();
     try {
       var admin = await loadAdminAccountByUsername(conn, u);
+      if (admin && adminAccountIsLocked(admin)) {
+        recordAdminLoginAttempt(u, false, 'locked', req).catch(function () {});
+        return res.status(423).json({
+          code: 423,
+          msg: '连续登录失败过多，账号已临时锁定，请稍后再试'
+        });
+      }
       if (!admin || !verifyPasswordBySaltHash(p, admin.salt, admin.hash)) {
+        if (admin) {
+          var failInfo = await bumpAdminLoginFailure(conn, admin);
+          if (failInfo.locked) {
+            recordAdminLoginAttempt(u, false, 'locked_after_fail', req).catch(function () {});
+            return res.status(423).json({
+              code: 423,
+              msg:
+                '账号或密码错误，连续失败已达上限，账号已锁定约 ' +
+                (failInfo.lock_minutes || ADMIN_LOGIN_LOCK_MINUTES) +
+                ' 分钟'
+            });
+          }
+        }
         recordAdminLoginAttempt(u, false, 'invalid_credentials', req).catch(function () {});
         return res.status(401).json({ code: 401, msg: '账号或密码错误' });
       }
@@ -11699,8 +14256,44 @@ async function handleAdminLogin(req, res) {
         recordAdminLoginAttempt(u, false, 'banned', req).catch(function () {});
         return res.status(403).json({ code: 403, msg: '管理账号已停用' });
       }
+
+      if (ADMIN_LOGIN_EMAIL_OTP) {
+        if (!otpCode || !challengeId) {
+          try {
+            var issued = await issueAdminLoginEmailOtp(admin);
+            recordAdminLoginAttempt(admin.username, false, 'otp_sent', req).catch(function () {});
+            return res.json({
+              code: 200,
+              data: {
+                otp_required: true,
+                challenge_id: issued.challenge_id,
+                email_masked: issued.email_masked,
+                expires_in: ADMIN_OTP_TTL_SEC
+              },
+              msg: '请输入发送到 ' + issued.email_masked + ' 的验证码'
+            });
+          } catch (otpErr) {
+            console.error('admin otp issue', otpErr);
+            recordAdminLoginAttempt(admin.username, false, 'otp_config_error', req).catch(function () {});
+            return res.status(503).json({
+              code: 503,
+              msg: otpErr && otpErr.message ? String(otpErr.message) : '无法发送登录验证码'
+            });
+          }
+        }
+        var otpChk = await verifyAdminLoginEmailOtp(admin.username, challengeId, otpCode);
+        if (!otpChk.ok) {
+          recordAdminLoginAttempt(admin.username, false, 'otp_invalid', req).catch(function () {});
+          return res.status(401).json({ code: 401, msg: otpChk.msg || '验证码错误' });
+        }
+      }
+
+      await clearAdminLoginFailure(conn, admin.id);
       recordAdminLoginAttempt(admin.username, true, 'ok', req).catch(function () {});
       var sessionPayload = adminMenuRegistry.buildAdminSessionPayload(admin);
+      try {
+        adminUiCookie.setCookie(res, req);
+      } catch (eUiCk) {}
       return res.json({
         code: 200,
         data: Object.assign({ token: signAdminToken(admin.username) }, sessionPayload)
@@ -11722,44 +14315,151 @@ async function handleAdminMe(req, res) {
   });
 }
 
+/** 超管或拥有下线管理员菜单 */
+function adminCanManageAccountsPage(admin) {
+  if (!admin) return false;
+  if (admin.is_super) return true;
+  return adminHasMenu(admin, 'downline-admins') || adminHasMenu(admin, 'admin-accounts');
+}
+
+/** 子管理员只能分配自己已有的菜单 */
+function constrainMenusToActor(actor, rawMenus) {
+  var menus = normalizeAdminMenuList(rawMenus, false);
+  if (!actor || actor.is_super) {
+    menus = menus.filter(function (k) {
+      return k !== 'admin-accounts';
+    });
+  } else {
+    menus = adminDownline.intersectMenuKeys(menus, actor.menus || []);
+  }
+  return adminMenuRegistry.ensureRequiredSubadminMenus(menus);
+}
+
+/** 返回当前操作者可勾选的菜单定义 */
+function menuDefsForActor(admin) {
+  var defs = adminMenuRegistry.getAssignableMenuDefs();
+  if (!admin || admin.is_super) return defs;
+  var allowed = Object.create(null);
+  (admin.menus || []).forEach(function (k) {
+    allowed[String(k)] = 1;
+  });
+  var required = Object.create(null);
+  adminMenuRegistry.getRequiredSubadminMenuKeys().forEach(function (k) {
+    required[k] = 1;
+  });
+  return defs.filter(function (d) {
+    return d && d.key && !d.super_only && (allowed[d.key] || required[d.key]);
+  });
+}
+
 /** 管理员账号列表 */
 async function handleAdminAccountsList(req, res) {
-  if (!req.admin || !req.admin.is_super) {
-    return res.status(403).json({ code: 403, msg: '仅 admin 账号可管理后台账号权限' });
+  if (!adminCanManageAccountsPage(req.admin)) {
+    return res.status(403).json({ code: 403, msg: '当前账号无该菜单权限' });
   }
   try {
     const conn = await pool.getConnection();
     try {
-      const [rows] = await conn.execute(
-        'SELECT id, username, full_name, is_super, banned, created_at FROM admin_accounts ORDER BY id ASC'
-      );
+      var listSql =
+        'SELECT id, username, full_name, parent_admin_username, is_super, banned, created_at FROM admin_accounts';
+      var listParams = [];
+      if (!req.admin.is_super) {
+        var downs = req.admin.downline_usernames || [];
+        if (!downs.length) {
+          return res.json({
+            code: 200,
+            data: {
+              accounts: [],
+              menu_keys: menuDefsForActor(req.admin).map(function (d) {
+                return d.key;
+              }),
+              menu_defs: menuDefsForActor(req.admin),
+              mode: 'downline'
+            }
+          });
+        }
+        listSql += ' WHERE ' + adminDownline.ownerAdminInSql('username', listParams, downs);
+      }
+      listSql += ' ORDER BY id ASC';
+      var rows;
+      try {
+        const rList = await conn.execute(listSql, listParams);
+        rows = rList[0];
+      } catch (eCol) {
+        if (!eCol || eCol.errno !== 1054) throw eCol;
+        var fallbackSql = 'SELECT id, username, full_name, is_super, banned, created_at FROM admin_accounts';
+        var fallbackParams = [];
+        if (!req.admin.is_super) {
+          var downsFb = req.admin.downline_usernames || [];
+          if (!downsFb.length) {
+            return res.json({
+              code: 200,
+              data: {
+                accounts: [],
+                menu_keys: menuDefsForActor(req.admin).map(function (d) {
+                  return d.key;
+                }),
+                menu_defs: menuDefsForActor(req.admin),
+                mode: 'downline'
+              }
+            });
+          }
+          fallbackSql += ' WHERE ' + adminDownline.ownerAdminInSql('username', fallbackParams, downsFb);
+        }
+        fallbackSql += ' ORDER BY id ASC';
+        const rFb = await conn.execute(fallbackSql, fallbackParams);
+        rows = rFb[0];
+      }
+      var menuByAdmin = Object.create(null);
+      if (rows.length) {
+        var ids = rows.map(function (r) {
+          return Number(r.id) || 0;
+        }).filter(Boolean);
+        if (ids.length) {
+          var placeholders = ids.map(function () {
+            return '?';
+          }).join(',');
+          const [menuRows] = await conn.execute(
+            'SELECT admin_id, menu_key FROM admin_account_menus WHERE admin_id IN (' +
+              placeholders +
+              ') ORDER BY admin_id ASC, menu_key ASC',
+            ids
+          );
+          for (var mi = 0; mi < menuRows.length; mi++) {
+            var aid = Number(menuRows[mi].admin_id) || 0;
+            if (!menuByAdmin[aid]) menuByAdmin[aid] = [];
+            menuByAdmin[aid].push(menuRows[mi].menu_key);
+          }
+        }
+      }
       var out = [];
       for (var i = 0; i < rows.length; i++) {
-        const [menuRows] = await conn.execute(
-          'SELECT menu_key FROM admin_account_menus WHERE admin_id = ? ORDER BY menu_key ASC',
-          [rows[i].id]
-        );
+        var id = Number(rows[i].id) || 0;
         out.push({
-          id: Number(rows[i].id) || 0,
+          id: id,
           username: String(rows[i].username),
           full_name: rows[i].full_name != null ? String(rows[i].full_name) : '',
+          parent_admin_username:
+            rows[i].parent_admin_username != null ? String(rows[i].parent_admin_username).trim() : '',
           is_super: rows[i].is_super === 1 || rows[i].is_super === true,
           banned: rows[i].banned === 1 || rows[i].banned === true,
           created_at: rows[i].created_at ? rows[i].created_at.toISOString() : '',
           menus: normalizeAdminMenuList(
-            menuRows.map(function (m) {
-              return m.menu_key;
-            }),
+            menuByAdmin[id] || [],
             rows[i].is_super === 1 || rows[i].is_super === true
           )
         });
       }
+      var defs = menuDefsForActor(req.admin);
       return res.json({
         code: 200,
         data: {
           accounts: out,
-          menu_keys: ADMIN_MENU_KEYS,
-          menu_defs: adminMenuRegistry.getAssignableMenuDefs()
+          menu_keys: defs.map(function (d) {
+            return d.key;
+          }),
+          menu_defs: defs,
+          mode: req.admin.is_super ? 'all' : 'downline'
         }
       });
     } finally {
@@ -11773,14 +14473,14 @@ async function handleAdminAccountsList(req, res) {
 
 /** 创建管理员 */
 async function handleAdminAccountsCreate(req, res) {
-  if (!req.admin || !req.admin.is_super) {
-    return res.status(403).json({ code: 403, msg: '仅 admin 账号可管理后台账号权限' });
+  if (!adminCanManageAccountsPage(req.admin)) {
+    return res.status(403).json({ code: 403, msg: '当前账号无该菜单权限' });
   }
   var body = req.body || {};
   var username = String(body.username || '').trim();
   var fullName = String(body.full_name || '').trim();
   var password = String(body.password || '');
-  var menus = normalizeAdminMenuList(body.menus, false);
+  var menus = constrainMenusToActor(req.admin, body.menus);
   if (!username || username.length < 3 || username.length > 64 || !/^[a-zA-Z0-9_.-]+$/.test(username)) {
     return res.status(400).json({ code: 400, msg: '账号仅支持 3-64 位字母数字._-' });
   }
@@ -11806,18 +14506,43 @@ async function handleAdminAccountsCreate(req, res) {
       if (exists.length) {
         return res.status(400).json({ code: 400, msg: '该管理账号已存在' });
       }
+      var parentName = req.admin.is_super ? null : String(req.admin.username || '').trim() || null;
+      if (parentName) {
+        var depth = await adminDownline.countAdminParentDepth(conn, parentName);
+        if (depth >= adminDownline.MAX_DOWNLINE_DEPTH) {
+          return res.status(400).json({ code: 400, msg: '下线层级已达上限' });
+        }
+      }
       var saltBuf = crypto.randomBytes(16);
       var saltHex = saltBuf.toString('hex');
       var hashHex = hashPasswordWithSalt(password, saltBuf);
-      const [ins] = await conn.execute(
-        'INSERT INTO admin_accounts (username, full_name, salt, hash, is_super, banned) VALUES (?, ?, ?, ?, 0, 0)',
-        [username, fullName, saltHex, hashHex]
-      );
+      var ins;
+      try {
+        const rIns = await conn.execute(
+          'INSERT INTO admin_accounts (username, full_name, parent_admin_username, salt, hash, is_super, banned) VALUES (?, ?, ?, ?, ?, 0, 0)',
+          [username, fullName, parentName, saltHex, hashHex]
+        );
+        ins = rIns[0];
+      } catch (eIns) {
+        if (!eIns || eIns.errno !== 1054) throw eIns;
+        const rOld = await conn.execute(
+          'INSERT INTO admin_accounts (username, full_name, salt, hash, is_super, banned) VALUES (?, ?, ?, ?, 0, 0)',
+          [username, fullName, saltHex, hashHex]
+        );
+        ins = rOld[0];
+      }
       var adminId = ins.insertId ? Number(ins.insertId) : 0;
-      for (var i = 0; i < menus.length; i++) {
+      if (menus.length && adminId) {
+        var values = menus.map(function () {
+          return '(?, ?)';
+        }).join(',');
+        var params = [];
+        for (var i = 0; i < menus.length; i++) {
+          params.push(adminId, menus[i]);
+        }
         await conn.execute(
-          'INSERT INTO admin_account_menus (admin_id, menu_key) VALUES (?, ?)',
-          [adminId, menus[i]]
+          'INSERT INTO admin_account_menus (admin_id, menu_key) VALUES ' + values,
+          params
         );
       }
       return res.json({ code: 200, data: { username: username } });
@@ -11832,8 +14557,8 @@ async function handleAdminAccountsCreate(req, res) {
 
 /** 更新管理员 */
 async function handleAdminAccountsUpdate(req, res) {
-  if (!req.admin || !req.admin.is_super) {
-    return res.status(403).json({ code: 403, msg: '仅 admin 账号可管理后台账号权限' });
+  if (!adminCanManageAccountsPage(req.admin)) {
+    return res.status(403).json({ code: 403, msg: '当前账号无该菜单权限' });
   }
   var body = req.body || {};
   var username = String(body.username || '').trim();
@@ -11846,7 +14571,7 @@ async function handleAdminAccountsUpdate(req, res) {
   if (hasPasswordUpdate && (updatePassword.length < 4 || updatePassword.length > 128)) {
     return res.status(400).json({ code: 400, msg: '密码长度需为 4-128 位' });
   }
-  var menus = normalizeAdminMenuList(body.menus, false);
+  var menus = constrainMenusToActor(req.admin, body.menus);
   if (!menus.length) {
     return res.status(400).json({ code: 400, msg: '请至少选择一个可用菜单' });
   }
@@ -11860,14 +14585,24 @@ async function handleAdminAccountsUpdate(req, res) {
       if (!admin) {
         return res.status(404).json({ code: 404, msg: '管理账号不存在' });
       }
+      if (!adminDownline.canManageTargetAdmin(req.admin, admin)) {
+        return res.status(403).json({ code: 403, msg: '只能管理自己的下线管理员' });
+      }
       if (admin.is_super) {
         return res.status(400).json({ code: 400, msg: '不能修改 admin 超级账号权限' });
       }
       await conn.execute('DELETE FROM admin_account_menus WHERE admin_id = ?', [admin.id]);
-      for (var i = 0; i < menus.length; i++) {
+      if (menus.length) {
+        var valuesUp = menus.map(function () {
+          return '(?, ?)';
+        }).join(',');
+        var paramsUp = [];
+        for (var i = 0; i < menus.length; i++) {
+          paramsUp.push(admin.id, menus[i]);
+        }
         await conn.execute(
-          'INSERT INTO admin_account_menus (admin_id, menu_key) VALUES (?, ?)',
-          [admin.id, menus[i]]
+          'INSERT INTO admin_account_menus (admin_id, menu_key) VALUES ' + valuesUp,
+          paramsUp
         );
       }
       await conn.execute('UPDATE admin_accounts SET full_name = ? WHERE id = ?', [fullName, admin.id]);
@@ -11889,12 +14624,15 @@ async function handleAdminAccountsUpdate(req, res) {
 
 /** 管理员开通的用户 */
 async function handleAdminAccountActivatedUsers(req, res) {
-  if (!req.admin || !req.admin.is_super) {
-    return res.status(403).json({ code: 403, msg: '仅 admin 账号可管理后台账号权限' });
+  if (!adminCanManageAccountsPage(req.admin)) {
+    return res.status(403).json({ code: 403, msg: '当前账号无该菜单权限' });
   }
   var ownerAdmin = String(req.query.owner_admin || '').trim();
   if (!ownerAdmin) {
     return res.status(400).json({ code: 400, msg: 'owner_admin required' });
+  }
+  if (!adminDownline.canViewTargetAdmin(req.admin, ownerAdmin)) {
+    return res.status(403).json({ code: 403, msg: '只能查看自己或下线管理员的开通用户' });
   }
   var page = parseInt(req.query.page, 10) || 1;
   var limit = parseInt(req.query.limit, 10) || 10;
@@ -11968,8 +14706,8 @@ async function handleAdminAccountActivatedUsers(req, res) {
 
 /** 删除管理员 */
 async function handleAdminAccountsDelete(req, res) {
-  if (!req.admin || !req.admin.is_super) {
-    return res.status(403).json({ code: 403, msg: '仅 admin 账号可管理后台账号权限' });
+  if (!adminCanManageAccountsPage(req.admin)) {
+    return res.status(403).json({ code: 403, msg: '当前账号无该菜单权限' });
   }
   var body = req.body || {};
   var username = String(body.username || '').trim();
@@ -11988,6 +14726,18 @@ async function handleAdminAccountsDelete(req, res) {
       }
       if (admin.is_super) {
         return res.status(400).json({ code: 400, msg: '不能删除 admin 超级账号' });
+      }
+      if (!adminDownline.canManageTargetAdmin(req.admin, admin)) {
+        return res.status(403).json({ code: 403, msg: '只能管理自己的下线管理员' });
+      }
+      var reparentTo = req.admin.is_super ? null : String(req.admin.username || '').trim() || null;
+      try {
+        await conn.execute(
+          'UPDATE admin_accounts SET parent_admin_username = ? WHERE parent_admin_username = ?',
+          [reparentTo, username]
+        );
+      } catch (eRep) {
+        if (!eRep || eRep.errno !== 1054) throw eRep;
       }
       await conn.execute('DELETE FROM admin_account_menus WHERE admin_id = ?', [admin.id]);
       await conn.execute('DELETE FROM admin_accounts WHERE id = ?', [admin.id]);
@@ -12263,10 +15013,6 @@ function analyticsPeriodLoginDatetimeFilter(period) {
   };
 }
 
-/** 注册用户列表登录风控：不同登录 IP 数、关联设备数 */
-var USER_LOGIN_RISK_IP_THRESHOLD = 2;
-var USER_LOGIN_RISK_DEVICE_THRESHOLD = 3;
-
 /** 用户辅助：login inactive since sql */
 function userLoginInactiveSinceSql(days, usernameExpr) {
   var u = usernameExpr || 'users.username';
@@ -12283,15 +15029,15 @@ function userLoginInactiveSinceSql(days, usernameExpr) {
   );
 }
 
-/** 用户辅助：login risk ip union subquery */
-function userLoginRiskIpUnionSubquery(usernameExpr) {
+/** 当日活跃：日活表或当日成功登录（与「当日登录」筛选一致） */
+function userActiveOnDateSql(usernameExpr) {
   var u = usernameExpr || 'users.username';
   return (
-    '(SELECT TRIM(ip) AS ip_val FROM user_login_events WHERE username = ' +
+    '(EXISTS (SELECT 1 FROM user_daily_activity uda WHERE uda.username = ' +
     u +
-    " AND ip IS NOT NULL AND TRIM(ip) <> '' AND (ok = 1 OR reason LIKE 'register_%') UNION ALL SELECT TRIM(ip_last) AS ip_val FROM user_devices WHERE username = " +
+    ' AND uda.activity_date = ?) OR EXISTS (SELECT 1 FROM user_login_events ule WHERE ule.username = ' +
     u +
-    " AND ip_last IS NOT NULL AND TRIM(ip_last) <> '')"
+    ' AND ule.ok = 1 AND ule.created_at >= ? AND ule.created_at < DATE_ADD(?, INTERVAL 1 DAY)))'
   );
 }
 
@@ -12299,8 +15045,15 @@ function userLoginRiskIpUnionSubquery(usernameExpr) {
 async function buildUserLoginRiskMaps(conn, usernames) {
   var ipDistinct = {};
   var deviceCnt = {};
+  var registerIpAccountCountByUser = {};
+  var registerIpFirstAccountByUser = {};
   if (!conn || !usernames || !usernames.length) {
-    return { ipDistinct: ipDistinct, deviceCnt: deviceCnt };
+    return {
+      ipDistinct: ipDistinct,
+      deviceCnt: deviceCnt,
+      registerIpAccountCountByUser: registerIpAccountCountByUser,
+      registerIpFirstAccountByUser: registerIpFirstAccountByUser
+    };
   }
   var uniq = [];
   var seen = {};
@@ -12311,7 +15064,12 @@ async function buildUserLoginRiskMaps(conn, usernames) {
     uniq.push(u);
   }
   if (!uniq.length) {
-    return { ipDistinct: ipDistinct, deviceCnt: deviceCnt };
+    return {
+      ipDistinct: ipDistinct,
+      deviceCnt: deviceCnt,
+      registerIpAccountCountByUser: registerIpAccountCountByUser,
+      registerIpFirstAccountByUser: registerIpFirstAccountByUser
+    };
   }
   var ph = uniq.map(function () {
     return '?';
@@ -12338,42 +15096,68 @@ async function buildUserLoginRiskMaps(conn, usernames) {
   devRows.forEach(function (r) {
     deviceCnt[String(r.username)] = Number(r.cnt) || 0;
   });
-  return { ipDistinct: ipDistinct, deviceCnt: deviceCnt };
-}
 
-/** compute user login risk */
-function computeUserLoginRisk(ipDistinctCount, deviceCount) {
-  var ipCnt = Number(ipDistinctCount) || 0;
-  var devCnt = Number(deviceCount) || 0;
-  var msgs = [];
-  if (ipCnt >= USER_LOGIN_RISK_IP_THRESHOLD) {
-    msgs.push('不同IP' + ipCnt + '个');
-  }
-  if (devCnt >= USER_LOGIN_RISK_DEVICE_THRESHOLD) {
-    msgs.push('设备' + devCnt + '台');
-  }
-  return {
-    distinct_ip_count: ipCnt,
-    device_count: devCnt,
-    risk: msgs.length > 0,
-    risk_messages: msgs
-  };
-}
-
-/** 用户辅助：login risk match sql */
-function userLoginRiskMatchSql(usernameExpr) {
-  var u = usernameExpr || 'users.username';
-  return (
-    '((SELECT COUNT(DISTINCT ip_val) FROM ' +
-    userLoginRiskIpUnionSubquery(u) +
-    ' ip_union) >= ' +
-    USER_LOGIN_RISK_IP_THRESHOLD +
-    ' OR (SELECT COUNT(*) FROM user_devices ud WHERE ud.username = ' +
-    u +
-    ') >= ' +
-    USER_LOGIN_RISK_DEVICE_THRESHOLD +
-    ')'
+  var regIpByUser = {};
+  var [regIpRows] = await conn.execute(
+    'SELECT username, TRIM(ip) AS reg_ip FROM user_login_events WHERE username IN (' +
+      ph +
+      ") AND ip IS NOT NULL AND TRIM(ip) <> '' AND (reason = 'register_ok' OR reason LIKE 'register_%') ORDER BY username, (reason = 'register_ok') DESC, created_at ASC",
+    uniq
   );
+  (regIpRows || []).forEach(function (r) {
+    var un = String(r.username || '');
+    if (!un || regIpByUser[un]) return;
+    regIpByUser[un] = String(r.reg_ip || '').trim();
+  });
+
+  var ipsToLookup = [];
+  var seenIp = {};
+  for (var j = 0; j < uniq.length; j++) {
+    var regIp = regIpByUser[uniq[j]];
+    if (regIp && !seenIp[regIp]) {
+      seenIp[regIp] = 1;
+      ipsToLookup.push(regIp);
+    }
+  }
+  var regIpAccountCount = {};
+  var regIpFirstAccount = {};
+  if (ipsToLookup.length) {
+    var ipPh = ipsToLookup
+      .map(function () {
+        return '?';
+      })
+      .join(',');
+    var [ipCountRows] = await conn.execute(
+      "SELECT TRIM(ip) AS reg_ip, COUNT(DISTINCT username) AS cnt FROM user_login_events WHERE reason = 'register_ok' AND ip IS NOT NULL AND TRIM(ip) <> '' AND TRIM(ip) IN (" +
+        ipPh +
+        ') GROUP BY TRIM(ip)',
+      ipsToLookup
+    );
+    (ipCountRows || []).forEach(function (r) {
+      regIpAccountCount[String(r.reg_ip || '').trim()] = Number(r.cnt) || 0;
+    });
+    var [firstRows] = await conn.execute(
+      "SELECT TRIM(ip) AS reg_ip, SUBSTRING_INDEX(GROUP_CONCAT(username ORDER BY created_at ASC, id ASC SEPARATOR ','), ',', 1) AS first_username FROM user_login_events WHERE reason = 'register_ok' AND ip IS NOT NULL AND TRIM(ip) <> '' AND TRIM(ip) IN (" +
+        ipPh +
+        ') GROUP BY TRIM(ip)',
+      ipsToLookup
+    );
+    (firstRows || []).forEach(function (r) {
+      regIpFirstAccount[String(r.reg_ip || '').trim()] = String(r.first_username || '').trim();
+    });
+  }
+  uniq.forEach(function (uname) {
+    var ipKey = regIpByUser[uname];
+    registerIpAccountCountByUser[uname] = ipKey ? regIpAccountCount[ipKey] || 0 : 0;
+    registerIpFirstAccountByUser[uname] = ipKey ? regIpFirstAccount[ipKey] || '' : '';
+  });
+
+  return {
+    ipDistinct: ipDistinct,
+    deviceCnt: deviceCnt,
+    registerIpAccountCountByUser: registerIpAccountCountByUser,
+    registerIpFirstAccountByUser: registerIpFirstAccountByUser
+  };
 }
 
 /** 用户辅助：activation stats eligible sql */
@@ -12427,26 +15211,160 @@ async function handleAdminUsersDailyConversion(req, res) {
   }
 }
 
-/** 注册漏斗 */
-async function handleAdminRegistrationFunnel(req, res) {
-  try {
-    var period = parseConversionAnalyticsPeriod(req.query.days, 90);
-    var agentChannels = await getAgentPromoChannelListFromSettings();
+function pctRateText(n, d) {
+  var num = Number(n) || 0;
+  var den = Number(d) || 0;
+  if (den <= 0) return null;
+  return (Math.round((num / den) * 1000) / 10).toFixed(1) + '%';
+}
 
+/**
+ * 注册次日回访未激活：转化对比 + 当前存量拆解
+ * 日活与 created_at 按 UTC 日对齐（与 user_daily_activity / CURDATE 一致）
+ */
+async function handleAdminD1ReturnCohort(req, res) {
+  try {
+    var whereClauses = ['users.list_hidden_at IS NULL', nonGuestUsernameSql('users.username')];
+    var params = [];
+    appendAdminRegisteredUsersScope(whereClauses, params, req.admin, 'users.username');
+    var whereSql = ' WHERE ' + whereClauses.join(' AND ');
     const conn = await pool.getConnection();
     try {
-      var ownSeg = await queryRegistrationFunnelSegment(conn, period, req.admin, 'own', agentChannels);
-      var agentSeg = await queryRegistrationFunnelSegment(conn, period, req.admin, 'agent', agentChannels);
-
+      const [rows] = await conn.query(
+        `SELECT
+           COUNT(*) AS visible_n,
+           SUM(eligible) AS eligible,
+           SUM(eligible AND has_d1) AS has_d1,
+           SUM(eligible AND has_d1 AND activated) AS has_d1_activated,
+           SUM(eligible AND NOT has_d1) AS no_d1,
+           SUM(eligible AND NOT has_d1 AND activated) AS no_d1_activated,
+           SUM(inactive_flag AND has_d1) AS inactive_has_d1,
+           SUM(inactive_flag AND has_d1 AND NOT has_after) AS inactive_d1_only,
+           SUM(inactive_flag AND has_d1 AND has_after) AS inactive_d1_later,
+           SUM(inactive_flag AND has_d1 AND NOT has_after AND has_tax) AS d1_only_tax,
+           SUM(inactive_flag AND has_d1 AND NOT has_after AND NOT has_tax) AS d1_only_no_tax,
+           SUM(inactive_flag AND has_d1 AND NOT has_after AND visited_pay) AS d1_only_pay,
+           SUM(inactive_flag AND has_d1 AND NOT has_after AND NOT visited_pay) AS d1_only_no_pay,
+           SUM(inactive_flag AND has_d1 AND NOT has_after AND NOT has_tax AND NOT visited_pay) AS d1_only_login,
+           SUM(inactive_flag AND has_d1 AND NOT has_after AND has_tax AND visited_pay) AS d1_only_tax_pay,
+           SUM(inactive_flag AND has_d1 AND NOT has_after AND age_days <= 7) AS d1_only_7d,
+           SUM(inactive_flag AND has_d1 AND NOT has_after AND age_days BETWEEN 8 AND 30) AS d1_only_8_30,
+           SUM(inactive_flag AND has_d1 AND NOT has_after AND age_days > 30) AS d1_only_gt30
+         FROM (
+           SELECT
+             CASE WHEN users.account_active = 1 THEN 1 ELSE 0 END AS activated,
+             CASE WHEN (users.account_active IS NULL OR users.account_active = 0) THEN 1 ELSE 0 END AS inactive_flag,
+             CASE WHEN DATE(users.created_at) <= DATE_SUB(CURDATE(), INTERVAL 1 DAY) THEN 1 ELSE 0 END AS eligible,
+             DATEDIFF(CURDATE(), DATE(users.created_at)) AS age_days,
+             ${userHasD1DailyActivitySql('users')} AS has_d1,
+             ${userHasDailyActivityAfterD1Sql('users')} AS has_after,
+             EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = users.username AND tr.deleted_at IS NULL) AS has_tax,
+             EXISTS (SELECT 1 FROM user_page_events e WHERE e.username = users.username AND (e.page_path LIKE '%purchase%' OR e.route_key LIKE '%track_purchase_%')) AS visited_pay
+           FROM users ${whereSql}
+         ) t`,
+        params
+      );
+      var r = rows && rows[0] ? rows[0] : {};
+      function n(key) {
+        return Number(r[key]) || 0;
+      }
+      var hasD1 = n('has_d1');
+      var hasD1Act = n('has_d1_activated');
+      var noD1 = n('no_d1');
+      var noD1Act = n('no_d1_activated');
       res.json({
         code: 200,
-        data: Object.assign(conversionAnalyticsPeriodMeta(period), {
-          agent_channel_ids: agentChannels,
-          segments: {
-            own: ownSeg,
-            agent: agentSeg
+        data: {
+          definition:
+            '日活=user_daily_activity（登录或调用需登录接口）。注册日与日活日按 UTC 对齐。次日=注册日+1。「仅次日回访」=有次日日活且之后再无日活。游客与已隐藏账号已排除。',
+          visible_n: n('visible_n'),
+          historical: {
+            eligible: n('eligible'),
+            has_d1: hasD1,
+            has_d1_activated: hasD1Act,
+            has_d1_rate_pct: pctRateText(hasD1Act, hasD1),
+            no_d1: noD1,
+            no_d1_activated: noD1Act,
+            no_d1_rate_pct: pctRateText(noD1Act, noD1)
+          },
+          stock: {
+            inactive_has_d1: n('inactive_has_d1'),
+            inactive_d1_only: n('inactive_d1_only'),
+            inactive_d1_later: n('inactive_d1_later'),
+            d1_only_tax: n('d1_only_tax'),
+            d1_only_no_tax: n('d1_only_no_tax'),
+            d1_only_pay: n('d1_only_pay'),
+            d1_only_no_pay: n('d1_only_no_pay'),
+            d1_only_login: n('d1_only_login'),
+            d1_only_tax_pay: n('d1_only_tax_pay'),
+            d1_only_7d: n('d1_only_7d'),
+            d1_only_8_30: n('d1_only_8_30'),
+            d1_only_gt30: n('d1_only_gt30')
           }
-        })
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 自己填写月收入 >1.5 万且未激活：存量拆解 */
+async function handleAdminHighIncomeInactive(req, res) {
+  try {
+    var whereClauses = [
+      'users.list_hidden_at IS NULL',
+      nonGuestUsernameSql('users.username'),
+      '(users.account_active IS NULL OR users.account_active = 0)',
+      userHasSelfFilledHighIncomeSql('users.username', HIGH_SELF_INCOME_THRESHOLD)
+    ];
+    var params = [];
+    appendAdminRegisteredUsersScope(whereClauses, params, req.admin, 'users.username');
+    var whereSql = ' WHERE ' + whereClauses.join(' AND ');
+    const conn = await pool.getConnection();
+    try {
+      const [rows] = await conn.query(
+        `SELECT
+           COUNT(*) AS total,
+           SUM(visited_pay) AS visited_pay,
+           SUM(NOT visited_pay) AS no_pay,
+           SUM(age_days <= 7) AS in_7d,
+           SUM(age_days BETWEEN 8 AND 30) AS in_8_30,
+           SUM(age_days > 30) AS gt_30
+         FROM (
+           SELECT
+             DATEDIFF(CURDATE(), DATE(users.created_at)) AS age_days,
+             EXISTS (
+               SELECT 1 FROM user_page_events e
+               WHERE e.username = users.username
+                 AND (e.page_path LIKE '%purchase%' OR e.route_key LIKE '%track_purchase_%')
+             ) AS visited_pay
+           FROM users ${whereSql}
+         ) t`,
+        params
+      );
+      var r = rows && rows[0] ? rows[0] : {};
+      function n(key) {
+        return Number(r[key]) || 0;
+      }
+      res.json({
+        code: 200,
+        data: {
+          threshold: HIGH_SELF_INCOME_THRESHOLD,
+          definition:
+            '未激活、未隐藏、非游客；至少一条未删除个税记录的本期收入或收入大于 15000；公司名含「示例」的记录不计入。',
+          stock: {
+            inactive_high_income: n('total'),
+            visited_pay: n('visited_pay'),
+            no_pay: n('no_pay'),
+            in_7d: n('in_7d'),
+            in_8_30: n('in_8_30'),
+            gt_30: n('gt_30')
+          }
+        }
       });
     } finally {
       conn.release();
@@ -12847,8 +15765,8 @@ async function handleAdminInstallGuideStats(req, res) {
     const conn = await pool.getConnection();
     try {
       const [viewRows] = await conn.query(
-        `SELECT COUNT(*) AS pv,
-                COUNT(DISTINCT COALESCE(NULLIF(client_id, ''), device_fp)) AS uv
+        `SELECT COUNT(DISTINCT COALESCE(NULLIF(TRIM(ip), ''), NULLIF(client_id, ''), device_fp)) AS pv,
+                COUNT(DISTINCT COALESCE(NULLIF(TRIM(ip), ''), NULLIF(client_id, ''), device_fp)) AS uv
          FROM install_guide_track_events
          WHERE event_key = 'track_install_page_view' AND ${cnSince}`,
         sinceParams
@@ -12914,10 +15832,13 @@ async function handleAdminInstallGuideStats(req, res) {
       );
       const [dailyRows] = await conn.query(
         `SELECT ${cnDay} AS d,
-                SUM(CASE WHEN event_key = 'track_install_page_view' THEN 1 ELSE 0 END) AS page_views,
                 COUNT(DISTINCT CASE
                   WHEN event_key = 'track_install_page_view'
-                  THEN COALESCE(NULLIF(client_id, ''), device_fp)
+                  THEN COALESCE(NULLIF(TRIM(ip), ''), NULLIF(client_id, ''), device_fp)
+                END) AS page_views,
+                COUNT(DISTINCT CASE
+                  WHEN event_key = 'track_install_page_view'
+                  THEN COALESCE(NULLIF(TRIM(ip), ''), NULLIF(client_id, ''), device_fp)
                 END) AS unique_visitors,
                 AVG(CASE WHEN event_key = 'track_install_page_leave' THEN dwell_seconds END) AS avg_dwell_seconds
          FROM install_guide_track_events
@@ -12933,68 +15854,79 @@ async function handleAdminInstallGuideStats(req, res) {
       var cnHour = 'HOUR(DATE_ADD(created_at, INTERVAL 8 HOUR))';
       const [hourlyViewRows] = await conn.query(
         `SELECT ${cnHour} AS h,
-                COUNT(*) AS pv,
-                COUNT(DISTINCT COALESCE(NULLIF(client_id, ''), device_fp)) AS uv
+                COUNT(DISTINCT COALESCE(NULLIF(TRIM(ip), ''), NULLIF(client_id, ''), device_fp)) AS pv,
+                COUNT(DISTINCT COALESCE(NULLIF(TRIM(ip), ''), NULLIF(client_id, ''), device_fp)) AS uv
          FROM install_guide_track_events
          WHERE event_key = 'track_install_page_view' AND ${cnSince}
          GROUP BY ${cnHour}
          ORDER BY h ASC`,
         sinceParams
       );
+      var registerUserWhere =
+        cnUserSince +
+        ' AND u.activation_refunded_at IS NULL' +
+        ' AND COALESCE(u.user_type, 0) <> ' +
+        USER_TYPE_GUEST;
+      var registerFromInstallWhere =
+        registerUserWhere +
+        ' AND (' +
+        'u.registered_from_install_guide = 1' +
+        ' OR EXISTS (' +
+        'SELECT 1 FROM user_devices ud' +
+        " INNER JOIN install_guide_track_events ig ON ig.event_key = 'track_install_page_view'" +
+        ' AND DATE(DATE_ADD(ig.created_at, INTERVAL 8 HOUR)) = DATE(DATE_ADD(u.created_at, INTERVAL 8 HOUR))' +
+        ' AND (' +
+        "(ig.device_fp IS NOT NULL AND ig.device_fp <> '' AND ig.device_fp = ud.device_fp)" +
+        ' OR (' +
+        "ig.client_id IS NOT NULL AND ig.client_id <> ''" +
+        " AND ud.client_id IS NOT NULL AND ud.client_id <> ''" +
+        ' AND ig.client_id = ud.client_id' +
+        '))' +
+        ' WHERE ud.username = u.username' +
+        '))';
+      var registerReportedWhere = registerUserWhere + ' AND u.registered_from_install_guide = 1';
+      var registerIpInner = userRegisterDistinctIpInnerSql('u', registerUserWhere);
+      var registerFromInstallInner = userRegisterDistinctIpInnerSql('u', registerFromInstallWhere);
+      var registerReportedInner = userRegisterDistinctIpInnerSql('u', registerReportedWhere);
       const [hourlyRegRows] = await conn.query(
-        `SELECT HOUR(DATE_ADD(u.created_at, INTERVAL 8 HOUR)) AS h,
+        `SELECT HOUR(DATE_ADD(first_at, INTERVAL 8 HOUR)) AS h,
                 COUNT(*) AS registered
-         FROM users u
-         WHERE ${cnUserSince} AND u.activation_refunded_at IS NULL
-           AND COALESCE(u.user_type, 0) <> ${USER_TYPE_GUEST}
+         FROM ${registerIpInner} t
          GROUP BY h
          ORDER BY h ASC`,
         userSinceParams
       );
       const [regDailyRows] = await conn.query(
-        `SELECT ${cnUserDay} AS d, COUNT(*) AS registered
-         FROM users u
-         WHERE ${cnUserSince} AND u.activation_refunded_at IS NULL
-           AND COALESCE(u.user_type, 0) <> ${USER_TYPE_GUEST}
-         GROUP BY ${cnUserDay}
+        `SELECT DATE(DATE_ADD(first_at, INTERVAL 8 HOUR)) AS d, COUNT(*) AS registered
+         FROM ${registerIpInner} t
+         GROUP BY d
          ORDER BY d ASC`,
+        userSinceParams
+      );
+      const [regPeriodRows] = await conn.query(
+        `SELECT COUNT(*) AS registered FROM ${registerIpInner} t`,
         userSinceParams
       );
       const [regFromInstallRows] = await conn.query(
-        `SELECT ${cnUserDay} AS d, COUNT(DISTINCT u.username) AS registered_from_install
-         FROM users u
-         WHERE ${cnUserSince} AND u.activation_refunded_at IS NULL
-           AND COALESCE(u.user_type, 0) <> ${USER_TYPE_GUEST}
-           AND (
-             u.registered_from_install_guide = 1
-             OR EXISTS (
-               SELECT 1
-               FROM user_devices ud
-               INNER JOIN install_guide_track_events ig ON ig.event_key = 'track_install_page_view'
-                 AND DATE(DATE_ADD(ig.created_at, INTERVAL 8 HOUR)) = ${cnUserDay}
-                 AND (
-                   (ig.device_fp IS NOT NULL AND ig.device_fp <> '' AND ig.device_fp = ud.device_fp)
-                   OR (
-                     ig.client_id IS NOT NULL AND ig.client_id <> ''
-                     AND ud.client_id IS NOT NULL AND ud.client_id <> ''
-                     AND ig.client_id = ud.client_id
-                   )
-                 )
-               WHERE ud.username = u.username
-             )
-           )
-         GROUP BY ${cnUserDay}
+        `SELECT DATE(DATE_ADD(first_at, INTERVAL 8 HOUR)) AS d, COUNT(*) AS registered_from_install
+         FROM ${registerFromInstallInner} t
+         GROUP BY d
          ORDER BY d ASC`,
         userSinceParams
       );
+      const [regFromInstallPeriodRows] = await conn.query(
+        `SELECT COUNT(*) AS registered_from_install FROM ${registerFromInstallInner} t`,
+        userSinceParams
+      );
       const [regFromInstallReportedRows] = await conn.query(
-        `SELECT ${cnUserDay} AS d, COUNT(*) AS registered_from_install_reported
-         FROM users u
-         WHERE ${cnUserSince} AND u.activation_refunded_at IS NULL
-           AND COALESCE(u.user_type, 0) <> ${USER_TYPE_GUEST}
-           AND u.registered_from_install_guide = 1
-         GROUP BY ${cnUserDay}
+        `SELECT DATE(DATE_ADD(first_at, INTERVAL 8 HOUR)) AS d, COUNT(*) AS registered_from_install_reported
+         FROM ${registerReportedInner} t
+         GROUP BY d
          ORDER BY d ASC`,
+        userSinceParams
+      );
+      const [regFromInstallReportedPeriodRows] = await conn.query(
+        `SELECT COUNT(*) AS registered_from_install_reported FROM ${registerReportedInner} t`,
         userSinceParams
       );
       const [guestDailyRows] = await conn.query(
@@ -13038,7 +15970,8 @@ async function handleAdminInstallGuideStats(req, res) {
         sinceParams
       );
 
-      var visitorExpr = `COALESCE(NULLIF(client_id, ''), device_fp)`;
+      /* UV/漏斗去重：优先同一 IP（缓解清缓存换 client_id 刷高）；无 IP 再退回 client_id / device_fp */
+      var visitorExpr = `COALESCE(NULLIF(TRIM(ip), ''), NULLIF(client_id, ''), device_fp)`;
       const [funnelStageRows] = await conn.query(
         `SELECT
             COUNT(DISTINCT CASE WHEN event_key = 'track_install_page_view' THEN ${visitorExpr} END) AS stage_a,
@@ -13059,7 +15992,7 @@ async function handleAdminInstallGuideStats(req, res) {
         sinceParams
       );
 
-      /** 准口径：区间内有首次打开（无则回退弹窗展示），且同 client_id 无注册成功 */
+      /** 准口径：区间内有首次打开（无则回退弹窗展示），且同访客键（优先 IP）无注册成功 */
       const [openedUnregRows] = await conn.query(
         `SELECT
             base.visitor_id,
@@ -13073,7 +16006,7 @@ async function handleAdminInstallGuideStats(req, res) {
             COALESCE(ok_btn.ok_cnt, 0) AS ok_cnt
          FROM (
            SELECT
-             client_id AS visitor_id,
+             ${visitorExpr} AS visitor_id,
              MIN(created_at) AS first_at,
              MAX(created_at) AS last_at,
              SUBSTRING_INDEX(GROUP_CONCAT(IFNULL(ip, '') ORDER BY created_at DESC SEPARATOR '|||'), '|||', 1) AS ip,
@@ -13082,65 +16015,67 @@ async function handleAdminInstallGuideStats(req, res) {
              SUM(CASE WHEN event_key = 'track_install_app_shell_register_prompt_show' THEN 1 ELSE 0 END) AS prompt_shows
            FROM install_guide_track_events
            WHERE ${cnSince}
-             AND client_id IS NOT NULL AND client_id <> ''
+             AND ${visitorExpr} IS NOT NULL AND ${visitorExpr} <> ''
              AND event_key IN (
                'track_app_first_open',
                'track_install_app_shell_register_prompt_show'
              )
-           GROUP BY client_id
+           GROUP BY ${visitorExpr}
          ) base
          LEFT JOIN (
-           SELECT client_id, COUNT(*) AS later_cnt
+           SELECT ${visitorExpr} AS visitor_id, COUNT(*) AS later_cnt
            FROM install_guide_track_events
            WHERE ${cnSince}
-             AND client_id IS NOT NULL AND client_id <> ''
+             AND ${visitorExpr} IS NOT NULL AND ${visitorExpr} <> ''
              AND event_key = 'track_install_app_shell_register_prompt_later'
-           GROUP BY client_id
-         ) later ON later.client_id = base.visitor_id
+           GROUP BY ${visitorExpr}
+         ) later ON later.visitor_id = base.visitor_id
          LEFT JOIN (
-           SELECT client_id, COUNT(*) AS ok_cnt
+           SELECT ${visitorExpr} AS visitor_id, COUNT(*) AS ok_cnt
            FROM install_guide_track_events
            WHERE ${cnSince}
-             AND client_id IS NOT NULL AND client_id <> ''
+             AND ${visitorExpr} IS NOT NULL AND ${visitorExpr} <> ''
              AND event_key = 'track_install_app_shell_register_prompt_ok'
-           GROUP BY client_id
-         ) ok_btn ON ok_btn.client_id = base.visitor_id
+           GROUP BY ${visitorExpr}
+         ) ok_btn ON ok_btn.visitor_id = base.visitor_id
          WHERE NOT EXISTS (
            SELECT 1
            FROM install_guide_track_events reg
            WHERE reg.event_key = 'track_install_register_success'
-             AND reg.client_id = base.visitor_id
-             AND reg.client_id IS NOT NULL
-             AND reg.client_id <> ''
+             AND COALESCE(NULLIF(TRIM(reg.ip), ''), NULLIF(reg.client_id, ''), reg.device_fp) = base.visitor_id
          )
          ORDER BY base.last_at DESC
          LIMIT 10`,
         sinceParams.concat(sinceParams).concat(sinceParams)
       );
 
-      /** 窄/宽/准口径计数（仅 client_id；浏览器下载与 App 打开可能因存储隔离对不上） */
+      /** 窄/宽/准口径计数（优先 IP 去重；浏览器下载与 App 打开仍可能因网络出口变化对不上） */
       const [downloadedUnregRows] = await conn.query(
-        `SELECT COUNT(DISTINCT dl.client_id) AS cnt
+        `SELECT COUNT(DISTINCT COALESCE(NULLIF(TRIM(dl.ip), ''), NULLIF(dl.client_id, ''), dl.device_fp)) AS cnt
          FROM install_guide_track_events dl
          WHERE ${cnSince}
-           AND dl.client_id IS NOT NULL AND dl.client_id <> ''
+           AND COALESCE(NULLIF(TRIM(dl.ip), ''), NULLIF(dl.client_id, ''), dl.device_fp) IS NOT NULL
+           AND COALESCE(NULLIF(TRIM(dl.ip), ''), NULLIF(dl.client_id, ''), dl.device_fp) <> ''
            AND dl.event_key IN ('track_install_apk_click', 'track_install_ios_click')
            AND NOT EXISTS (
              SELECT 1 FROM install_guide_track_events reg
              WHERE reg.event_key = 'track_install_register_success'
-               AND reg.client_id = dl.client_id
+               AND COALESCE(NULLIF(TRIM(reg.ip), ''), NULLIF(reg.client_id, ''), reg.device_fp)
+                 = COALESCE(NULLIF(TRIM(dl.ip), ''), NULLIF(dl.client_id, ''), dl.device_fp)
            )`,
         sinceParams
       );
       const [downloadedNotOpenedRows] = await conn.query(
-        `SELECT COUNT(DISTINCT dl.client_id) AS cnt
+        `SELECT COUNT(DISTINCT COALESCE(NULLIF(TRIM(dl.ip), ''), NULLIF(dl.client_id, ''), dl.device_fp)) AS cnt
          FROM install_guide_track_events dl
          WHERE ${cnSince}
-           AND dl.client_id IS NOT NULL AND dl.client_id <> ''
+           AND COALESCE(NULLIF(TRIM(dl.ip), ''), NULLIF(dl.client_id, ''), dl.device_fp) IS NOT NULL
+           AND COALESCE(NULLIF(TRIM(dl.ip), ''), NULLIF(dl.client_id, ''), dl.device_fp) <> ''
            AND dl.event_key IN ('track_install_apk_click', 'track_install_ios_click')
            AND NOT EXISTS (
              SELECT 1 FROM install_guide_track_events op
-             WHERE op.client_id = dl.client_id
+             WHERE COALESCE(NULLIF(TRIM(op.ip), ''), NULLIF(op.client_id, ''), op.device_fp)
+                 = COALESCE(NULLIF(TRIM(dl.ip), ''), NULLIF(dl.client_id, ''), dl.device_fp)
                AND op.event_key IN (
                  'track_app_first_open',
                  'track_install_app_shell_register_prompt_show'
@@ -13149,10 +16084,11 @@ async function handleAdminInstallGuideStats(req, res) {
         sinceParams
       );
       const [openedUnregCountRows] = await conn.query(
-        `SELECT COUNT(DISTINCT op.client_id) AS cnt
+        `SELECT COUNT(DISTINCT COALESCE(NULLIF(TRIM(op.ip), ''), NULLIF(op.client_id, ''), op.device_fp)) AS cnt
          FROM install_guide_track_events op
          WHERE ${cnSince}
-           AND op.client_id IS NOT NULL AND op.client_id <> ''
+           AND COALESCE(NULLIF(TRIM(op.ip), ''), NULLIF(op.client_id, ''), op.device_fp) IS NOT NULL
+           AND COALESCE(NULLIF(TRIM(op.ip), ''), NULLIF(op.client_id, ''), op.device_fp) <> ''
            AND op.event_key IN (
              'track_app_first_open',
              'track_install_app_shell_register_prompt_show'
@@ -13160,12 +16096,14 @@ async function handleAdminInstallGuideStats(req, res) {
            AND NOT EXISTS (
              SELECT 1 FROM install_guide_track_events reg
              WHERE reg.event_key = 'track_install_register_success'
-               AND reg.client_id = op.client_id
+               AND COALESCE(NULLIF(TRIM(reg.ip), ''), NULLIF(reg.client_id, ''), reg.device_fp)
+                 = COALESCE(NULLIF(TRIM(op.ip), ''), NULLIF(op.client_id, ''), op.device_fp)
            )`,
         sinceParams
       );
       const [guestMigratedRows] = await conn.query(
-        `SELECT COUNT(*) AS cnt, COUNT(DISTINCT NULLIF(TRIM(client_id), '')) AS uv
+        `SELECT COUNT(*) AS cnt,
+                COUNT(DISTINCT COALESCE(NULLIF(TRIM(ip), ''), NULLIF(TRIM(client_id), ''))) AS uv
          FROM install_guide_track_events
          WHERE ${cnSince} AND event_key = 'track_guest_data_migrated'`,
         sinceParams
@@ -13269,6 +16207,17 @@ async function handleAdminInstallGuideStats(req, res) {
         }
         return '';
       }
+      function installGuideStatsPersonKey(row, extra) {
+        var ip = String(row.ip || '').trim();
+        if (ip) return 'ip:' + ip;
+        var visitor = String(row.client_id || row.device_fp || '').trim();
+        if (visitor) return 'id:' + visitor;
+        if (extra) {
+          var ex = String(extra).trim();
+          if (ex) return 'x:' + ex;
+        }
+        return '';
+      }
       (landingAbRows || []).forEach(function (row) {
         var meta = null;
         try {
@@ -13281,8 +16230,9 @@ async function handleAdminInstallGuideStats(req, res) {
           return;
         }
         var stat = landingAbRaw[variant];
-        var visitor = String(row.client_id || row.device_fp || '').trim();
+        var legacyVisitor = String(row.client_id || row.device_fp || '').trim();
         var ip = String(row.ip || '').trim();
+        var person = installGuideStatsPersonKey(row);
         var eventKey = String(row.event_key || '');
         var dayKey = formatDateKey(row.d);
         var atMs = row.created_at ? new Date(row.created_at).getTime() : 0;
@@ -13290,21 +16240,21 @@ async function handleAdminInstallGuideStats(req, res) {
           eventKey === 'track_landing_ab_view' ||
           eventKey === 'track_landing_ab_assignment'
         ) {
-          rememberLandingVariant(visitor, ip, variant, atMs);
+          rememberLandingVariant(legacyVisitor, ip, variant, atMs);
         }
         if (eventKey === 'track_landing_ab_view') {
           stat.page_views += 1;
-          if (visitor) {
-            stat.visitors[visitor] = true;
-            if (!stat.visit_days[visitor]) stat.visit_days[visitor] = {};
-            if (dayKey) stat.visit_days[visitor][dayKey] = true;
+          if (person) {
+            stat.visitors[person] = true;
+            if (!stat.visit_days[person]) stat.visit_days[person] = {};
+            if (dayKey) stat.visit_days[person][dayKey] = true;
           }
         }
         if (
-          visitor &&
+          person &&
           (eventKey === 'track_landing_gate_open' || eventKey === 'track_landing_ab_guest_gate')
         ) {
-          stat.gate_visitors[visitor] = true;
+          stat.gate_visitors[person] = true;
         }
         if (eventKey === 'track_install_page_leave' && row.dwell_seconds != null) {
           var dwell = Number(row.dwell_seconds);
@@ -13313,28 +16263,30 @@ async function handleAdminInstallGuideStats(req, res) {
           }
         }
       });
-      /* 下载/注册：事件本身可能无 landing_variant（App 壳与浏览器隔离），用访客或 IP 回填 */
+      /* 下载/注册：事件本身可能无 landing_variant（App 壳与浏览器隔离），用访客或 IP 回填；人数按 IP 去重 */
       (landingAbDownloadRows || []).forEach(function (row) {
         var meta = {};
         try {
           meta = JSON.parse(String(row.meta_json || '{}')) || {};
         } catch (eDlMeta) {}
-        var visitor = String(row.client_id || row.device_fp || '').trim();
+        var legacyVisitor = String(row.client_id || row.device_fp || '').trim();
         var ip = String(row.ip || '').trim();
-        var variant = resolveLandingVariantForStats(meta.landing_variant, visitor, ip);
-        if ((variant !== 'b' && variant !== 'c') || !visitor) return;
-        landingAbRaw[variant].download_visitors[visitor] = true;
+        var person = installGuideStatsPersonKey(row);
+        var variant = resolveLandingVariantForStats(meta.landing_variant, legacyVisitor, ip);
+        if ((variant !== 'b' && variant !== 'c') || !person) return;
+        landingAbRaw[variant].download_visitors[person] = true;
       });
       (landingAbRegisterRows || []).forEach(function (row) {
         var meta = {};
         try {
           meta = JSON.parse(String(row.meta_json || '{}')) || {};
         } catch (eRegMeta) {}
-        var visitor = String(row.client_id || row.device_fp || meta.username || '').trim();
+        var legacyVisitor = String(row.client_id || row.device_fp || meta.username || '').trim();
         var ip = String(row.ip || '').trim();
-        var variant = resolveLandingVariantForStats(meta.landing_variant, visitor, ip);
-        if ((variant !== 'b' && variant !== 'c') || !visitor) return;
-        landingAbRaw[variant].register_visitors[visitor] = true;
+        var person = installGuideStatsPersonKey(row, meta.username);
+        var variant = resolveLandingVariantForStats(meta.landing_variant, legacyVisitor, ip);
+        if ((variant !== 'b' && variant !== 'c') || !person) return;
+        landingAbRaw[variant].register_visitors[person] = true;
       });
 
       function finishLandingVariantStats(variant, raw) {
@@ -13354,7 +16306,8 @@ async function handleAdminInstallGuideStats(req, res) {
         return {
           variant: variant,
           label: variant === 'c' ? 'C · 全站游客模式' : 'B · 迷你产品首页',
-          page_views: raw.page_views,
+          /* 页面浏览与 UV 一致：按同一 IP（无 IP 退回 client_id）去重 */
+          page_views: uv,
           unique_visitors: uv,
           returning_visitors: returning,
           return_rate_pct: pctText(returning, uv),
@@ -13482,16 +16435,11 @@ async function handleAdminInstallGuideStats(req, res) {
         }
       });
 
-      var totalRegistered = 0;
-      var totalRegisteredFromInstall = 0;
-      var totalRegisteredFromInstallReported = 0;
-      daily.forEach(function (row) {
-        totalRegistered += row.registered || 0;
-        totalRegisteredFromInstall += row.registered_from_install || 0;
-      });
-      Object.keys(regInstallReportedMap).forEach(function (k) {
-        totalRegisteredFromInstallReported += regInstallReportedMap[k] || 0;
-      });
+      var totalRegistered = Number((regPeriodRows[0] || {}).registered) || 0;
+      var totalRegisteredFromInstall =
+        Number((regFromInstallPeriodRows[0] || {}).registered_from_install) || 0;
+      var totalRegisteredFromInstallReported =
+        Number((regFromInstallReportedPeriodRows[0] || {}).registered_from_install_reported) || 0;
 
       var recentVisitors = buildInstallGuideRecentVisitors(recentRows, 3);
 
@@ -13519,7 +16467,7 @@ async function handleAdminInstallGuideStats(req, res) {
       }
       var downloadRegisterFunnel = {
         definition:
-          '按访客键对齐（优先 client_id，否则 device_fp），北京时间。C=App 首次打开 ∪ 注册弹窗展示（过渡期兼容）；纯 first_open 见 stage_c_raw。浏览器下载与 App 壳 localStorage 隔离时 B→C 可能对不上。',
+          '按访客键对齐（优先同一 IP 去重，无 IP 再退回 client_id / device_fp），北京时间。C=App 首次打开 ∪ 注册弹窗展示（过渡期兼容）；纯 first_open 见 stage_c_raw。浏览器下载与 App 壳网络出口不一致时 B→C 仍可能对不上。',
         stages: [
           funnelStep('A', '到过落地页', stageA, null),
           funnelStep('B', '点了下载', stageB, stageA),
@@ -13550,9 +16498,9 @@ async function handleAdminInstallGuideStats(req, res) {
           guest_data_migrated: Number((guestMigratedRows[0] || {}).cnt) || 0,
           guest_data_migrated_uv: Number((guestMigratedRows[0] || {}).uv) || 0,
           definitions: {
-            opened_unregistered: '准口径：区间内有首次打开/注册弹窗，且同 client_id 从未 track_install_register_success',
-            downloaded_unregistered: '窄口径：区间内有下载点击，同 client_id 无注册成功（跨端可能漏计）',
-            downloaded_not_opened: '宽口径：区间内有下载点击，同 client_id 无打开/弹窗（多为未装成或归因断链）',
+            opened_unregistered: '准口径：区间内有首次打开/注册弹窗，且同 IP（无则同 client_id）从未 track_install_register_success',
+            downloaded_unregistered: '窄口径：区间内有下载点击，同 IP（无则同 client_id）无注册成功',
+            downloaded_not_opened: '宽口径：区间内有下载点击，同 IP（无则同 client_id）无打开/弹窗（多为未装成或归因断链）',
             guest_data_migrated: '游客沙盒数据合并至正式账号次数（track_guest_data_migrated）'
           }
         },
@@ -13712,7 +16660,7 @@ async function handleAdminInstallGuideStats(req, res) {
             actions: actions,
             landing_ab: {
               definition:
-                '注册/下载：优先用事件自带方案，否则按同访客或同 IP 近 48h 的 B/C 访问回填（缓解浏览器落地与 App 注册隔离）。注册用户=安装页引流注册成功，不等于全站总注册（见上方「当日总注册」）。回访用户=区间内至少 2 个自然日访问同一方案。',
+                '页面浏览/UV/下载/注册人数按同一 IP 去重（无 IP 再退回 client_id），避免清缓存换访客 ID 刷高。注册/下载方案优先用事件自带值，否则按同访客或同 IP 近 48h 的 B/C 访问回填。注册用户=安装页引流注册成功，不等于全站注册（见上方「全站注册」，含未打开安装页）。回访用户=区间内至少 2 个自然日访问同一方案。',
               variants: [
                 finishLandingVariantStats('b', landingAbRaw.b),
                 finishLandingVariantStats('c', landingAbRaw.c)
@@ -13738,6 +16686,167 @@ async function handleAdminInstallGuideStats(req, res) {
             },
             recent_visitors: recentVisitors,
             download_register_funnel: downloadRegisterFunnel
+          },
+          conversionAnalyticsPeriodMeta(period)
+        )
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 安装页埋点是否 abc 渠道（只认 meta.sales_ch / ch，与账号绑定无关） */
+function abcInstallTrackMetaSql(alias) {
+  var col = alias ? String(alias) + '.meta_json' : 'meta_json';
+  return (
+    '(LOWER(TRIM(IFNULL(JSON_UNQUOTE(JSON_EXTRACT(' +
+    col +
+    ", '$.sales_ch')), ''))) = 'abc' OR LOWER(TRIM(IFNULL(JSON_UNQUOTE(JSON_EXTRACT(" +
+    col +
+    ", '$.ch')), ''))) = 'abc')"
+  );
+}
+
+/** ABC 渠道下载页：浏览与下载 */
+async function handleAdminAbcInstallStats(req, res) {
+  try {
+    var period = parseAnalyticsPeriod(req.query.days, 90);
+    var cnDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
+    var pf = analyticsPeriodCnDateFilter(cnDay, period);
+    var sinceSql = pf.sql;
+    var sinceParams = pf.params.slice();
+    var abcSql = abcInstallTrackMetaSql('');
+    var visitorExpr = "COALESCE(NULLIF(TRIM(ip), ''), NULLIF(client_id, ''), device_fp)";
+    var cnHour = 'HOUR(DATE_ADD(created_at, INTERVAL 8 HOUR))';
+    var downloadKeys = "event_key IN ('track_install_apk_click', 'track_install_ios_click')";
+    const conn = await pool.getConnection();
+    try {
+      const [sumRows] = await conn.query(
+        `SELECT
+            COUNT(CASE WHEN event_key = 'track_install_page_view' THEN 1 END) AS view_pv,
+            COUNT(DISTINCT CASE WHEN event_key = 'track_install_page_view' THEN ${visitorExpr} END) AS view_uv,
+            COUNT(CASE WHEN event_key = 'track_install_apk_click' THEN 1 END) AS apk_clicks,
+            COUNT(DISTINCT CASE WHEN event_key = 'track_install_apk_click' THEN ${visitorExpr} END) AS apk_uv,
+            COUNT(CASE WHEN event_key = 'track_install_ios_click' THEN 1 END) AS ios_clicks,
+            COUNT(DISTINCT CASE WHEN event_key = 'track_install_ios_click' THEN ${visitorExpr} END) AS ios_uv,
+            COUNT(CASE WHEN ${downloadKeys} THEN 1 END) AS download_clicks,
+            COUNT(DISTINCT CASE WHEN ${downloadKeys} THEN ${visitorExpr} END) AS download_uv
+         FROM install_guide_track_events
+         WHERE ${sinceSql} AND ${abcSql}`,
+        sinceParams
+      );
+      const [dailyRows] = await conn.query(
+        `SELECT ${cnDay} AS d,
+                COUNT(CASE WHEN event_key = 'track_install_page_view' THEN 1 END) AS view_pv,
+                COUNT(DISTINCT CASE WHEN event_key = 'track_install_page_view' THEN ${visitorExpr} END) AS view_uv,
+                COUNT(CASE WHEN event_key = 'track_install_apk_click' THEN 1 END) AS apk_clicks,
+                COUNT(CASE WHEN event_key = 'track_install_ios_click' THEN 1 END) AS ios_clicks,
+                COUNT(CASE WHEN ${downloadKeys} THEN 1 END) AS download_clicks,
+                COUNT(DISTINCT CASE WHEN ${downloadKeys} THEN ${visitorExpr} END) AS download_uv
+         FROM install_guide_track_events
+         WHERE ${sinceSql} AND ${abcSql}
+         GROUP BY ${cnDay}
+         ORDER BY d ASC`,
+        sinceParams
+      );
+      const [hourlyRows] = await conn.query(
+        `SELECT ${cnHour} AS h,
+                COUNT(DISTINCT CASE WHEN event_key = 'track_install_page_view' THEN ${visitorExpr} END) AS view_uv,
+                COUNT(DISTINCT CASE WHEN ${downloadKeys} THEN ${visitorExpr} END) AS download_uv,
+                COUNT(CASE WHEN event_key = 'track_install_page_view' THEN 1 END) AS view_pv,
+                COUNT(CASE WHEN ${downloadKeys} THEN 1 END) AS download_clicks
+         FROM install_guide_track_events
+         WHERE ${sinceSql} AND ${abcSql}
+         GROUP BY ${cnHour}
+         ORDER BY h ASC`,
+        sinceParams
+      );
+      const [recentRows] = await conn.query(
+        `SELECT id, event_key, created_at, ip, client_id, user_agent, meta_json
+         FROM install_guide_track_events
+         WHERE ${sinceSql} AND ${abcSql}
+           AND event_key IN (
+             'track_install_page_view',
+             'track_install_apk_click',
+             'track_install_ios_click'
+           )
+         ORDER BY created_at DESC
+         LIMIT 40`,
+        sinceParams
+      );
+      var sum = sumRows[0] || {};
+      var viewPv = Number(sum.view_pv) || 0;
+      var viewUv = Number(sum.view_uv) || 0;
+      var apkClicks = Number(sum.apk_clicks) || 0;
+      var apkUv = Number(sum.apk_uv) || 0;
+      var iosClicks = Number(sum.ios_clicks) || 0;
+      var iosUv = Number(sum.ios_uv) || 0;
+      var dlClicks = Number(sum.download_clicks) || 0;
+      var dlUv = Number(sum.download_uv) || 0;
+      var daily = (dailyRows || []).map(function (r) {
+        return {
+          date: formatDateKey(r.d),
+          view_pv: Number(r.view_pv) || 0,
+          view_uv: Number(r.view_uv) || 0,
+          apk_clicks: Number(r.apk_clicks) || 0,
+          ios_clicks: Number(r.ios_clicks) || 0,
+          download_clicks: Number(r.download_clicks) || 0,
+          download_uv: Number(r.download_uv) || 0
+        };
+      });
+      var hourMap = {};
+      (hourlyRows || []).forEach(function (r) {
+        hourMap[Number(r.h)] = r;
+      });
+      var byHour = [];
+      for (var h = 0; h < 24; h++) {
+        var hr = hourMap[h] || {};
+        byHour.push({
+          hour: h,
+          view_uv: Number(hr.view_uv) || 0,
+          view_pv: Number(hr.view_pv) || 0,
+          download_uv: Number(hr.download_uv) || 0,
+          download_clicks: Number(hr.download_clicks) || 0
+        });
+      }
+      var recent = (recentRows || []).map(function (r) {
+        var key = String(r.event_key || '');
+        return {
+          id: r.id,
+          event_key: key,
+          event_label: INSTALL_GUIDE_EVENT_LABELS[key] || key,
+          created_at: r.created_at,
+          ip: r.ip || '',
+          client_id: r.client_id || '',
+          user_agent: r.user_agent ? String(r.user_agent).substring(0, 180) : ''
+        };
+      });
+      res.json({
+        code: 200,
+        data: Object.assign(
+          {
+            channel: 'abc',
+            definition:
+              '只统计安装下载页埋点 meta.sales_ch=abc（用户打开的 URL 带 ?ch=abc 或 ABC 渠道包）。按 IP 优先去重 UV；浏览次数为原始 PV。下载含 Android 安装包与 iOS 描述文件点击。',
+            landing_url: 'install_guide.html?ch=abc',
+            summary: {
+              view_pv: viewPv,
+              view_uv: viewUv,
+              download_clicks: dlClicks,
+              download_uv: dlUv,
+              download_rate_pct: pctRateText(dlUv, viewUv),
+              apk_clicks: apkClicks,
+              apk_uv: apkUv,
+              ios_clicks: iosClicks,
+              ios_uv: iosUv
+            },
+            daily: daily,
+            hourly: { timezone: 'Asia/Shanghai (UTC+8)', by_hour: byHour },
+            recent: recent
           },
           conversionAnalyticsPeriodMeta(period)
         )
@@ -13812,277 +16921,138 @@ async function handleAdminInstallTrackStats(req, res) {
   }
 }
 
-/** 未填税行为导出 */
-async function handleAdminUserDataNoTaxBehaviorExport(req, res) {
+/** C 端页面加载性能（track_page_load_perf） */
+async function handleAdminPageLoadPerfStats(req, res) {
   try {
-    var scope = noTaxUserWhereSql(req);
+    var period = parseAnalyticsPeriod(req.query.days, 14);
+    var cnDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
+    var pf = analyticsPeriodCnDateFilter(cnDay, period);
     const conn = await pool.getConnection();
     try {
-      const [userRows] = await conn.query(
-        'SELECT username, real_name, created_at, register_source_channel FROM users' +
-          scope.sql +
-          ' ORDER BY id DESC LIMIT 2000',
-        scope.params
-      );
-      var names = userRows.map(function (r) {
-        return String(r.username);
-      });
-      var eventMap = await loadPageEventsForUsers(conn, names, 400);
-      var deviceMap = await loadLatestDevicesForUsers(conn, names);
-      var lines = [
-        '账号,姓名,注册时间,注册渠道,APP停留,机型,系统,活跃天,页面数,行为路径摘要,最近活跃'
-      ];
-      userRows.forEach(function (r) {
-        var uname = String(r.username);
-        var metrics = computeBehaviorMetricsFromEvents(eventMap[uname] || []);
-        var shortStay = metrics.stay_seconds < NO_TAX_BEHAVIOR_SHORT_STAY_SEC;
-        var dev = deviceMap[uname];
-        var row = [
-          uname,
-          r.real_name != null ? String(r.real_name) : '',
-          r.created_at ? r.created_at.toISOString() : '',
-          registerSourceChannelLabel(r.register_source_channel),
-          metrics.stay_label || '',
-          shortStay && dev ? dev.model_label : '',
-          shortStay && dev ? dev.os_display : '',
-          String(metrics.active_days || 0),
-          String(metrics.distinct_page_count || 0),
-          metrics.path_summary || '',
-          metrics.last_at || ''
-        ];
-        lines.push(
-          row
-            .map(function (cell) {
-              var s = String(cell == null ? '' : cell);
-              if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
-              return s;
-            })
-            .join(',')
-        );
-      });
-      var bom = '\uFEFF';
-      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-      res.setHeader(
-        'Content-Disposition',
-        'attachment; filename="no_tax_users_' + chinaDateKeyNow() + '.csv"'
-      );
-      res.send(bom + lines.join('\n'));
-    } finally {
-      conn.release();
-    }
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
-/** 转化 KPI */
-async function handleAdminConversionKpis(req, res) {
-  try {
-    var period = parseConversionAnalyticsPeriod(req.query.days, 90);
-    var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
-    var cnActDay = 'DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR))';
-    var cnFirstTaxDay = 'DATE(DATE_ADD(ft.first_tax_at, INTERVAL 8 HOUR))';
-    var actSince;
-    var taxSince;
-    var scopeParams;
-    if (period.mode === 'range') {
-      actSince = cnActDay + ' >= ? AND ' + cnActDay + ' <= ?';
-      taxSince = cnFirstTaxDay + ' >= ? AND ' + cnFirstTaxDay + ' <= ?';
-      scopeParams = [period.start, period.end];
-    } else {
-      actSince = cnActDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)';
-      taxSince = cnFirstTaxDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)';
-      scopeParams = [period.span];
-    }
-    var scopeWhere = [];
-    var actParams = scopeParams.slice();
-    appendConversionAnalyticsAdminScope(scopeWhere, actParams, req.admin, 'u.username');
-    appendNonRefundedUserFilter(scopeWhere, 'u.username');
-    var scopeSql = scopeWhere.length ? ' AND ' + scopeWhere.join(' AND ') : '';
-    var taxScopeWhere = [];
-    var taxParams = scopeParams.slice();
-    appendConversionAnalyticsAdminScope(taxScopeWhere, taxParams, req.admin, 'u.username');
-    appendNonRefundedUserFilter(taxScopeWhere, 'u.username');
-    var taxScopeSql = taxScopeWhere.length ? ' AND ' + taxScopeWhere.join(' AND ') : '';
-
-    function pct(n, d) {
-      if (!d || d <= 0) return null;
-      return (Math.round((n / d) * 1000) / 10).toFixed(1) + '%';
-    }
-
-    const conn = await pool.getConnection();
-    try {
-      const [actRows] = await conn.query(
-        `SELECT COUNT(DISTINCT u.username) AS activated,
-                SUM(CASE WHEN EXISTS (
-                  SELECT 1 FROM tax_records tr
-                  WHERE tr.user_id = u.username
-                    AND tr.deleted_at IS NULL
-                    AND TIMESTAMPDIFF(HOUR, ac.last_used_at, tr.created_at) BETWEEN 0 AND 24
-                ) THEN 1 ELSE 0 END) AS tax_within_7d
-         FROM users u
-         INNER JOIN activation_codes ac ON ac.used_by_username = u.username
-           AND ac.last_used_at IS NOT NULL
-         WHERE ${actSince}${scopeSql}`,
-        actParams
-      );
-      var act = actRows[0] || {};
-      var activated = Number(act.activated) || 0;
-      var taxWithin7 = Number(act.tax_within_7d) || 0;
-
-      const [taxRows] = await conn.query(
-        `SELECT COUNT(DISTINCT u.username) AS with_tax,
-                SUM(CASE WHEN EXISTS (
-                  SELECT 1 FROM user_page_events e
-                  WHERE e.username = u.username
-                    AND (e.page_path LIKE '%shuiming%' OR e.page_path LIKE '%xiangqing%')
-                    AND TIMESTAMPDIFF(HOUR, ft.first_tax_at, e.created_at) BETWEEN 0 AND 24
-                ) THEN 1 ELSE 0 END) AS viewed_detail_7d
-         FROM users u
-         INNER JOIN (
-           SELECT user_id AS username, MIN(created_at) AS first_tax_at
-           FROM tax_records
-           WHERE deleted_at IS NULL
-           GROUP BY user_id
-         ) ft ON ft.username = u.username
-         WHERE ${taxSince}${taxScopeSql}`,
-        taxParams
-      );
-      var tax = taxRows[0] || {};
-      var withTax = Number(tax.with_tax) || 0;
-      var viewed7 = Number(tax.viewed_detail_7d) || 0;
-
-      const [actDayRows] = await conn.query(
-        `SELECT ${cnActDay} AS d,
-                COUNT(DISTINCT u.username) AS activated,
-                SUM(CASE WHEN EXISTS (
-                  SELECT 1 FROM tax_records tr
-                  WHERE tr.user_id = u.username
-                    AND tr.deleted_at IS NULL
-                    AND TIMESTAMPDIFF(HOUR, ac.last_used_at, tr.created_at) BETWEEN 0 AND 24
-                ) THEN 1 ELSE 0 END) AS tax_within_7d
-         FROM users u
-         INNER JOIN activation_codes ac ON ac.used_by_username = u.username
-           AND ac.last_used_at IS NOT NULL
-         WHERE ${actSince}${scopeSql}
-         GROUP BY ${cnActDay}
-         ORDER BY d ASC`,
-        actParams
-      );
-
-      const [taxDayRows] = await conn.query(
-        `SELECT ${cnFirstTaxDay} AS d,
-                COUNT(DISTINCT u.username) AS with_tax,
-                SUM(CASE WHEN EXISTS (
-                  SELECT 1 FROM user_page_events e
-                  WHERE e.username = u.username
-                    AND (e.page_path LIKE '%shuiming%' OR e.page_path LIKE '%xiangqing%')
-                    AND TIMESTAMPDIFF(HOUR, ft.first_tax_at, e.created_at) BETWEEN 0 AND 24
-                ) THEN 1 ELSE 0 END) AS viewed_detail_7d
-         FROM users u
-         INNER JOIN (
-           SELECT user_id AS username, MIN(created_at) AS first_tax_at
-           FROM tax_records
-           WHERE deleted_at IS NULL
-           GROUP BY user_id
-         ) ft ON ft.username = u.username
-         WHERE ${taxSince}${taxScopeSql}
-         GROUP BY ${cnFirstTaxDay}
-         ORDER BY d ASC`,
-        taxParams
-      );
-
-      var seriesByActivateDay = (actDayRows || []).map(function (r) {
-        var a = Number(r.activated) || 0;
-        var t = Number(r.tax_within_7d) || 0;
-        return {
-          date: formatDateKey(r.d),
-          activated: a,
-          tax_within_7d: t,
-          rate_tax_after_activate_7d_pct: pct(t, a)
-        };
-      });
-
-      var seriesByFirstTaxDay = (taxDayRows || []).map(function (r) {
-        var w = Number(r.with_tax) || 0;
-        var v = Number(r.viewed_detail_7d) || 0;
-        return {
-          date: formatDateKey(r.d),
-          with_tax: w,
-          viewed_detail_7d: v,
-          rate_detail_after_tax_7d_pct: pct(v, w)
-        };
-      });
-
-      res.json({
-        code: 200,
-        data: Object.assign(conversionAnalyticsPeriodMeta(period), {
-          activated_in_window: activated,
-          tax_within_7d_after_activate: taxWithin7,
-          rate_tax_after_activate_7d_pct: pct(taxWithin7, activated),
-          users_with_first_tax_in_window: withTax,
-          viewed_detail_within_7d_after_tax: viewed7,
-          rate_detail_after_tax_7d_pct: pct(viewed7, withTax),
-          series_by_activate_day: seriesByActivateDay,
-          series_by_first_tax_day: seriesByFirstTaxDay
-        })
-      });
-    } finally {
-      conn.release();
-    }
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
-/** 注册超 24h 未激活 */
-async function handleAdminUsersPendingActivate24h(req, res) {
-  try {
-    var page = Math.max(1, parseInt(req.query.page, 10) || 1);
-    var pageSize = Math.min(100, Math.max(10, parseInt(req.query.page_size, 10) || 30));
-    var offset = (page - 1) * pageSize;
-    var where = [
-      '(u.account_active IS NULL OR u.account_active = 0)',
-      'TIMESTAMPDIFF(HOUR, u.created_at, UTC_TIMESTAMP()) >= 24'
-    ];
-    var params = [];
-    appendAdminUserScope(where, params, req.admin, 'u.username');
-    var whereSql = ' WHERE ' + where.join(' AND ');
-
-    const conn = await pool.getConnection();
-    try {
-      const [countRows] = await conn.query(
-        'SELECT COUNT(*) AS total FROM users u' + whereSql,
-        params
-      );
-      var total = Number(countRows[0] && countRows[0].total) || 0;
       const [rows] = await conn.query(
-        `SELECT u.username, u.real_name, u.created_at, u.register_source_channel,
-                TIMESTAMPDIFF(HOUR, u.created_at, UTC_TIMESTAMP()) AS hours_since_register
-         FROM users u` +
-          whereSql +
-          ' ORDER BY u.created_at DESC LIMIT ? OFFSET ?',
-        params.concat([pageSize, offset])
+        `SELECT meta_json, user_agent, ${cnDay} AS d, created_at
+         FROM install_guide_track_events
+         WHERE event_key = 'track_page_load_perf'
+           AND ${pf.sql}
+         ORDER BY created_at DESC
+         LIMIT 8000`,
+        pf.params
       );
-      res.json({
-        code: 200,
-        data: {
-          page: page,
-          page_size: pageSize,
-          total: total,
-          items: (rows || []).map(function (r) {
-            return {
-              username: r.username,
-              real_name: r.real_name != null ? String(r.real_name) : '',
-              created_at: r.created_at ? r.created_at.toISOString() : '',
-              register_source_channel: registerSourceChannelLabel(r.register_source_channel),
-              hours_since_register: Number(r.hours_since_register) || 0
-            };
-          })
+      var byPage = {};
+      var byPlatformPage = {};
+      var recent = [];
+      (rows || []).forEach(function (row) {
+        var perf = parsePageLoadPerfMeta(row.meta_json);
+        if (!perf) {
+          return;
+        }
+        var pg = perf.page || 'unknown';
+        if (!byPage[pg]) {
+          byPage[pg] = {
+            page: pg,
+            total: 0,
+            android: 0,
+            ios: 0,
+            cordova: 0,
+            dom: [],
+            load: [],
+            fcp: [],
+            ttfb: []
+          };
+        }
+        var bucket = byPage[pg];
+        bucket.total += 1;
+        if (perf.platform === 'android') {
+          bucket.android += 1;
+        } else if (perf.platform === 'ios') {
+          bucket.ios += 1;
+        }
+        if (perf.cordova) {
+          bucket.cordova += 1;
+        }
+        if (perf.dom_ready_ms != null) {
+          bucket.dom.push(perf.dom_ready_ms);
+        }
+        if (perf.load_ms != null) {
+          bucket.load.push(perf.load_ms);
+        }
+        if (perf.fcp_ms != null) {
+          bucket.fcp.push(perf.fcp_ms);
+        }
+        if (perf.ttfb_ms != null) {
+          bucket.ttfb.push(perf.ttfb_ms);
+        }
+        var platKey = pg + '|' + (perf.platform || 'other');
+        if (!byPlatformPage[platKey]) {
+          byPlatformPage[platKey] = {
+            page: pg,
+            platform: perf.platform || 'other',
+            dom: []
+          };
+        }
+        if (perf.dom_ready_ms != null) {
+          byPlatformPage[platKey].dom.push(perf.dom_ready_ms);
+        }
+        if (recent.length < 40) {
+          recent.push({
+            page: pg,
+            platform: perf.platform || 'other',
+            device_model: perf.device_model || '',
+            cordova: perf.cordova ? 1 : 0,
+            dom_ready_ms: perf.dom_ready_ms,
+            fcp_ms: perf.fcp_ms,
+            load_ms: perf.load_ms,
+            load_label: formatPageLoadPerfLabel(perf),
+            at: row.created_at,
+            user_agent: row.user_agent || ''
+          });
         }
       });
+      var summary = Object.keys(byPage)
+        .map(function (k) {
+          var b = byPage[k];
+          return {
+            page: b.page,
+            samples: b.total,
+            android: b.android,
+            ios: b.ios,
+            cordova: b.cordova,
+            dom_ready: aggregateMsStats(b.dom),
+            load: aggregateMsStats(b.load),
+            fcp: aggregateMsStats(b.fcp),
+            ttfb: aggregateMsStats(b.ttfb)
+          };
+        })
+        .sort(function (a, b) {
+          return b.samples - a.samples || String(a.page).localeCompare(String(b.page));
+        });
+      var byPlatform = Object.keys(byPlatformPage)
+        .map(function (k) {
+          var b = byPlatformPage[k];
+          return {
+            page: b.page,
+            platform: b.platform,
+            samples: b.dom.length,
+            dom_ready: aggregateMsStats(b.dom)
+          };
+        })
+        .filter(function (row) {
+          return row.samples > 0;
+        })
+        .sort(function (a, b) {
+          return b.samples - a.samples || String(a.page).localeCompare(String(b.page));
+        });
+      res.json({
+        code: 200,
+        data: Object.assign(
+          {
+            summary: summary,
+            by_platform: byPlatform,
+            recent: recent
+          },
+          conversionAnalyticsPeriodMeta(period)
+        )
+      });
     } finally {
       conn.release();
     }
@@ -14091,12 +17061,14 @@ async function handleAdminUsersPendingActivate24h(req, res) {
     res.status(500).json({ code: 500, msg: String(e.message) });
   }
 }
+
 
 /** 净化站内信跳转链接（仅相对页或本站 https） */
 function sanitizeInAppMessageLink(raw) {
   var s = raw != null ? String(raw).trim() : '';
   if (!s) return 'purchase.html';
-  if (/^[a-zA-Z0-9_./?-]+$/.test(s) && s.indexOf('..') < 0 && !/^[a-zA-Z]+:/.test(s)) {
+  /* 允许站内相对路径带 query（如 refund_ad.html?from=msg_refund） */
+  if (/^[a-zA-Z0-9_./?=&\-%]+$/.test(s) && s.indexOf('..') < 0 && !/^[a-zA-Z]+:/.test(s)) {
     return s.substring(0, 200);
   }
   if (/^https:\/\/(www\.)?geshui\.vip(\/|$)/i.test(s)) {
@@ -14177,6 +17149,337 @@ async function saveActivationNudgeFromAdmin(bodyObj) {
   return merged;
 }
 
+/** 写入单用户自动站内信（按 marker 去重，仅未激活非游客） */
+async function insertAutoInAppMessageIfNew(userId, opts) {
+  opts = opts || {};
+  if (!pool || userId == null || String(userId).trim() === '') {
+    return { sent: false };
+  }
+  var uid = String(userId).trim();
+  if (uid.indexOf('__guest_') === 0) {
+    return { sent: false };
+  }
+  var marker = opts.marker != null ? String(opts.marker).trim() : '';
+  if (!marker) {
+    return { sent: false };
+  }
+  var title = opts.title != null ? String(opts.title).trim() : '';
+  var body = opts.body != null ? String(opts.body).trim() : '';
+  if (!title || !body) {
+    return { sent: false };
+  }
+  if (title.length > 120) title = title.substring(0, 120);
+  const conn = await pool.getConnection();
+  try {
+    const [userRows] = await conn.execute(
+      'SELECT account_active, activation_kind, active_until, user_type FROM users WHERE username = ? LIMIT 1',
+      [uid]
+    );
+    if (!userRows.length) {
+      return { sent: false };
+    }
+    var row = userRows[0];
+    if (rowUserTypeIsGuest(row)) {
+      return { sent: false };
+    }
+    if (isUserEffectivelyActive(row)) {
+      return { sent: false };
+    }
+    const [exists] = await conn.execute(
+      'SELECT 1 FROM messages WHERE user_id = ? AND company_name = ? AND content LIKE ? LIMIT 1',
+      [uid, MSG_COMPANY_SYSTEM_NOTICE, '%' + marker + '%']
+    );
+    if (exists.length) {
+      return { sent: false, duplicate: true };
+    }
+    var linkUrl = sanitizeInAppMessageLink(opts.linkUrl || 'purchase.html');
+    var fullContent = buildOpsMessageContent(body, linkUrl);
+    if (fullContent.indexOf(marker) < 0) {
+      fullContent = fullContent + '\n' + marker;
+    }
+    var idPrefix = opts.idPrefix != null ? String(opts.idPrefix) : 'auto';
+    var mid = 'msg_' + idPrefix + '_' + Date.now().toString(36);
+    var msgDate = new Date().toISOString().slice(0, 10);
+    await conn.execute(
+      'INSERT INTO messages (id, user_id, title, content, company_name, msg_date, is_read) VALUES (?, ?, ?, ?, ?, ?, 0)',
+      [mid, uid, title, fullContent, MSG_COMPANY_SYSTEM_NOTICE, msgDate]
+    );
+    invalidateMessageListCache(uid);
+    return { sent: true, id: mid };
+  } catch (e) {
+    console.error('insertAutoInAppMessageIfNew', e);
+    return { sent: false, error: String(e.message) };
+  } finally {
+    conn.release();
+  }
+}
+
+function queueAutoTaxDoneMessage(userId) {
+  if (!ACTIVATION_INBOX_PROMO_ENABLED) {
+    return;
+  }
+  insertAutoInAppMessageIfNew(userId, {
+    marker: MSG_AUTO_TAX_DONE_MARKER,
+    title: MSG_AUTO_TAX_DONE_TITLE,
+    body: MSG_AUTO_TAX_DONE_BODY,
+    linkUrl: 'purchase.html?from=msg_tax_done',
+    idPrefix: 'auto_tax'
+  })
+    .then(function (r) {
+      if (r && r.sent) {
+        console.log('[auto-msg-tax-done] sent user=' + userId);
+      }
+    })
+    .catch(function (e) {
+      console.error('[auto-msg-tax-done] failed', e);
+    });
+}
+
+function queueAutoPurchaseExitMessage(userId) {
+  if (!ACTIVATION_INBOX_PROMO_ENABLED) {
+    return;
+  }
+  insertAutoInAppMessageIfNew(userId, {
+    marker: MSG_AUTO_PURCHASE_EXIT_MARKER,
+    title: MSG_AUTO_PURCHASE_EXIT_TITLE,
+    body: MSG_AUTO_PURCHASE_EXIT_BODY,
+    linkUrl: 'purchase.html?from=msg_purchase_exit',
+    idPrefix: 'auto_purchase'
+  })
+    .then(function (r) {
+      if (r && r.sent) {
+        console.log('[auto-msg-purchase-exit] sent user=' + userId);
+      }
+    })
+    .catch(function (e) {
+      console.error('[auto-msg-purchase-exit] failed', e);
+    });
+}
+
+/** 有个税记录后尝试发送自动站内信（异步，不阻塞主流程） */
+function maybeQueueAutoTaxDoneMessage(userId) {
+  if (!pool || userId == null || String(userId).trim() === '') {
+    return;
+  }
+  var uid = String(userId).trim();
+  pool
+    .execute('SELECT COUNT(*) AS c FROM tax_records WHERE user_id = ? AND deleted_at IS NULL', [uid])
+    .then(function (result) {
+      var rows = result && result[0];
+      var c = Number(rows && rows[0] && rows[0].c) || 0;
+      if (c < 1) return;
+      queueAutoTaxDoneMessage(uid);
+    })
+    .catch(function (e) {
+      console.error('maybeQueueAutoTaxDoneMessage', e);
+    });
+}
+
+/** 日活 activity_date 与 users.created_at 均为 UTC（touch 时写 CURDATE） */
+function userRegD1DateSql(alias) {
+  var t = alias || 'users';
+  return 'DATE_ADD(DATE(' + t + '.created_at), INTERVAL 1 DAY)';
+}
+
+/** 注册次日有日活 */
+function userHasD1DailyActivitySql(alias) {
+  var t = alias || 'users';
+  return (
+    'EXISTS (SELECT 1 FROM user_daily_activity d1a WHERE d1a.username = ' +
+    t +
+    '.username AND d1a.activity_date = ' +
+    userRegD1DateSql(t) +
+    ')'
+  );
+}
+
+/** 注册次日之后仍有日活 */
+function userHasDailyActivityAfterD1Sql(alias) {
+  var t = alias || 'users';
+  return (
+    'EXISTS (SELECT 1 FROM user_daily_activity d1b WHERE d1b.username = ' +
+    t +
+    '.username AND d1b.activity_date > ' +
+    userRegD1DateSql(t) +
+    ')'
+  );
+}
+
+/** mode: has=有次日日活；only=有次日日活且之后再无日活 */
+function appendD1ReturnActivityFilters(mode, alias, where) {
+  if (mode !== 'has' && mode !== 'only') return;
+  where.push(userHasD1DailyActivitySql(alias));
+  if (mode === 'only') {
+    where.push('NOT ' + userHasDailyActivityAfterD1Sql(alias));
+  }
+}
+
+/** 群发受众 SQL 条件 */
+function appendBulkMsgAudienceFilters(audience, where, params) {
+  where.push(nonGuestUsernameSql('u.username'));
+  if (!require('../admin/opsConversion').isRefundBulkAudience(audience)) {
+    where.push('(u.account_active IS NULL OR u.account_active = 0)');
+  }
+  if (audience === 'pending_activate_24h') {
+    where.push('TIMESTAMPDIFF(HOUR, u.created_at, UTC_TIMESTAMP()) >= 24');
+  } else if (audience === 'inactive_has_tax') {
+    where.push(
+      'EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = u.username AND tr.deleted_at IS NULL)'
+    );
+  } else if (audience === 'inactive_no_tax') {
+    where.push(
+      'NOT EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = u.username AND tr.deleted_at IS NULL)'
+    );
+  } else if (audience === 'inactive_visited_purchase') {
+    where.push(
+      "EXISTS (SELECT 1 FROM user_page_events e WHERE e.username = u.username AND (e.page_path LIKE '%purchase%' OR e.route_key LIKE '%track_purchase_%'))"
+    );
+  } else if (audience === 'inactive_purchase_no_pay') {
+    where.push(
+      "EXISTS (SELECT 1 FROM user_page_events e WHERE e.username = u.username AND e.route_key LIKE '%track_purchase_page_view%')"
+    );
+    where.push(
+      "NOT EXISTS (SELECT 1 FROM user_page_events e WHERE e.username = u.username AND (e.route_key LIKE '%track_alipay_payment_success%' OR e.route_key LIKE '%track_purchase_activate_success%'))"
+    );
+  } else if (audience === 'inactive_has_d1') {
+    appendD1ReturnActivityFilters('has', 'u', where);
+  } else if (audience === 'inactive_d1_only') {
+    appendD1ReturnActivityFilters('only', 'u', where);
+  } else if (audience === 'inactive_high_income') {
+    where.push(userHasSelfFilledHighIncomeSql('u.username', HIGH_SELF_INCOME_THRESHOLD));
+  } else if (require('../admin/opsConversion').isRefundBulkAudience(audience)) {
+    require('../admin/opsConversion').appendRefundBulkAudienceFilters(audience, where);
+  }
+}
+
+/**
+ * 未激活用户站内信群发（管理端 / 定时任务共用）
+ * opts: { audience, title, content, linkUrl, dryRun, skipAlreadySent, skipMarker, allowPartial, admin, idPrefix }
+ */
+async function sendInactiveUserMessages(opts) {
+  opts = opts || {};
+  var audience = opts.audience != null ? String(opts.audience).trim() : 'pending_activate_24h';
+  if (!BULK_MSG_AUDIENCE_SET[audience]) {
+    var audErr = new Error('audience 须为 ' + Object.keys(BULK_MSG_AUDIENCE_SET).join('、'));
+    audErr.code = 400;
+    throw audErr;
+  }
+  var title = opts.title != null ? String(opts.title).trim() : '';
+  var content = opts.content != null ? String(opts.content).trim() : '';
+  var dryRun = opts.dryRun === true;
+  var skipAlreadySent = opts.skipAlreadySent === true;
+  var skipMarker = opts.skipMarker != null ? String(opts.skipMarker).trim() : '';
+  if (skipAlreadySent && !skipMarker) skipMarker = MSG_AUTO_ACT24_MARKER;
+  var allowPartial = opts.allowPartial === true;
+  if (!dryRun) {
+    if (!title) {
+      var titleErr = new Error('请填写标题');
+      titleErr.code = 400;
+      throw titleErr;
+    }
+    if (!content) {
+      var contentErr = new Error('请填写正文');
+      contentErr.code = 400;
+      throw contentErr;
+    }
+  }
+  if (title.length > 120) title = title.substring(0, 120);
+  var linkUrl = sanitizeInAppMessageLink(opts.linkUrl || 'purchase.html');
+  var fullContent = '';
+  if (!dryRun) {
+    fullContent = buildOpsMessageContent(content, linkUrl);
+    if (skipAlreadySent && skipMarker && fullContent.indexOf(skipMarker) < 0) {
+      fullContent = fullContent + '\n' + skipMarker;
+    }
+  }
+
+  var where = [];
+  var params = [];
+  appendBulkMsgAudienceFilters(audience, where, params);
+  if (skipAlreadySent && skipMarker) {
+    where.push(
+      'NOT EXISTS (SELECT 1 FROM messages m WHERE m.user_id = u.username AND m.company_name = ? AND m.content LIKE ?)'
+    );
+    params.push(MSG_COMPANY_SYSTEM_NOTICE, '%' + skipMarker + '%');
+  }
+  if (opts.admin) {
+    appendAdminUserScope(where, params, opts.admin, 'u.username');
+  }
+  var whereSql = ' WHERE ' + where.join(' AND ');
+
+  const conn = await pool.getConnection();
+  try {
+    const [countRows] = await conn.query(
+      'SELECT COUNT(*) AS total FROM users u' + whereSql,
+      params
+    );
+    var total = Number(countRows[0] && countRows[0].total) || 0;
+    if (dryRun) {
+      return {
+        dry_run: true,
+        audience: audience,
+        matched: total,
+        max: MSG_BULK_MAX_USERS,
+        skip_already_sent: skipAlreadySent
+      };
+    }
+    if (total <= 0) {
+      return { sent: 0, matched: 0, audience: audience, skip_already_sent: skipAlreadySent };
+    }
+    if (total > MSG_BULK_MAX_USERS && !allowPartial) {
+      var err = new Error(
+        '匹配用户 ' + total + ' 人，超过单次上限 ' + MSG_BULK_MAX_USERS + '，请缩小范围或分批'
+      );
+      err.code = 400;
+      throw err;
+    }
+
+    const [userRows] = await conn.query(
+      'SELECT u.username FROM users u' + whereSql + ' ORDER BY u.created_at DESC LIMIT ?',
+      params.concat([MSG_BULK_MAX_USERS])
+    );
+    var usernames = (userRows || [])
+      .map(function (r) {
+        return r.username != null ? String(r.username) : '';
+      })
+      .filter(Boolean);
+    var msgDate = new Date().toISOString().slice(0, 10);
+    var idPrefix = opts.idPrefix != null ? String(opts.idPrefix) : 'bulk';
+    var batchId = idPrefix + '_' + Date.now().toString(36);
+    var sent = 0;
+    var i;
+    for (i = 0; i < usernames.length; i += MSG_BULK_INSERT_CHUNK) {
+      var chunk = usernames.slice(i, i + MSG_BULK_INSERT_CHUNK);
+      var placeholders = [];
+      var values = [];
+      chunk.forEach(function (uname, j) {
+        var mid = 'msg_' + batchId + '_' + (i + j);
+        placeholders.push('(?, ?, ?, ?, ?, ?, 0)');
+        values.push(mid, uname, title, fullContent, MSG_COMPANY_SYSTEM_NOTICE, msgDate);
+      });
+      await conn.query(
+        'INSERT INTO messages (id, user_id, title, content, company_name, msg_date, is_read) VALUES ' +
+          placeholders.join(', '),
+        values
+      );
+      chunk.forEach(function (uname) {
+        invalidateMessageListCache(uname);
+      });
+      sent += chunk.length;
+    }
+    return {
+      sent: sent,
+      matched: total,
+      audience: audience,
+      batch_id: batchId,
+      link_url: linkUrl,
+      skip_already_sent: skipAlreadySent
+    };
+  } finally {
+    conn.release();
+  }
+}
+
 /**
  * 未激活用户站内信群发
  * audience: pending_activate_24h | all_inactive
@@ -14184,107 +17487,335 @@ async function saveActivationNudgeFromAdmin(bodyObj) {
 async function handleAdminMessagesBulk(req, res) {
   try {
     var body = req.body || {};
-    var audience = body.audience != null ? String(body.audience).trim() : 'pending_activate_24h';
-    if (audience !== 'pending_activate_24h' && audience !== 'all_inactive') {
-      return res.status(400).json({ code: 400, msg: 'audience 须为 pending_activate_24h 或 all_inactive' });
-    }
-    var title = body.title != null ? String(body.title).trim() : '';
-    var content = body.content != null ? String(body.content).trim() : '';
     var dryRun = body.dry_run === true || body.dry_run === 1 || body.dry_run === '1';
-    if (!dryRun) {
-      if (!title) {
-        return res.status(400).json({ code: 400, msg: '请填写标题' });
-      }
-      if (!content) {
-        return res.status(400).json({ code: 400, msg: '请填写正文' });
-      }
-    }
-    if (title.length > 120) title = title.substring(0, 120);
-    var linkUrl = sanitizeInAppMessageLink(body.link_url || 'purchase.html');
-    var fullContent = dryRun ? '' : buildOpsMessageContent(content, linkUrl);
-
-    var where = ['(u.account_active IS NULL OR u.account_active = 0)'];
-    var params = [];
-    if (audience === 'pending_activate_24h') {
-      where.push('TIMESTAMPDIFF(HOUR, u.created_at, UTC_TIMESTAMP()) >= 24');
-    }
-    appendAdminUserScope(where, params, req.admin, 'u.username');
-    var whereSql = ' WHERE ' + where.join(' AND ');
-
-    const conn = await pool.getConnection();
-    try {
-      const [countRows] = await conn.query(
-        'SELECT COUNT(*) AS total FROM users u' + whereSql,
-        params
-      );
-      var total = Number(countRows[0] && countRows[0].total) || 0;
-      if (dryRun) {
-        return res.json({
-          code: 200,
-          data: { dry_run: true, audience: audience, matched: total, max: MSG_BULK_MAX_USERS }
-        });
-      }
-      if (total <= 0) {
-        return res.json({ code: 200, data: { sent: 0, matched: 0, audience: audience } });
-      }
-      if (total > MSG_BULK_MAX_USERS) {
-        return res.status(400).json({
-          code: 400,
-          msg: '匹配用户 ' + total + ' 人，超过单次上限 ' + MSG_BULK_MAX_USERS + '，请缩小范围或分批'
-        });
-      }
-
-      const [userRows] = await conn.query(
-        'SELECT u.username FROM users u' + whereSql + ' ORDER BY u.created_at DESC LIMIT ?',
-        params.concat([MSG_BULK_MAX_USERS])
-      );
-      var usernames = (userRows || [])
-        .map(function (r) {
-          return r.username != null ? String(r.username) : '';
-        })
-        .filter(Boolean);
-      var msgDate = new Date().toISOString().slice(0, 10);
-      var batchId = 'bulk_' + Date.now().toString(36);
-      var sent = 0;
-      var i;
-      for (i = 0; i < usernames.length; i += MSG_BULK_INSERT_CHUNK) {
-        var chunk = usernames.slice(i, i + MSG_BULK_INSERT_CHUNK);
-        var placeholders = [];
-        var values = [];
-        chunk.forEach(function (uname, j) {
-          var mid = 'msg_' + batchId + '_' + (i + j);
-          placeholders.push('(?, ?, ?, ?, ?, ?, 0)');
-          values.push(mid, uname, title, fullContent, MSG_COMPANY_SYSTEM_NOTICE, msgDate);
-        });
-        await conn.query(
-          'INSERT INTO messages (id, user_id, title, content, company_name, msg_date, is_read) VALUES ' +
-            placeholders.join(', '),
-          values
-        );
-        chunk.forEach(function (uname) {
-          invalidateMessageListCache(uname);
-        });
-        sent += chunk.length;
-      }
-      return res.json({
-        code: 200,
-        data: {
-          sent: sent,
-          matched: total,
-          audience: audience,
-          batch_id: batchId,
-          link_url: linkUrl
-        }
-      });
-    } finally {
-      conn.release();
-    }
+    var result = await sendInactiveUserMessages({
+      audience: body.audience != null ? String(body.audience).trim() : 'pending_activate_24h',
+      title: body.title != null ? String(body.title).trim() : '',
+      content: body.content != null ? String(body.content).trim() : '',
+      linkUrl: body.link_url || 'purchase.html',
+      dryRun: dryRun,
+      skipAlreadySent: body.skip_already_sent === true || body.skip_already_sent === 1 || body.skip_already_sent === '1',
+      skipMarker: body.skip_marker != null ? String(body.skip_marker).trim() : '',
+      allowPartial: body.allow_partial === true || body.allow_partial === 1 || body.allow_partial === '1',
+      admin: req.admin,
+      idPrefix: 'bulk'
+    });
+    return res.json({ code: 200, data: result });
   } catch (e) {
+    if (e && e.code === 400) {
+      return res.status(400).json({ code: 400, msg: String(e.message) });
+    }
     console.error(e);
     res.status(500).json({ code: 500, msg: String(e.message) });
   }
 }
 
+/**
+ * 已留邮箱用户群发邮件（SMTP）
+ */
+async function handleAdminEmailsBulk(req, res) {
+  try {
+    var body = req.body || {};
+    var dryRun = body.dry_run === true || body.dry_run === 1 || body.dry_run === '1';
+    var result = await getUserEmailBulk().sendBulk({
+      audience: body.audience != null ? String(body.audience).trim() : 'has_email_inactive',
+      subject: body.subject != null ? String(body.subject).trim() : body.title != null ? String(body.title).trim() : '',
+      content: body.content != null ? String(body.content).trim() : '',
+      linkUrl: body.link_url || 'purchase.html',
+      poster: body.poster != null ? String(body.poster).trim() : body.poster_key != null ? String(body.poster_key).trim() : '',
+      ctaLabel: body.cta_label != null ? String(body.cta_label).trim() : '',
+      benefits: body.benefits != null ? String(body.benefits).trim() : '',
+      dryRun: dryRun,
+      skipAlreadySent:
+        body.skip_already_sent === true || body.skip_already_sent === 1 || body.skip_already_sent === '1',
+      campaign: body.campaign != null ? String(body.campaign).trim() : '',
+      allowPartial: body.allow_partial === true || body.allow_partial === 1 || body.allow_partial === '1',
+      admin: req.admin
+    });
+    return res.json({ code: 200, data: result });
+  } catch (e) {
+    if (e && e.code === 400) {
+      return res.status(400).json({ code: 400, msg: String(e.message) });
+    }
+    console.error('[admin emails bulk]', e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 已留邮箱用户列表 */
+async function handleAdminEmailsUsers(req, res) {
+  try {
+    var q = req.query || {};
+    var result = await getUserEmailBulk().listUsers({
+      page: q.page,
+      limit: q.limit,
+      q: q.q,
+      active: q.active,
+      half_price: q.half_price,
+      admin: req.admin
+    });
+    return res.json({ code: 200, data: result });
+  } catch (e) {
+    console.error('[admin emails users]', e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 邮件发送记录 */
+async function handleAdminEmailsSends(req, res) {
+  try {
+    var q = req.query || {};
+    var result = await getUserEmailBulk().listSends({
+      page: q.page,
+      limit: q.limit,
+      q: q.q,
+      username: q.username,
+      audience: q.audience,
+      status: q.status,
+      days: q.days,
+      clicked: q.clicked,
+      admin: req.admin
+    });
+    return res.json({ code: 200, data: result });
+  } catch (e) {
+    console.error('[admin emails sends]', e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 邮箱管理总览 */
+async function handleAdminEmailsOverview(req, res) {
+  try {
+    var q = req.query || {};
+    var result = await getUserEmailBulk().overviewStats({
+      days: q.days,
+      admin: req.admin
+    });
+    return res.json({ code: 200, data: result });
+  } catch (e) {
+    console.error('[admin emails overview]', e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 邮件 campaign 近 N 天成功/失败率 */
+async function handleAdminEmailsCampaignStats(req, res) {
+  try {
+    var q = req.query || {};
+    var result = await getUserEmailBulk().campaignStats({
+      campaign: q.campaign,
+      days: q.days,
+      admin: req.admin
+    });
+    return res.json({ code: 200, data: result });
+  } catch (e) {
+    console.error('[admin emails campaign-stats]', e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 向勾选用户发送邮件 */
+async function handleAdminEmailsSend(req, res) {
+  try {
+    var body = req.body || {};
+    var dryRun = body.dry_run === true || body.dry_run === 1 || body.dry_run === '1';
+    var usernames = body.usernames;
+    if (!Array.isArray(usernames) && body.username != null) {
+      usernames = [body.username];
+    }
+    var result = await getUserEmailBulk().sendToUsernames({
+      usernames: usernames,
+      subject:
+        body.subject != null
+          ? String(body.subject).trim()
+          : body.title != null
+            ? String(body.title).trim()
+            : '',
+      content: body.content != null ? String(body.content).trim() : '',
+      linkUrl: body.link_url || 'purchase.html',
+      poster: body.poster != null ? String(body.poster).trim() : body.poster_key != null ? String(body.poster_key).trim() : '',
+      ctaLabel: body.cta_label != null ? String(body.cta_label).trim() : '',
+      benefits: body.benefits != null ? String(body.benefits).trim() : '',
+      dryRun: dryRun,
+      admin: req.admin
+    });
+    return res.json({ code: 200, data: result });
+  } catch (e) {
+    if (e && e.code === 400) {
+      return res.status(400).json({ code: 400, msg: String(e.message) });
+    }
+    console.error('[admin emails send]', e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 邮件 CTA 点击追踪：记一次后跳转目的页 */
+async function handlePublicEmailClick(req, res) {
+  try {
+    var token = req.params && req.params.token != null ? String(req.params.token).trim() : '';
+    var out = await getUserEmailBulk().consumeEmailClick(token);
+    if (out && out.dest_url) {
+      return res.redirect(302, out.dest_url);
+    }
+  } catch (e) {
+    console.error('[public email-click]', e);
+  }
+  var fallback = '';
+  try {
+    fallback = require('../admin/userEmailBulk').buildCtaUrl(
+      { publicSiteUrl: config.PUBLIC_SITE_URL },
+      'purchase.html'
+    );
+  } catch (eFb) {}
+  return res.redirect(302, fallback || '/purchase.html');
+}
+
+/** 清空用户邮箱 */
+async function handleAdminEmailsClear(req, res) {
+  try {
+    var body = req.body || {};
+    var result = await getUserEmailBulk().clearUserEmail({
+      username: body.username,
+      admin: req.admin
+    });
+    return res.json({ code: 200, data: result });
+  } catch (e) {
+    if (e && (e.code === 400 || e.code === 404)) {
+      return res.status(e.code).json({ code: e.code, msg: String(e.message) });
+    }
+    console.error('[admin emails clear]', e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 定时：注册超 24h 未激活用户站内信推广（每人最多一封自动信） */
+var _activationInboxPromoRunning = false;
+async function runActivationInboxPromo(reason) {
+  if (!ACTIVATION_INBOX_PROMO_ENABLED || !pool || _activationInboxPromoRunning) {
+    return null;
+  }
+  _activationInboxPromoRunning = true;
+  try {
+    var result = await sendInactiveUserMessages({
+      audience: 'pending_activate_24h',
+      title: MSG_AUTO_ACT24_TITLE,
+      content: MSG_AUTO_ACT24_BODY,
+      linkUrl: 'purchase.html',
+      dryRun: false,
+      skipAlreadySent: true,
+      idPrefix: 'auto_act24'
+    });
+    if (result && result.sent > 0) {
+      console.log(
+        '[activation-inbox-promo] ' +
+          reason +
+          ' sent=' +
+          result.sent +
+          ' matched=' +
+          result.matched +
+          ' batch=' +
+          result.batch_id
+      );
+    } else {
+      console.log(
+        '[activation-inbox-promo] ' +
+          reason +
+          ' sent=0 matched=' +
+          (result && result.matched != null ? result.matched : 0)
+      );
+    }
+    return result;
+  } catch (e) {
+    console.error('[activation-inbox-promo] failed', e);
+    return null;
+  } finally {
+    _activationInboxPromoRunning = false;
+  }
+}
+
+function scheduleActivationInboxPromo() {
+  if (!ACTIVATION_INBOX_PROMO_ENABLED) {
+    console.log('[activation-inbox-promo] disabled (ACTIVATION_INBOX_PROMO_ENABLED=0)');
+    return;
+  }
+  var intervalMs = Math.max(60 * 60 * 1000, ACTIVATION_INBOX_PROMO_INTERVAL_MS || 6 * 60 * 60 * 1000);
+  setTimeout(function () {
+    runActivationInboxPromo('startup');
+  }, 90 * 1000);
+  setInterval(function () {
+    runActivationInboxPromo('interval');
+  }, intervalMs);
+  console.log(
+    '[activation-inbox-promo] scheduled interval_ms=' + intervalMs + ' (注册超24h未激活，自动去重)'
+  );
+}
+
+/** 定时：未激活用户推二次退税站内信；已留邮箱每 24h 发一封带可退税额的邮件 */
+var _refundAdPromoRunning = false;
+async function runRefundAdPromo(reason) {
+  if (!REFUND_AD_PROMO_ENABLED || !pool || _refundAdPromoRunning) {
+    return null;
+  }
+  _refundAdPromoRunning = true;
+  try {
+    var inbox = await sendInactiveUserMessages({
+      audience: 'all_inactive',
+      title: MSG_AUTO_REFUND_AD_TITLE,
+      content: MSG_AUTO_REFUND_AD_BODY,
+      linkUrl: 'refund_ad.html?from=msg_refund',
+      dryRun: false,
+      skipAlreadySent: true,
+      skipMarker: MSG_AUTO_REFUND_AD_MARKER,
+      allowPartial: true,
+      idPrefix: 'auto_refund'
+    });
+    if (inbox && inbox.sent > 0) {
+      console.log(
+        '[refund-ad-promo] inbox ' +
+          reason +
+          ' sent=' +
+          inbox.sent +
+          ' matched=' +
+          inbox.matched +
+          ' batch=' +
+          inbox.batch_id
+      );
+    } else {
+      console.log(
+        '[refund-ad-promo] inbox ' +
+          reason +
+          ' sent=0 matched=' +
+          (inbox && inbox.matched != null ? inbox.matched : 0)
+      );
+    }
+    console.log('[refund-ad-promo] email skipped (退税邮件已停发)');
+    return { inbox: inbox };
+  } catch (e) {
+    console.error('[refund-ad-promo] failed', e);
+    return null;
+  } finally {
+    _refundAdPromoRunning = false;
+  }
+}
+
+function scheduleRefundAdPromo() {
+  if (!REFUND_AD_PROMO_ENABLED) {
+    console.log('[refund-ad-promo] disabled (REFUND_AD_PROMO_ENABLED=0)');
+    return;
+  }
+  var intervalMs = Math.max(60 * 60 * 1000, REFUND_AD_PROMO_INTERVAL_MS || 6 * 60 * 60 * 1000);
+  setTimeout(function () {
+    runRefundAdPromo('startup');
+  }, 90 * 1000);
+  setInterval(function () {
+    runRefundAdPromo('interval');
+  }, intervalMs);
+  console.log(
+    '[refund-ad-promo] scheduled interval_ms=' +
+      intervalMs +
+      ' (未激活站内信；退税邮件已停发)'
+  );
+}
 /** 注册时段分布 */
 async function handleAdminRegisterTimeDistribution(req, res) {
   try {
@@ -14295,19 +17826,22 @@ async function handleAdminRegisterTimeDistribution(req, res) {
     var params = pf.params.slice();
 
     if (!req.admin || !req.admin.is_super) {
-      where +=
-        ' AND EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = users.username AND ac.owner_admin_username = ?)';
-      params.push(req.admin.username);
+      var regScope = [];
+      appendSubAdminOwnedUsersScopeForAdmin(regScope, params, req.admin, 'users.username');
+      if (regScope.length) where += ' AND ' + regScope.join(' AND ');
     }
 
     const conn = await pool.getConnection();
     try {
+      var registerTimeInner = userRegisterDistinctIpInnerSql('users', where);
       const [hourRows] = await conn.query(
-        'SELECT HOUR(' +
-          cnCreated +
-          ') AS h, COUNT(*) AS cnt FROM users WHERE ' +
-          where +
-          ' GROUP BY h ORDER BY h',
+        'SELECT HOUR(DATE_ADD(first_at, INTERVAL 8 HOUR)) AS h, COUNT(*) AS cnt FROM ' +
+          registerTimeInner +
+          ' t GROUP BY h ORDER BY h',
+        params
+      );
+      const [registerTimeTotalRows] = await conn.query(
+        'SELECT COUNT(*) AS cnt FROM ' + registerTimeInner + ' t',
         params
       );
 
@@ -14316,14 +17850,13 @@ async function handleAdminRegisterTimeDistribution(req, res) {
       for (i = 0; i < 24; i++) {
         hourCounts.push(0);
       }
-      var total = 0;
+      var total = Number((registerTimeTotalRows[0] || {}).cnt) || 0;
       hourRows.forEach(function (r) {
         var h = Number(r.h);
         var c = Number(r.cnt) || 0;
         if (h >= 0 && h < 24) {
           hourCounts[h] = c;
         }
-        total += c;
       });
 
       function sumHours(from, to) {
@@ -14383,22 +17916,30 @@ async function handleAdminRegisterTimeDistribution(req, res) {
       const [platformRows] = await conn.query(
         'SELECT DATE(' +
           cnCreated +
-          ') AS d, users.username,' +
+          ') AS d, users.username, users.created_at,' +
+          userRegisterPersonKeySql('users') +
+          ' AS register_person,' +
           ' (SELECT ud.user_agent_short FROM user_devices ud' +
           '  WHERE ud.username = users.username' +
           '  ORDER BY ud.first_seen ASC, ud.last_seen ASC LIMIT 1) AS ua,' +
           ' (SELECT ud.device_detail_json FROM user_devices ud' +
           '  WHERE ud.username = users.username' +
           '  ORDER BY ud.first_seen ASC, ud.last_seen ASC LIMIT 1) AS detail_json' +
-          ' FROM users WHERE ' +
+          ' FROM users ' +
+          userRegisterIpJoinSql('users') +
+          ' WHERE ' +
           where +
-          ' ORDER BY d ASC',
+          ' ORDER BY users.created_at ASC',
         params
       );
 
       var platformDailyMap = {};
       var platformTotals = { android: 0, ios: 0, other: 0, unknown: 0, total: 0 };
+      var seenRegisterPerson = {};
       (platformRows || []).forEach(function (row) {
+        var person = String(row.register_person || '').trim() || 'user:' + String(row.username || '');
+        if (!person || seenRegisterPerson[person]) return;
+        seenRegisterPerson[person] = true;
         var dk = formatDateKey(row.d);
         if (!dk) return;
         if (!platformDailyMap[dk]) {
@@ -14457,7 +17998,7 @@ async function handleAdminRegisterTimeDistribution(req, res) {
           pt
         ),
         definition:
-          '按注册日（北京时间）统计；手机系统取该用户最早一条 user_devices 的 UA。安卓率=Android÷当日注册，苹果率=iOS÷当日注册；其他含 PC/未知设备。'
+          '按注册日（北京时间）统计，同注册 IP 只计 1 人（无 IP 按账号）。手机系统取该 IP 下最早账号的 UA。安卓率=Android÷当日注册，苹果率=iOS÷当日注册；其他含 PC/未知设备。'
       };
 
       res.json({
@@ -14497,59 +18038,11 @@ function pad2(n) {
   return n < 10 ? '0' + n : String(n);
 }
 
-/** 解析：user birth iso */
-function parseUserBirthIso(birthDateRaw, taxIdRaw) {
-  var s = String(birthDateRaw || '').trim();
-  if (s) {
-    var cn = s.match(/^(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?/);
-    if (cn) {
-      return cn[1] + '-' + pad2(parseInt(cn[2], 10)) + '-' + pad2(parseInt(cn[3], 10));
-    }
-    var norm = s.replace(/[./]/g, '-');
-    var m = norm.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-    if (m) {
-      return m[1] + '-' + pad2(parseInt(m[2], 10)) + '-' + pad2(parseInt(m[3], 10));
-    }
-    if (/^\d{8}$/.test(s)) {
-      return s.substring(0, 4) + '-' + s.substring(4, 6) + '-' + s.substring(6, 8);
-    }
-  }
-  var id = String(taxIdRaw || '')
-    .replace(/\s/g, '')
-    .toUpperCase();
-  if (id.length === 18 && /^\d{17}[\dX]$/.test(id)) {
-    var d = id.substring(6, 14);
-    if (/^\d{8}$/.test(d)) {
-      return d.substring(0, 4) + '-' + d.substring(4, 6) + '-' + d.substring(6, 8);
-    }
-  }
-  return null;
-}
-
 /** china today parts */
 function chinaTodayParts() {
   var key = chinaDateKeyNow();
   var p = key.split('-').map(Number);
   return { y: p[0], m: p[1], d: p[2], key: key };
-}
-
-/** compute age full years */
-function computeAgeFullYears(birthIso, refParts) {
-  if (!birthIso || !refParts) {
-    return null;
-  }
-  var bp = birthIso.split('-').map(Number);
-  if (bp.length < 3 || !bp[0]) {
-    return null;
-  }
-  var age = refParts.y - bp[0];
-  if (refParts.m < bp[1] || (refParts.m === bp[1] && refParts.d < bp[2])) {
-    age -= 1;
-  }
-  if (age < 0 || age > 130) {
-    return null;
-  }
-  return age;
 }
 
 /** register scope label */
@@ -14583,9 +18076,9 @@ function buildRegisterUserScopeWhere(daysRaw, admin) {
     params = params.concat(pf.params);
   }
   if (!admin || !admin.is_super) {
-    where +=
-      ' AND EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = users.username AND ac.owner_admin_username = ?)';
-    params.push(admin.username);
+    var regUserScope = [];
+    appendSubAdminOwnedUsersScopeForAdmin(regUserScope, params, admin, 'users.username');
+    if (regUserScope.length) where += ' AND ' + regUserScope.join(' AND ');
   }
   var spanDays = allTime
     ? 0
@@ -14600,155 +18093,6 @@ function buildRegisterUserScopeWhere(daysRaw, admin) {
     all_time: allTime,
     period: period
   };
-}
-
-/** 女性年龄分布 */
-async function handleAdminFemaleAgeStats(req, res) {
-  try {
-    var scope = buildRegisterUserScopeWhere(req.query.days, req.admin);
-    var maxAge = parseInt(req.query.max_age, 10);
-    if (isNaN(maxAge) || maxAge < 1) {
-      maxAge = 30;
-    }
-    if (maxAge > 80) {
-      maxAge = 80;
-    }
-    var underAgeExclusive = maxAge;
-
-    const conn = await pool.getConnection();
-    try {
-      const [rows] = await conn.query(
-        'SELECT username, real_name, birth_date, tax_id, created_at FROM users WHERE gender = 2 AND ' +
-          scope.where +
-          ' ORDER BY created_at DESC',
-        scope.params
-      );
-
-      var ref = chinaTodayParts();
-      var femaleTotal = rows.length;
-      var withAge = 0;
-      var underCount = 0;
-      var bucketDefs = [
-        { key: 'u18', label: '18岁以下', min: 0, max: 17 },
-        { key: '18_22', label: '18-22岁', min: 18, max: 22 },
-        { key: '23_26', label: '23-26岁', min: 23, max: 26 },
-        { key: '27_29', label: '27-29岁', min: 27, max: 29 },
-        { key: '30p', label: maxAge + '岁及以上', min: maxAge, max: 999 },
-        { key: 'unknown', label: '年龄未知', min: null, max: null }
-      ];
-      var bucketCounts = {};
-      bucketDefs.forEach(function (b) {
-        bucketCounts[b.key] = 0;
-      });
-
-      var underUsers = [];
-      rows.forEach(function (r) {
-        var birthIso = null;
-        var birthSource = '';
-        var bd = String(r.birth_date || '').trim();
-        if (bd) {
-          birthIso = parseUserBirthIso(bd, '');
-          if (birthIso) {
-            birthSource = 'profile';
-          }
-        }
-        if (!birthIso) {
-          birthIso = parseUserBirthIso('', r.tax_id);
-          if (birthIso) {
-            birthSource = 'tax_id';
-          }
-        }
-        var age = birthIso ? computeAgeFullYears(birthIso, ref) : null;
-        if (age == null) {
-          bucketCounts.unknown += 1;
-          return;
-        }
-        withAge += 1;
-        var placed = false;
-        bucketDefs.forEach(function (b) {
-          if (b.key === 'unknown' || placed) {
-            return;
-          }
-          if (age >= b.min && age <= b.max) {
-            bucketCounts[b.key] += 1;
-            placed = true;
-          }
-        });
-        if (!placed && age >= maxAge) {
-          bucketCounts['30p'] += 1;
-        }
-        if (age < underAgeExclusive) {
-          underCount += 1;
-          underUsers.push({
-            username: r.username,
-            real_name: r.real_name || '',
-            age: age,
-            birth_date: birthIso,
-            birth_source: birthSource,
-            created_at: r.created_at
-          });
-        }
-      });
-
-      underUsers.sort(function (a, b) {
-        if (a.age !== b.age) {
-          return a.age - b.age;
-        }
-        return String(a.username).localeCompare(String(b.username));
-      });
-
-      function pctText(cnt, base) {
-        if (!base) {
-          return '—';
-        }
-        return (Math.round((cnt / base) * 1000) / 10).toFixed(1) + '%';
-      }
-
-      var ageBuckets = bucketDefs
-        .filter(function (b) {
-          return b.key !== '30p' || bucketCounts['30p'] > 0;
-        })
-        .map(function (b) {
-          var cnt = bucketCounts[b.key] || 0;
-          return {
-            key: b.key,
-            label: b.label,
-            count: cnt,
-            pct: femaleTotal > 0 ? Math.round((cnt / femaleTotal) * 1000) / 10 : 0,
-            pct_text: pctText(cnt, femaleTotal)
-          };
-        });
-
-      var scopeLabel = scope.all_time
-        ? '全部注册女性用户'
-        : '最近 ' + scope.days + ' 天注册的女性用户';
-
-      res.json({
-        code: 200,
-        data: {
-          days: scope.days,
-          all_time: scope.all_time,
-          scope_label: scopeLabel,
-          reference_date: ref.key,
-          max_age_exclusive: underAgeExclusive,
-          filter_label: '未满' + underAgeExclusive + '岁',
-          female_total: femaleTotal,
-          with_age_count: withAge,
-          no_age_count: femaleTotal - withAge,
-          under_max_age_count: underCount,
-          under_max_age_pct_text: pctText(underCount, femaleTotal),
-          under_max_age_pct_of_known: pctText(underCount, withAge),
-          age_buckets: ageBuckets,
-          under_max_age_users: underUsers.slice(0, 500)
-        }
-      });
-    } finally {
-      conn.release();
-    }
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ code: 500, msg: String(e.message) });
-  }
 }
 
 /** register channel stats key */
@@ -15037,388 +18381,11 @@ async function handleAdminRegisterChannelStats(req, res) {
   }
 }
 
-/** 注册性别统计 */
-async function handleAdminRegisterGenderStats(req, res) {
-  try {
-    var scope = buildRegisterUserScopeWhere(req.query.days, req.admin);
-    var allTime = scope.all_time;
-
-    const conn = await pool.getConnection();
-    try {
-      const [rows] = await conn.query(
-        'SELECT ' +
-          'SUM(CASE WHEN gender = 1 THEN 1 ELSE 0 END) AS male_cnt, ' +
-          'SUM(CASE WHEN gender = 2 THEN 1 ELSE 0 END) AS female_cnt, ' +
-          'SUM(CASE WHEN gender IS NULL OR gender NOT IN (1, 2) THEN 1 ELSE 0 END) AS unknown_cnt ' +
-          'FROM users WHERE ' +
-          scope.where,
-        scope.params
-      );
-      var row = rows && rows[0] ? rows[0] : {};
-      var male = Number(row.male_cnt) || 0;
-      var female = Number(row.female_cnt) || 0;
-      var unknown = Number(row.unknown_cnt) || 0;
-      var total = male + female + unknown;
-
-      function pctText(cnt) {
-        if (total <= 0) {
-          return '—';
-        }
-        return ((Math.round((cnt / total) * 1000) / 10).toFixed(1) + '%');
-      }
-
-      function pctNum(cnt) {
-        return total > 0 ? Math.round((cnt / total) * 1000) / 10 : 0;
-      }
-
-      var items = [
-        {
-          key: 'male',
-          label: '男',
-          gender: 1,
-          count: male,
-          pct: pctNum(male),
-          pct_text: pctText(male)
-        },
-        {
-          key: 'female',
-          label: '女',
-          gender: 2,
-          count: female,
-          pct: pctNum(female),
-          pct_text: pctText(female)
-        }
-      ];
-      if (unknown > 0) {
-        items.push({
-          key: 'unknown',
-          label: '未设置',
-          gender: 0,
-          count: unknown,
-          pct: pctNum(unknown),
-          pct_text: pctText(unknown)
-        });
-      }
-
-      var ratioText = null;
-      if (male > 0 && female > 0) {
-        if (male >= female) {
-          ratioText = '男:女 ≈ ' + (Math.round((male / female) * 100) / 100) + ':1';
-        } else {
-          ratioText = '男:女 ≈ 1:' + (Math.round((female / male) * 100) / 100);
-        }
-      } else if (male > 0 && female === 0) {
-        ratioText = '当前统计期内均为男性';
-      } else if (female > 0 && male === 0) {
-        ratioText = '当前统计期内均为女性';
-      }
-
-      var scopeLabel = registerScopeLabel(scope, '（按资料中的性别字段）');
-
-      res.json({
-        code: 200,
-        data: Object.assign(
-          {
-            all_time: allTime,
-            scope_label: scopeLabel,
-            total: total,
-            items: items,
-            ratio_text: ratioText
-          },
-          scope.period ? conversionAnalyticsPeriodMeta(scope.period) : { days: 0 }
-        )
-      });
-    } finally {
-      conn.release();
-    }
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
 /** 访客用户列表 */
-async function handleAdminGuestUsers(req, res) {
-  if (!req.admin || !req.admin.is_super) {
-    return res.status(403).json({ code: 403, msg: '仅超级管理员可查看游客用户' });
-  }
-  try {
-    var page = parseInt(req.query.page, 10) || 1;
-    var limit = parseInt(req.query.limit, 10) || 20;
-    if (page < 1) page = 1;
-    if (limit < 1) limit = 20;
-    if (limit > 100) limit = 100;
-    var offset = (page - 1) * limit;
-    var days = parseInt(req.query.days, 10);
-    if (!isFinite(days) || days < 0) days = 1;
-    var qStatus = String(req.query.status || '').trim();
-    var qUsername = String(req.query.username || '').trim();
-
-    var cnDay = 'DATE(DATE_ADD(u.created_at, INTERVAL 8 HOUR))';
-    var cnMergeDay = 'DATE(DATE_ADD(u.guest_merged_at, INTERVAL 8 HOUR))';
-    var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
-    /* 近 N 天按北京时间自然日：近 1 天 = 当天 0 点起（span=0），非滚动 24 小时 */
-    var periodSpan = days > 0 ? days - 1 : 0;
-    var periodSql = '';
-    var periodParams = [];
-    if (days > 0) {
-      periodSql = ' AND ' + cnDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)';
-      periodParams.push(periodSpan);
-    }
-
-    const conn = await pool.getConnection();
-    try {
-      const [sumRows] = await conn.query(
-        `SELECT
-            COUNT(*) AS total_guests,
-            SUM(CASE WHEN u.guest_merged_to IS NOT NULL AND TRIM(u.guest_merged_to) <> '' THEN 1 ELSE 0 END) AS converted_guests,
-            SUM(CASE WHEN u.guest_merged_to IS NULL OR TRIM(u.guest_merged_to) = '' THEN 1 ELSE 0 END) AS active_guests
-         FROM users u
-         WHERE ${guestOnlyUserSql('u')}${periodSql}`,
-        periodParams
-      );
-      const [allTimeSumRows] = await conn.query(
-        `SELECT
-            COUNT(*) AS total_guests,
-            SUM(CASE WHEN u.guest_merged_to IS NOT NULL AND TRIM(u.guest_merged_to) <> '' THEN 1 ELSE 0 END) AS converted_guests
-         FROM users u
-         WHERE ${guestOnlyUserSql('u')}`
-      );
-      const [regFromGuestRows] = await conn.query(
-        `SELECT COUNT(*) AS cnt FROM users u
-         WHERE u.merged_from_guest IS NOT NULL AND TRIM(u.merged_from_guest) <> ''
-           AND COALESCE(u.user_type, 0) <> ${USER_TYPE_GUEST}`
-      );
-
-      // 区间内游客填写的个税：仍挂在游客账号上的 + 已合并且创建不晚于合并时间的（避免把注册后新增算进去）
-      const [taxSumRows] = await conn.query(
-        `SELECT
-            COUNT(*) AS tax_records,
-            COUNT(DISTINCT guest_username) AS guests_with_tax
-         FROM (
-           SELECT tr.id AS rid, u.username AS guest_username
-           FROM users u
-           INNER JOIN tax_records tr ON tr.user_id = u.username AND tr.deleted_at IS NULL
-           WHERE ${guestOnlyUserSql('u')}${periodSql}
-             AND (u.guest_merged_to IS NULL OR TRIM(u.guest_merged_to) = '')
-           UNION ALL
-           SELECT tr.id AS rid, u.username AS guest_username
-           FROM users u
-           INNER JOIN tax_records tr
-             ON tr.user_id = u.guest_merged_to
-            AND tr.deleted_at IS NULL
-            AND u.guest_merged_at IS NOT NULL
-            AND tr.created_at <= u.guest_merged_at
-           WHERE ${guestOnlyUserSql('u')}${periodSql}
-             AND u.guest_merged_to IS NOT NULL AND TRIM(u.guest_merged_to) <> ''
-         ) guest_tax`,
-        periodParams.concat(periodParams)
-      );
-
-      var where = [guestOnlyUserSql('u')];
-      var params = [];
-      if (days > 0) {
-        where.push(cnDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)');
-        params.push(periodSpan);
-      }
-      if (qStatus === 'active') {
-        where.push('(u.guest_merged_to IS NULL OR TRIM(u.guest_merged_to) = \'\')');
-      } else if (qStatus === 'converted') {
-        where.push('u.guest_merged_to IS NOT NULL AND TRIM(u.guest_merged_to) <> \'\'');
-      }
-      if (qUsername) {
-        where.push('(u.username LIKE ? OR u.guest_merged_to LIKE ?)');
-        params.push('%' + qUsername + '%', '%' + qUsername + '%');
-      }
-      var whereSql = where.length ? ' WHERE ' + where.join(' AND ') : '';
-
-      const [totalRows] = await conn.query(
-        'SELECT COUNT(*) AS count FROM users u' + whereSql,
-        params
-      );
-      var total = Number((totalRows[0] || {}).count) || 0;
-
-      const [listRows] = await conn.query(
-        `SELECT u.id, u.username, u.real_name, u.created_at, u.guest_merged_to, u.guest_merged_at,
-                u.register_source_channel, u.sales_promo_channel,
-                (SELECT COUNT(*) FROM tax_records tr
-                 WHERE tr.deleted_at IS NULL AND (
-                   tr.user_id = u.username
-                   OR (
-                     u.guest_merged_to IS NOT NULL AND TRIM(u.guest_merged_to) <> ''
-                     AND tr.user_id = u.guest_merged_to
-                     AND u.guest_merged_at IS NOT NULL
-                     AND tr.created_at <= u.guest_merged_at
-                   )
-                 )) AS tax_count,
-                (SELECT COUNT(*) FROM user_page_events e WHERE e.username = u.username) AS page_event_count,
-                (SELECT COUNT(*) FROM user_devices d WHERE d.username = u.username) AS device_count,
-                (SELECT MAX(d.last_seen) FROM user_devices d WHERE d.username = u.username) AS last_device_seen,
-                (SELECT d.client_id FROM user_devices d WHERE d.username = u.username
-                 ORDER BY d.last_seen DESC LIMIT 1) AS client_id,
-                (SELECT d.device_detail_json FROM user_devices d WHERE d.username = u.username
-                 ORDER BY d.last_seen DESC LIMIT 1) AS device_detail_json
-         FROM users u
-         ${whereSql}
-         ORDER BY u.created_at DESC
-         LIMIT ${limit} OFFSET ${offset}`,
-        params
-      );
-
-      var trendParams = days > 0 ? [periodSpan] : [];
-      var trendWhere =
-        days > 0 ? ' AND ' + cnDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)' : '';
-      var mergeTrendWhere =
-        days > 0
-          ? ' AND ' + cnMergeDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)'
-          : '';
-      const [guestDailyRows] = await conn.query(
-        `SELECT ${cnDay} AS d, COUNT(*) AS new_guests
-         FROM users u
-         WHERE ${guestOnlyUserSql('u')}${trendWhere}
-         GROUP BY ${cnDay}
-         ORDER BY d ASC`,
-        trendParams
-      );
-      const [convDailyRows] = await conn.query(
-        `SELECT ${cnMergeDay} AS d, COUNT(*) AS converted
-         FROM users u
-         WHERE ${guestOnlyUserSql('u')}
-           AND u.guest_merged_at IS NOT NULL${mergeTrendWhere}
-         GROUP BY ${cnMergeDay}
-         ORDER BY d ASC`,
-        days > 0 ? [periodSpan] : []
-      );
-
-      // 北京时间按小时（0–23）统计区间内新增游客
-      var cnHour = 'HOUR(DATE_ADD(u.created_at, INTERVAL 8 HOUR))';
-      const [guestHourlyRows] = await conn.query(
-        `SELECT ${cnHour} AS h, COUNT(*) AS new_guests
-         FROM users u
-         WHERE ${guestOnlyUserSql('u')}${trendWhere}
-         GROUP BY ${cnHour}
-         ORDER BY h ASC`,
-        trendParams
-      );
-
-      conn.release();
-
-      var periodTotal = Number((sumRows[0] || {}).total_guests) || 0;
-      var periodConverted = Number((sumRows[0] || {}).converted_guests) || 0;
-      var allTotal = Number((allTimeSumRows[0] || {}).total_guests) || 0;
-      var allConverted = Number((allTimeSumRows[0] || {}).converted_guests) || 0;
-      var regFromGuest = Number((regFromGuestRows[0] || {}).cnt) || 0;
-      var periodTaxRecords = Number((taxSumRows[0] || {}).tax_records) || 0;
-      var periodGuestsWithTax = Number((taxSumRows[0] || {}).guests_with_tax) || 0;
-      var taxFillRatePct =
-        periodTotal > 0
-          ? (Math.round((periodGuestsWithTax / periodTotal) * 1000) / 10).toFixed(1) + '%'
-          : '—';
-      var registerRatePct =
-        periodTotal > 0 ? (Math.round((periodConverted / periodTotal) * 1000) / 10).toFixed(1) + '%' : '—';
-      var allRegisterRatePct =
-        allTotal > 0 ? (Math.round((allConverted / allTotal) * 1000) / 10).toFixed(1) + '%' : '—';
-
-      var users = (listRows || []).map(function (r) {
-        var deviceLabel = '';
-        try {
-          if (r.device_detail_json) {
-            var parsed = JSON.parse(String(r.device_detail_json));
-            if (parsed && typeof parsed === 'object') {
-              deviceLabel = [parsed.model, parsed.platform, parsed.os_version].filter(Boolean).join(' · ');
-            }
-          }
-        } catch (eDev) {}
-        var mergedTo =
-          r.guest_merged_to != null && String(r.guest_merged_to).trim() !== ''
-            ? String(r.guest_merged_to).trim()
-            : '';
-        return {
-          id: r.id,
-          username: r.username,
-          real_name: r.real_name,
-          created_at: r.created_at ? r.created_at.toISOString() : '',
-          guest_merged_to: mergedTo,
-          guest_merged_at: r.guest_merged_at ? r.guest_merged_at.toISOString() : '',
-          is_converted: !!mergedTo,
-          register_source_channel_label: registerSourceChannelLabel(r.register_source_channel),
-          sales_promo_channel: r.sales_promo_channel != null ? String(r.sales_promo_channel) : '',
-          tax_count: Number(r.tax_count) || 0,
-          page_event_count: Number(r.page_event_count) || 0,
-          device_count: Number(r.device_count) || 0,
-          client_id: r.client_id != null ? String(r.client_id) : '',
-          device_label: deviceLabel,
-          last_device_seen: r.last_device_seen ? r.last_device_seen.toISOString() : ''
-        };
-      });
-
-      return res.json({
-        code: 200,
-        data: {
-          summary: {
-            period_days: days,
-            period_guests: periodTotal,
-            period_converted: periodConverted,
-            period_active: Number((sumRows[0] || {}).active_guests) || 0,
-            period_register_rate_pct: registerRatePct,
-            period_tax_records: periodTaxRecords,
-            period_guests_with_tax: periodGuestsWithTax,
-            period_tax_fill_rate_pct: taxFillRatePct,
-            all_time_guests: allTotal,
-            all_time_converted: allConverted,
-            all_time_register_rate_pct: allRegisterRatePct,
-            registered_with_guest_data: regFromGuest
-          },
-          daily: {
-            new_guests: (guestDailyRows || []).map(function (row) {
-              return {
-                date: formatDateKey(row.d),
-                new_guests: Number(row.new_guests) || 0
-              };
-            }),
-            converted: (convDailyRows || []).map(function (row) {
-              return {
-                date: formatDateKey(row.d),
-                converted: Number(row.converted) || 0
-              };
-            })
-          },
-          by_hour: (function () {
-            var hourMap = Object.create(null);
-            (guestHourlyRows || []).forEach(function (row) {
-              var h = Number(row.h);
-              if (!isFinite(h) || h < 0 || h > 23) return;
-              hourMap[h] = Number(row.new_guests) || 0;
-            });
-            var out = [];
-            for (var hi = 0; hi < 24; hi++) {
-              out.push({
-                hour: hi,
-                label: hi + '时',
-                count: hourMap[hi] != null ? hourMap[hi] : 0
-              });
-            }
-            return out;
-          })(),
-          users: users,
-          total: total,
-          page: page,
-          limit: limit
-        }
-      });
-    } catch (eInner) {
-      conn.release();
-      throw eInner;
-    }
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
 /** 管理端用户列表 */
 async function handleAdminUsers(req, res) {
   try {
+    var canViewActivationCredit = isRootAdminAccount(req.admin);
     var page = parseInt(req.query.page, 10) || 1;
     var limit = parseInt(req.query.limit, 10) || 10;
     if (page < 1) page = 1;
@@ -15427,24 +18394,32 @@ async function handleAdminUsers(req, res) {
 
     // 筛选参数
     var qUsername = String(req.query.username || '').trim();
+    var qSameRegisterIpOf = String(req.query.same_register_ip_of || '').trim();
     var qRealName = String(req.query.real_name || '').trim();
-    var qActive = req.query.active; // '1' or '0'
+    var qActive = req.query.active; // '1' 已激活(未过期) | '0' 未激活 | 'expired' 已过期
     var qBanned = req.query.banned; // '1' or '0'
     var qExact = req.query.exact === '1' || req.query.exact === 'true';
     var qRisk = req.query.risk; // '1' 仅风险, '0' 非风险
-    var qSalaryMin = parseSalaryRangeFilterParam(req.query.salary_min);
-    var qSalaryMax = parseSalaryRangeFilterParam(req.query.salary_max);
     var qTaxModifiedToday = req.query.tax_modified_today; // '1' 当日有改动, '0' 当日无改动
+    var qLoggedInToday = req.query.logged_in_today; // '1' 当日已登录/活跃, '0' 当日未登录
     var qLoginInactiveDays = parseInt(req.query.login_inactive_days, 10);
+    var qNameChangesGt = parseInt(req.query.name_changes_gt, 10);
+    var qTaxModDaysGt = parseInt(req.query.tax_mod_days_gt, 10);
+    var qPeerRaw = String(req.query.peer || '').trim().toLowerCase();
+    var qPeer = qPeerRaw === '1'; // 仅当前同行（超阈值改名/改税且未免改名费）
+    var qPeerExempt = qPeerRaw === 'exempt'; // 已豁免但仍超阈值（白名单）
+    var qWhitelistRaw = String(req.query.whitelist || '').trim();
+    var qWhitelist = qWhitelistRaw === '1' || qWhitelistRaw === '0' ? qWhitelistRaw : '';
+    var qAgentRaw = String(req.query.agent || '').trim();
+    var qAgent = qAgentRaw === '1' || qAgentRaw === '0' ? qAgentRaw : '';
+    var qD1Raw = String(req.query.d1_return || '').trim().toLowerCase();
+    var qD1Return = qD1Raw === 'has' || qD1Raw === 'only' ? qD1Raw : '';
+    var qHighIncome = String(req.query.high_income || '').trim() === '1';
     var qGuest =
       req.query.guest === '1' ||
       req.query.guest === 'true' ||
       String(req.query.user_mode || '').trim() === 'guest';
-    var hasSalaryFilter = qSalaryMin != null || qSalaryMax != null;
     var todayKey = chinaDateKeyNow();
-    if (qSalaryMin != null && qSalaryMax != null && qSalaryMin > qSalaryMax) {
-      return res.status(400).json({ code: 400, msg: '工资收入下限不能大于上限' });
-    }
     if (qGuest && (!req.admin || !req.admin.is_super)) {
       return res.status(403).json({ code: 403, msg: '仅超级管理员可查看游客模式账号' });
     }
@@ -15457,7 +18432,11 @@ async function handleAdminUsers(req, res) {
       whereClauses.push(nonGuestUsernameSql('users.username'));
     }
 
-    if (qUsername) {
+    /* 同注册 IP：优先于账号模糊/精准，列出种子账号注册 IP 下全部账号 */
+    if (qSameRegisterIpOf) {
+      whereClauses.push(userSameRegisterIpOfSql('users.username'));
+      params.push(qSameRegisterIpOf);
+    } else if (qUsername) {
       if (qExact) {
         whereClauses.push('username = ?');
         params.push(qUsername);
@@ -15480,9 +18459,14 @@ async function handleAdminUsers(req, res) {
     } else if (qRisk === '0') {
       whereClauses.push('NOT ' + userLoginRiskMatchSql('users.username'));
     }
-    if (qActive === '1' || qActive === '0') {
-      whereClauses.push('account_active = ?');
-      params.push(qActive === '1' ? 1 : 0);
+    if (qActive === 'expired') {
+      whereClauses.push(userActivationExpiredSql('users'));
+      params.push(new Date());
+    } else if (qActive === '1') {
+      whereClauses.push(userEffectivelyActiveSql('users'));
+      params.push(new Date());
+    } else if (qActive === '0') {
+      whereClauses.push('(users.account_active IS NULL OR users.account_active = 0)');
     }
     if (qBanned === '1' || qBanned === '0') {
       whereClauses.push('banned = ?');
@@ -15499,8 +18483,70 @@ async function handleAdminUsers(req, res) {
       );
       params.push(todayKey);
     }
+    if (qLoggedInToday === '1') {
+      whereClauses.push(userActiveOnDateSql('users.username'));
+      params.push(todayKey, todayKey, todayKey);
+    } else if (qLoggedInToday === '0') {
+      whereClauses.push('NOT ' + userActiveOnDateSql('users.username'));
+      params.push(todayKey, todayKey, todayKey);
+    }
     if (isFinite(qLoginInactiveDays) && qLoginInactiveDays > 0) {
       whereClauses.push(userLoginInactiveSinceSql(qLoginInactiveDays));
+    }
+    if (isFinite(qNameChangesGt) && qNameChangesGt >= 0) {
+      whereClauses.push(
+        `(SELECT COUNT(*) FROM user_profile_change_logs upc
+          WHERE upc.username = users.username AND upc.field_key = 'real_name') > ?`
+      );
+      params.push(qNameChangesGt);
+    }
+    if (isFinite(qTaxModDaysGt) && qTaxModDaysGt >= 0) {
+      /* 有个税记录修改的不同北京日历天数（tax_record_change_logs）≥ N */
+      whereClauses.push(
+        `(SELECT COUNT(DISTINCT DATE(DATE_ADD(tcl.changed_at, INTERVAL 8 HOUR))) FROM tax_record_change_logs tcl
+          WHERE tcl.user_id = users.username AND ` +
+          TAX_CHANGE_LOG_VALID_YEAR_SQL +
+          ') >= ?'
+      );
+      params.push(qTaxModDaysGt);
+    }
+    var peerFeeCfg = await loadTaxEditFeeConfig(false);
+    if (qPeer || qPeerExempt) {
+      whereClauses.push(
+        qPeerExempt
+          ? 'COALESCE(users.rename_fee_exempt, 0) = 1'
+          : 'COALESCE(users.rename_fee_exempt, 0) = 0'
+      );
+      /* 同行只按个税修改天数；勿再绑定已删除的 rename_gt，否则 mysql2 会因 undefined 直接 500 */
+      var peerDaysGt = Number(peerFeeCfg && peerFeeCfg.days_gt);
+      if (!isFinite(peerDaysGt) || peerDaysGt < 0) {
+        peerDaysGt = taxEditFeePolicy.TAX_EDIT_FEE_DAYS_GT;
+      }
+      whereClauses.push(
+        `(SELECT COUNT(DISTINCT DATE(DATE_ADD(tcl.changed_at, INTERVAL 8 HOUR))) FROM tax_record_change_logs tcl
+            WHERE tcl.user_id = users.username AND ` +
+          TAX_CHANGE_LOG_VALID_YEAR_SQL +
+          ') > ?'
+      );
+      params.push(peerDaysGt);
+    }
+    if (qWhitelist === '1') {
+      whereClauses.push('COALESCE(users.rename_fee_exempt, 0) = 1');
+    } else if (qWhitelist === '0') {
+      whereClauses.push('COALESCE(users.rename_fee_exempt, 0) = 0');
+    }
+    if (qAgent === '1') {
+      whereClauses.push('COALESCE(users.is_agent, 0) = 1');
+    } else if (qAgent === '0') {
+      whereClauses.push('COALESCE(users.is_agent, 0) = 0');
+    }
+    if (qD1Return) {
+      whereClauses.push('(account_active IS NULL OR account_active = 0)');
+      appendD1ReturnActivityFilters(qD1Return, 'users', whereClauses);
+    }
+    if (qHighIncome) {
+      whereClauses.push('(account_active IS NULL OR account_active = 0)');
+      whereClauses.push(userHasSelfFilledHighIncomeSql('users.username', HIGH_SELF_INCOME_THRESHOLD));
     }
     if (!qGuest) {
       /* 超管看全站注册用户；子账号仅看本人激活码开通用户 */
@@ -15512,71 +18558,43 @@ async function handleAdminUsers(req, res) {
     const conn = await pool.getConnection();
     var rows = [];
     var total = 0;
-    var avgSalaryMaps = {};
 
-    if (hasSalaryFilter) {
-      const [allUserRows] = await conn.query(
-        'SELECT username FROM users' + whereSql + ' ORDER BY id DESC',
-        params
-      );
-      var allUsernames = allUserRows.map(function (r) {
-        return String(r.username);
-      });
-      avgSalaryMaps = await buildUserTaxAvgSalaryMap(conn, allUsernames);
-      var filteredUsernames = [];
-      for (var fi = 0; fi < allUsernames.length; fi++) {
-        var funame = allUsernames[fi];
-        var fsal = avgSalaryMaps[funame] || {
-          avg_salary_6m: null,
-          avg_salary_6m_label: '未填写',
-          salary_month_count: 0
-        };
-        if (userMatchesSalaryRange(fsal, qSalaryMin, qSalaryMax)) {
-          filteredUsernames.push(funame);
-        }
-      }
-      total = filteredUsernames.length;
-      var pageUsernames = filteredUsernames.slice(offset, offset + limit);
-      if (pageUsernames.length) {
-        var ph = pageUsernames.map(function () {
-          return '?';
-        }).join(',');
-        const [pageRows] = await conn.query(
-          `SELECT id, username, real_name, tax_id, account_active, banned,
-                  last_login_city, created_at, hash, plain_password, register_source_channel,
-                  activation_source_channel, user_type, sales_promo_channel, invited_by,
-                  (SELECT ule.ip FROM user_login_events ule
-                   WHERE ule.username = users.username AND ule.ip IS NOT NULL
-                   ORDER BY ule.created_at DESC LIMIT 1) AS ip_last
-           FROM users WHERE username IN (` +
-            ph +
-            ') ORDER BY id DESC',
-          pageUsernames
-        );
-        rows = pageRows;
-      }
-    } else {
-      const [totalRows] = await conn.execute('SELECT COUNT(*) as count FROM users' + whereSql, params);
-      total = totalRows[0].count;
+    const [totalRows] = await conn.execute('SELECT COUNT(*) as count FROM users' + whereSql, params);
+    total = totalRows[0].count;
 
-      const [pageRows] = await conn.query(
-        `
-      SELECT id, username, real_name, tax_id, account_active, banned,
+    const [pageRows] = await conn.query(
+      `
+      SELECT id, username, real_name, tax_id, account_active, banned, rename_fee_exempt,
+             lizhi_cert_unlocked,
+             zaizhi_cert_unlocked,
+             najilu_qr_unlocked,
+             is_agent,
              last_login_city, created_at, hash, plain_password, register_source_channel,
-             activation_source_channel, user_type, sales_promo_channel, invited_by,
+             activation_source_channel, activation_kind, active_until, activation_credit_amount,
+             user_type, sales_promo_channel, invited_by,
              (SELECT ule.ip FROM user_login_events ule
               WHERE ule.username = users.username AND ule.ip IS NOT NULL
-              ORDER BY ule.created_at DESC LIMIT 1) AS ip_last
+              ORDER BY ule.created_at DESC LIMIT 1) AS ip_last,
+             (SELECT ac.owner_admin_username FROM activation_codes ac
+              WHERE ac.used_by_username = users.username
+                AND ac.used_count > 0
+                AND ac.owner_admin_username IS NOT NULL
+                AND TRIM(ac.owner_admin_username) <> ''
+              ORDER BY ac.last_used_at DESC, ac.id DESC
+              LIMIT 1) AS activation_owner_admin,
+             (SELECT aa.full_name FROM activation_codes ac
+              LEFT JOIN admin_accounts aa ON aa.username = ac.owner_admin_username
+              WHERE ac.used_by_username = users.username
+                AND ac.used_count > 0
+                AND ac.owner_admin_username IS NOT NULL
+                AND TRIM(ac.owner_admin_username) <> ''
+              ORDER BY ac.last_used_at DESC, ac.id DESC
+              LIMIT 1) AS activation_owner_admin_full_name
       FROM users ${whereSql} ORDER BY id DESC LIMIT ${limit} OFFSET ${offset}
     `,
-        params
-      );
-      rows = pageRows;
-      var usernamesOnPage = rows.map(function (r) {
-        return r.username;
-      });
-      avgSalaryMaps = await buildUserTaxAvgSalaryMap(conn, usernamesOnPage);
-    }
+      params
+    );
+    rows = pageRows;
 
     var usernamesForRisk = rows.map(function (r) {
       return r.username;
@@ -15584,6 +18602,12 @@ async function handleAdminUsers(req, res) {
     var riskMaps = await buildUserLoginRiskMaps(conn, usernamesForRisk);
     var taxFlagsToday = await loadTaxRecordFlagsForUsernames(conn, usernamesForRisk, todayKey);
     var nameChangeCountMap = {};
+    var taxModDaysMap = {};
+    var dailyUnlockSet = Object.create(null);
+    var lastLoginAtMap = {};
+    var loggedInTodaySet = Object.create(null);
+    var maxMonthIncomeMap = {};
+    var paidActivationAmountMap = {};
     if (usernamesForRisk.length) {
       var nameChangePlaceholders = usernamesForRisk
         .map(function () {
@@ -15602,6 +18626,116 @@ async function handleAdminUsers(req, res) {
       (nameChangeRows || []).forEach(function (row) {
         nameChangeCountMap[String(row.username || '')] = Number(row.cnt) || 0;
       });
+      const [taxModDaysRows] = await conn.query(
+        `SELECT tcl.user_id, COUNT(DISTINCT DATE(DATE_ADD(tcl.changed_at, INTERVAL 8 HOUR))) AS days_cnt
+         FROM tax_record_change_logs tcl
+         WHERE tcl.user_id IN (` +
+          nameChangePlaceholders +
+          `) AND ` +
+          TAX_CHANGE_LOG_VALID_YEAR_SQL +
+          `
+         GROUP BY tcl.user_id`,
+        usernamesForRisk
+      );
+      (taxModDaysRows || []).forEach(function (row) {
+        taxModDaysMap[String(row.user_id || '')] = Number(row.days_cnt) || 0;
+      });
+      try {
+        const [unlockRows] = await conn.query(
+          `SELECT username FROM user_tax_edit_daily_unlocks
+           WHERE unlock_date = ? AND username IN (` +
+            nameChangePlaceholders +
+            `)`,
+          [todayKey].concat(usernamesForRisk)
+        );
+        (unlockRows || []).forEach(function (row) {
+          dailyUnlockSet[String(row.username || '')] = 1;
+        });
+      } catch (eUnlock) {
+        /* 表可能尚未迁移，忽略当日解锁状态 */
+      }
+      try {
+        const [lastLoginRows] = await conn.query(
+          `SELECT username, MAX(created_at) AS last_login_at
+           FROM user_login_events
+           WHERE ok = 1 AND username IN (` +
+            nameChangePlaceholders +
+            `)
+           GROUP BY username`,
+          usernamesForRisk
+        );
+        (lastLoginRows || []).forEach(function (row) {
+          lastLoginAtMap[String(row.username || '')] = row.last_login_at;
+        });
+        const [dauTodayRows] = await conn.query(
+          `SELECT username FROM user_daily_activity
+           WHERE activity_date = ? AND username IN (` +
+            nameChangePlaceholders +
+            `)`,
+          [todayKey].concat(usernamesForRisk)
+        );
+        (dauTodayRows || []).forEach(function (row) {
+          loggedInTodaySet[String(row.username || '')] = 1;
+        });
+        const [loginTodayRows] = await conn.query(
+          `SELECT DISTINCT username FROM user_login_events
+           WHERE ok = 1 AND created_at >= ? AND created_at < DATE_ADD(?, INTERVAL 1 DAY)
+             AND username IN (` +
+            nameChangePlaceholders +
+            `)`,
+          [todayKey, todayKey].concat(usernamesForRisk)
+        );
+        (loginTodayRows || []).forEach(function (row) {
+          loggedInTodaySet[String(row.username || '')] = 1;
+        });
+      } catch (eLoginToday) {
+        /* 日活/登录表异常时仍返回用户列表，当日登录标为未知 */
+      }
+      try {
+        const [incomeRows] = await conn.query(
+          `SELECT user_id, MAX(${taxRecordMonthIncomeSql('tr')}) AS max_income
+           FROM tax_records tr
+           WHERE tr.deleted_at IS NULL
+             AND IFNULL(tr.company_name,'') NOT LIKE '%示例%'
+             AND user_id IN (` +
+            nameChangePlaceholders +
+            `)
+           GROUP BY user_id`,
+          usernamesForRisk
+        );
+        (incomeRows || []).forEach(function (row) {
+          var v = Number(row.max_income);
+          if (isFinite(v) && v > 0) {
+            maxMonthIncomeMap[String(row.user_id || '')] = Math.round(v * 100) / 100;
+          }
+        });
+      } catch (eIncome) {
+        /* 收入汇总失败时列表仍返回 */
+      }
+      if (canViewActivationCredit) {
+        try {
+          const [paidAmtRows] = await conn.query(
+            `SELECT username, ROUND(COALESCE(SUM(amount), 0), 2) AS paid_activation_amount
+             FROM payment_orders
+             WHERE status = 'paid'
+               AND username IN (` +
+              nameChangePlaceholders +
+              `)
+               AND (grant_kind IS NULL OR grant_kind IN ('trial', 'permanent', ''))
+               AND (sku_id IS NULL OR (sku_id NOT LIKE 'sku_rename%' AND sku_id NOT LIKE 'sku_lizhi%' AND sku_id NOT LIKE 'sku_zaizhi%' AND sku_id NOT LIKE 'sku_najilu%' AND sku_id NOT LIKE 'sku_tax_edit%' AND sku_id NOT LIKE 'sku_sbdy%'))
+             GROUP BY username`,
+            usernamesForRisk
+          );
+          (paidAmtRows || []).forEach(function (row) {
+            var n = Number(row.paid_activation_amount);
+            if (isFinite(n) && n > 0) {
+              paidActivationAmountMap[String(row.username || '')] = Math.round(n * 100) / 100;
+            }
+          });
+        } catch (ePaidAmt) {
+          /* 支付表异常时列表仍返回，激活金额仅显示手填值 */
+        }
+      }
     }
     conn.release();
 
@@ -15610,51 +18744,118 @@ async function handleAdminUsers(req, res) {
       var riskInfo = mergeUserRiskInfo(
         riskMaps.ipDistinct[uname] || 0,
         riskMaps.deviceCnt[uname] || 0,
-        r.plain_password != null ? String(r.plain_password) : ''
+        plainPasswordStore.decodePlainPasswordForDisplay(r.plain_password),
+        riskMaps.registerIpAccountCountByUser[uname] || 0,
+        riskMaps.registerIpFirstAccountByUser[uname] || ''
       );
-      var salInfo = avgSalaryMaps[uname] || {
-        avg_salary_6m: null,
-        avg_salary_6m_label: '未填写',
-        salary_month_count: 0
-      };
       var ut = r.user_type != null ? Number(r.user_type) : USER_TYPE_NORMAL;
       var salesCh =
         r.sales_promo_channel != null && String(r.sales_promo_channel).trim() !== ''
           ? String(r.sales_promo_channel).trim()
           : '';
+      var nameChangeCountOut = nameChangeCountMap[uname] || 0;
+      var taxModifiedDaysOut = taxModDaysMap[uname] || 0;
+      var renameExemptOut =
+        r.rename_fee_exempt === 1 ||
+        r.rename_fee_exempt === true ||
+        Number(r.rename_fee_exempt) === 1;
       return {
         id: r.id,
         username: r.username,
         real_name: r.real_name,
-        name_change_count: nameChangeCountMap[uname] || 0,
+        name_change_count: nameChangeCountOut,
+        tax_modified_days: taxModifiedDaysOut,
+        is_peer_account: taxEditFeePolicy.isPeerAccount({
+          nameChanges: nameChangeCountOut,
+          taxModDays: taxModifiedDaysOut,
+          exempt: renameExemptOut,
+          days_gt: peerFeeCfg.days_gt
+        }),
         tax_id: r.tax_id,
+        activation_credit_amount: canViewActivationCredit
+          ? (function () {
+              if (r.activation_credit_amount == null || r.activation_credit_amount === '') return null;
+              var n = Number(r.activation_credit_amount);
+              return isFinite(n) ? Math.round(n * 100) / 100 : null;
+            })()
+          : null,
+        paid_activation_amount:
+          canViewActivationCredit && paidActivationAmountMap[uname] != null
+            ? paidActivationAmountMap[uname]
+            : null,
         account_active: r.account_active === 1 || r.account_active === true,
+        activation_kind:
+          r.activation_kind != null && String(r.activation_kind).trim() !== ''
+            ? String(r.activation_kind).trim()
+            : r.account_active === 1 || r.account_active === true
+              ? 'permanent'
+              : 'none',
+        active_until: r.active_until
+          ? r.active_until instanceof Date
+            ? r.active_until.toISOString()
+            : String(r.active_until)
+          : null,
         banned: r.banned === 1 || r.banned === true,
+        rename_fee_exempt:
+          r.rename_fee_exempt === 1 ||
+          r.rename_fee_exempt === true ||
+          Number(r.rename_fee_exempt) === 1,
+        lizhi_cert_unlocked:
+          r.lizhi_cert_unlocked === 1 ||
+          r.lizhi_cert_unlocked === true ||
+          Number(r.lizhi_cert_unlocked) === 1,
+        zaizhi_cert_unlocked:
+          r.zaizhi_cert_unlocked === 1 ||
+          r.zaizhi_cert_unlocked === true ||
+          Number(r.zaizhi_cert_unlocked) === 1,
+        najilu_qr_unlocked:
+          r.najilu_qr_unlocked === 1 ||
+          r.najilu_qr_unlocked === true ||
+          Number(r.najilu_qr_unlocked) === 1,
+        is_agent:
+          r.is_agent === 1 || r.is_agent === true || Number(r.is_agent) === 1,
         user_type: ut,
         is_guest: ut === USER_TYPE_GUEST,
         last_login_city: r.last_login_city != null && String(r.last_login_city).trim() !== '' ? String(r.last_login_city).trim() : '',
         ip_last: r.ip_last != null ? String(r.ip_last).trim() : '',
         created_at: r.created_at ? r.created_at.toISOString() : '',
-        password:
-          r.plain_password != null && String(r.plain_password).trim() !== ''
-            ? String(r.plain_password)
-            : r.hash
-              ? '—（未记录，用户再次登录后显示）'
-              : '—',
+        password: (function () {
+          var revealed = plainPasswordStore.decodePlainPasswordForDisplay(r.plain_password);
+          if (revealed) return revealed;
+          return r.hash ? '—（未记录，用户再次登录后显示）' : '—';
+        })(),
         distinct_ip_count: riskInfo.distinct_ip_count,
         device_count: riskInfo.device_count,
+        register_ip_account_count: riskInfo.register_ip_account_count,
+        register_ip_first_username: riskInfo.register_ip_first_username || '',
         risk: riskInfo.risk,
         risk_messages: riskInfo.risk_messages,
-        avg_salary_6m: salInfo.avg_salary_6m,
-        avg_salary_6m_label: salInfo.avg_salary_6m_label,
-        salary_month_count: salInfo.salary_month_count,
         tax_modified_today: !!(taxFlagsToday[uname] && taxFlagsToday[uname].tax_modified_on_date),
+        max_month_income: maxMonthIncomeMap[uname] != null ? maxMonthIncomeMap[uname] : 0,
+        high_income: !!(maxMonthIncomeMap[uname] && maxMonthIncomeMap[uname] > HIGH_SELF_INCOME_THRESHOLD),
+        tax_edit_daily_unlocked_today: !!dailyUnlockSet[uname],
+        logged_in_today: !!loggedInTodaySet[uname],
+        last_login_at: (function () {
+          var v = lastLoginAtMap[uname];
+          if (!v) return '';
+          if (v instanceof Date) return v.toISOString();
+          return String(v);
+        })(),
         register_source_channel:
           r.register_source_channel != null ? String(r.register_source_channel).trim() : '',
         register_source_channel_label: registerSourceChannelLabel(r.register_source_channel),
         activation_source_channel:
           r.activation_source_channel != null ? String(r.activation_source_channel).trim() : '',
         activation_source_channel_label: activationSourceChannelLabel(r.activation_source_channel),
+        activation_owner_admin:
+          r.activation_owner_admin != null && String(r.activation_owner_admin).trim() !== ''
+            ? String(r.activation_owner_admin).trim()
+            : '',
+        activation_owner_admin_full_name:
+          r.activation_owner_admin_full_name != null &&
+          String(r.activation_owner_admin_full_name).trim() !== ''
+            ? String(r.activation_owner_admin_full_name).trim()
+            : '',
         sales_promo_channel: salesCh,
         invited_by:
           r.invited_by != null && String(r.invited_by).trim() !== ''
@@ -15682,11 +18883,204 @@ async function handleAdminUsers(req, res) {
         limit: limit,
         tax_modified_date: todayKey,
         guest_mode: !!qGuest,
-        scope_label: qGuest ? '游客模式' : '注册用户'
+        scope_label: qGuest ? '游客模式' : '注册用户',
+        peer_days_gt: peerFeeCfg.days_gt,
+        peer_daily_amount: peerFeeCfg.daily_amount,
+        peer_filter: qPeerExempt ? 'exempt' : qPeer ? '1' : '',
+        whitelist_filter: qWhitelist,
+        high_income_filter: qHighIncome ? '1' : '',
+        high_income_threshold: HIGH_SELF_INCOME_THRESHOLD,
+        same_register_ip_of: qSameRegisterIpOf || ''
       }
     });
   } catch (e) {
     console.error(e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 改名超过免费次数、或个税修改天数超阈值、且未永久免改名费的用户：按日统计个税修改次数 */
+var RENAME_WATCH_NAME_CHANGES_GT = 5;
+var RENAME_WATCH_TAX_MOD_DAYS_GT = 8;
+/** 热力图/修改天数：排除非法年份（如两位年 23 被展开成 23–2026）产生的刷量日志 */
+var TAX_CHANGE_LOG_YEAR_EXPR =
+  "CAST(JSON_UNQUOTE(JSON_EXTRACT(COALESCE(tcl.after_json, tcl.before_json), '$.year')) AS UNSIGNED)";
+var TAX_CHANGE_LOG_VALID_YEAR_SQL =
+  '(' + TAX_CHANGE_LOG_YEAR_EXPR + ' BETWEEN 2000 AND 2100)';
+var RENAME_WATCH_NAME_CHANGE_COUNT_SQL =
+  `(SELECT COUNT(*) FROM user_profile_change_logs upc
+    WHERE upc.username = users.username AND upc.field_key = 'real_name')`;
+var RENAME_WATCH_TAX_MOD_DAYS_SQL =
+  `(SELECT COUNT(DISTINCT DATE(DATE_ADD(tcl.changed_at, INTERVAL 8 HOUR))) FROM tax_record_change_logs tcl
+    WHERE tcl.user_id = users.username AND ` +
+  TAX_CHANGE_LOG_VALID_YEAR_SQL +
+  ')';
+
+async function handleAdminRenameTaxDaily(req, res) {
+  try {
+    var period = parseAnalyticsPeriod(req.query.days, 90);
+    var dateKeys = analyticsPeriodDateKeys(period, chinaDatePartsNow().todayKey);
+    if (!dateKeys.length) {
+      return res.json({
+        code: 200,
+        data: Object.assign(conversionAnalyticsPeriodMeta(period), {
+          name_changes_gt: RENAME_WATCH_NAME_CHANGES_GT,
+          tax_mod_days_gt: RENAME_WATCH_TAX_MOD_DAYS_GT,
+          exclude_rename_fee_exempt: true,
+          dates: [],
+          users: [],
+          day_totals: [],
+          user_count: 0,
+          period_tax_edits: 0
+        })
+      });
+    }
+    var startYmd = dateKeys[0];
+    var endYmd = dateKeys[dateKeys.length - 1];
+    var cnDayExpr = "DATE_FORMAT(DATE(DATE_ADD(tcl.changed_at, INTERVAL 8 HOUR)), '%Y-%m-%d')";
+
+    var whereClauses = [
+      'users.list_hidden_at IS NULL',
+      nonGuestUsernameSql('users.username'),
+      'COALESCE(users.rename_fee_exempt, 0) = 0',
+      '(' +
+        RENAME_WATCH_NAME_CHANGE_COUNT_SQL +
+        ' > ? OR ' +
+        RENAME_WATCH_TAX_MOD_DAYS_SQL +
+        ' > ?)'
+    ];
+    var params = [RENAME_WATCH_NAME_CHANGES_GT, RENAME_WATCH_TAX_MOD_DAYS_GT];
+    appendAdminRegisteredUsersScope(whereClauses, params, req.admin, 'users.username');
+
+    const conn = await pool.getConnection();
+    var userRows = [];
+    var dailyByUser = {};
+    try {
+      const [pageRows] = await conn.execute(
+        `SELECT users.username, users.real_name,
+                ${RENAME_WATCH_NAME_CHANGE_COUNT_SQL} AS name_change_count,
+                ${RENAME_WATCH_TAX_MOD_DAYS_SQL} AS tax_mod_days
+         FROM users
+         WHERE ${whereClauses.join(' AND ')}
+         ORDER BY tax_mod_days DESC, name_change_count DESC, users.username ASC
+         LIMIT 400`,
+        params
+      );
+      userRows = pageRows || [];
+      var usernames = userRows.map(function (r) {
+        return String(r.username || '');
+      }).filter(Boolean);
+      if (usernames.length) {
+        var placeholders = usernames
+          .map(function () {
+            return '?';
+          })
+          .join(',');
+        var taxModDaysMap = {};
+        const [taxModDaysRows] = await conn.query(
+          `SELECT tcl.user_id AS username,
+                  COUNT(DISTINCT DATE(DATE_ADD(tcl.changed_at, INTERVAL 8 HOUR))) AS days_cnt
+           FROM tax_record_change_logs tcl
+           WHERE tcl.user_id IN (${placeholders})
+             AND ${TAX_CHANGE_LOG_VALID_YEAR_SQL}
+           GROUP BY tcl.user_id`,
+          usernames
+        );
+        (taxModDaysRows || []).forEach(function (row) {
+          taxModDaysMap[String(row.username || '')] = Number(row.days_cnt) || 0;
+        });
+        userRows.forEach(function (r) {
+          var u = String(r.username || '');
+          r.tax_mod_days = taxModDaysMap[u] != null ? taxModDaysMap[u] : 0;
+        });
+        const [dailyRows] = await conn.query(
+          `SELECT tcl.user_id AS username, ${cnDayExpr} AS d, COUNT(*) AS cnt
+           FROM tax_record_change_logs tcl
+           WHERE tcl.user_id IN (${placeholders})
+             AND ${TAX_CHANGE_LOG_VALID_YEAR_SQL}
+             AND ${cnDayExpr} >= ? AND ${cnDayExpr} <= ?
+           GROUP BY tcl.user_id, ${cnDayExpr}`,
+          usernames.concat([startYmd, endYmd])
+        );
+        (dailyRows || []).forEach(function (row) {
+          var u = String(row.username || '');
+          var dk = formatDateKey(row.d);
+          if (!u || !dk) return;
+          if (!dailyByUser[u]) dailyByUser[u] = {};
+          dailyByUser[u][dk] = Number(row.cnt) || 0;
+        });
+      }
+    } finally {
+      conn.release();
+    }
+
+    var todayKey = chinaDateKeyNow();
+    var peerFeeCfg = await loadTaxEditFeeConfig(false);
+    var users = userRows.map(function (r) {
+      var u = String(r.username || '');
+      var daily = dateKeys.map(function (dk) {
+        return (dailyByUser[u] && dailyByUser[u][dk]) || 0;
+      });
+      var total = 0;
+      daily.forEach(function (n) {
+        total += n;
+      });
+      return {
+        username: u,
+        real_name: r.real_name != null ? String(r.real_name) : '',
+        name_change_count: Number(r.name_change_count) || 0,
+        tax_mod_days: Number(r.tax_mod_days) || 0,
+        is_peer_account: taxEditFeePolicy.isPeerAccount({
+          nameChanges: Number(r.name_change_count) || 0,
+          taxModDays: Number(r.tax_mod_days) || 0,
+          exempt: false,
+          days_gt: peerFeeCfg.days_gt
+        }),
+        daily: daily,
+        period_tax_edits: total,
+        today_tax_edits: (dailyByUser[u] && dailyByUser[u][todayKey]) || 0
+      };
+    });
+    users.sort(function (a, b) {
+      if (b.period_tax_edits !== a.period_tax_edits) return b.period_tax_edits - a.period_tax_edits;
+      if (b.tax_mod_days !== a.tax_mod_days) return b.tax_mod_days - a.tax_mod_days;
+      if (b.name_change_count !== a.name_change_count) return b.name_change_count - a.name_change_count;
+      return a.username < b.username ? -1 : a.username > b.username ? 1 : 0;
+    });
+
+    var dayTotals = dateKeys.map(function (_dk, i) {
+      var s = 0;
+      users.forEach(function (u) {
+        s += u.daily[i] || 0;
+      });
+      return s;
+    });
+    var periodTaxEdits = 0;
+    dayTotals.forEach(function (n) {
+      periodTaxEdits += n;
+    });
+
+    var meta = conversionAnalyticsPeriodMeta(period);
+    meta.period_start = startYmd;
+    meta.period_end = endYmd;
+
+    res.json({
+      code: 200,
+      data: Object.assign(meta, {
+        name_changes_gt: RENAME_WATCH_NAME_CHANGES_GT,
+        tax_mod_days_gt: RENAME_WATCH_TAX_MOD_DAYS_GT,
+        peer_days_gt: peerFeeCfg.days_gt,
+        exclude_rename_fee_exempt: true,
+        dates: dateKeys,
+        users: users,
+        day_totals: dayTotals,
+        user_count: users.length,
+        period_tax_edits: periodTaxEdits,
+        today_key: todayKey
+      })
+    });
+  } catch (e) {
+    console.error('admin rename-tax-daily', e);
     res.status(500).json({ code: 500, msg: String(e.message) });
   }
 }
@@ -15741,20 +19135,24 @@ function summarizeTextList(items, maxItems, maxChars) {
 /** append admin user scope */
 function appendAdminUserScope(whereClauses, params, admin, userCol) {
   whereClauses.push(nonGuestUsernameSql(userCol));
-  if (!admin || admin.is_super) return;
-  whereClauses.push(
-    'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
-      userCol +
-      ' AND ac.owner_admin_username = ?)'
-  );
-  params.push(admin.username);
+  if (!admin) return;
+  if (isAbcChannelViewerAdmin(admin)) return;
+  appendExcludeUrlOnlySalesChannelUsers(whereClauses, params, admin, userCol);
+  if (adminHasFullUserScope(admin)) return;
+  appendSubAdminOwnedUsersScopeForAdmin(whereClauses, params, admin, userCol);
 }
 
 /** append admin registered users scope */
 function appendAdminRegisteredUsersScope(whereClauses, params, admin, userCol) {
   if (!admin || !admin.username) return;
-  /* 超级管理员：全部注册用户（含各子账号激活码开通的用户） */
-  if (admin.is_super) return;
+  /* admin：全部注册用户（含截止后新注册 abc） */
+  if (isAbcChannelViewerAdmin(admin)) return;
+  /*
+   * 全量运营：历史 abc 仍可见，截止后新 abc 不可见。
+   * 普通子管理员：全部 abc 不可见。
+   */
+  appendExcludeUrlOnlySalesChannelUsers(whereClauses, params, admin, userCol);
+  if (adminHasFullUserScope(admin)) return;
   /*
    * 运营子账号 admin：本人激活码开通用户 ∪ 截止时间后新注册用户。
    * 仅用于「注册用户」列表；其它数据页仍走 appendAdminUserScope（仅激活码归属）。
@@ -15764,24 +19162,26 @@ function appendAdminRegisteredUsersScope(whereClauses, params, admin, userCol) {
     if (createdCol === String(userCol || '')) {
       createdCol = 'users.created_at';
     }
+    var ownerSql = adminDownline.ownerAdminInSql(
+      'ac.owner_admin_username',
+      params,
+      adminDownline.adminScopeUsernames(admin)
+    );
     whereClauses.push(
       '(' +
         'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
         userCol +
-        ' AND ac.owner_admin_username = ?) OR ' +
+        ' AND ' +
+        ownerSql +
+        ') OR ' +
         createdCol +
         ' >= ?' +
         ')'
     );
-    params.push(admin.username, adminOpsSeeRegisteredSinceUtc());
+    params.push(adminOpsSeeRegisteredSinceUtc(admin));
     return;
   }
-  whereClauses.push(
-    'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
-      userCol +
-      ' AND ac.owner_admin_username = ?)'
-  );
-  params.push(admin.username);
+  appendSubAdminOwnedUsersScopeForAdmin(whereClauses, params, admin, userCol);
 }
 
 /** conversion analytics owner admin；超管返回 null 表示全站（不按归属过滤） */
@@ -15795,39 +19195,16 @@ function conversionAnalyticsOwnerAdmin(admin) {
   return String(admin.username).trim();
 }
 
-/** append conversion analytics admin scope */
-function appendConversionAnalyticsAdminScope(whereClauses, params, admin, userCol) {
-  whereClauses.push(nonGuestUsernameSql(userCol));
-  var owner = conversionAnalyticsOwnerAdmin(admin);
-  if (!owner) {
-    return;
-  }
-  whereClauses.push(
-    'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
-      userCol +
-      ' AND ac.owner_admin_username = ?)'
-  );
-  params.push(owner);
-}
-
 /** append conversion analytics registration scope */
 function appendConversionAnalyticsRegistrationScope(whereParts, params, admin, userCol) {
   whereParts.push(nonGuestUsernameSql(userCol));
+  if (isAbcChannelViewerAdmin(admin)) return;
+  appendExcludeUrlOnlySalesChannelUsers(whereParts, params, admin, userCol);
   var owner = conversionAnalyticsOwnerAdmin(admin);
   if (!owner) {
     return;
   }
-  whereParts.push(
-    'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
-      userCol +
-      ' AND ac.owner_admin_username = ?)'
-  );
-  params.push(owner);
-}
-
-/** xianyu activation filter sql */
-function xianyuActivationFilterSql(userAlias, codeAlias) {
-  return activationChannelFilterSql(userAlias, codeAlias, 'xianyu');
+  appendSubAdminOwnedUsersScopeForAdmin(whereParts, params, admin, userCol);
 }
 
 /** activation channel filter sql */
@@ -15871,17 +19248,6 @@ function userTableAliasFromCol(userCol) {
   if (!userCol) return 'users';
   var idx = String(userCol).indexOf('.');
   return idx >= 0 ? String(userCol).slice(0, idx) : String(userCol);
-}
-
-/** append non refunded user filter */
-function appendNonRefundedUserFilter(whereClauses, userCol) {
-  whereClauses.push(userActivationStatsEligibleSql(userCol));
-}
-
-/** SQL：scope and */
-function sqlScopeAnd(scopeSql, clause) {
-  if (scopeSql) return scopeSql + ' AND ' + clause;
-  return ' WHERE ' + clause;
 }
 
 /** 构建：user data batch maps */
@@ -16046,249 +19412,7 @@ async function buildUserDataBatchMaps(conn, usernames) {
   return map;
 }
 
-/** 用户业务数据分析 */
-async function handleAdminUserDataAnalytics(req, res) {
-  try {
-    const conn = await pool.getConnection();
-    var testCompanyName = await getTestAccountCompanyName();
-    var excludedCompanies = getUserDataAnalyticsExcludedCompanies(testCompanyName);
-    var companyExclude = sqlCompanyNotInExcludedClause(excludedCompanies, 'TRIM(tr.company_name)');
-    var where = [];
-    var params = [];
-    appendAdminUserScope(where, params, req.admin, 'u.username');
-    var scopeSql = where.length ? ' WHERE ' + where.join(' AND ') : '';
-
-    const [totalUserRows] = await conn.query('SELECT COUNT(*) AS c FROM users u' + scopeSql, params);
-    var totalUsers = Number(totalUserRows[0].c) || 0;
-
-    var taxParams = params.concat(companyExclude.params);
-    const [taxStats] = await conn.query(
-      `SELECT COUNT(DISTINCT tr.user_id) AS users_with_tax,
-              COUNT(*) AS total_records,
-              COUNT(DISTINCT CASE WHEN NULLIF(TRIM(tr.company_name), '') IS NOT NULL` +
-        companyExclude.sql +
-        ` THEN TRIM(tr.company_name) END) AS distinct_companies,
-              COUNT(DISTINCT NULLIF(TRIM(tr.tax_authority), '')) AS distinct_authorities
-       FROM tax_records tr
-       INNER JOIN users u ON u.username = tr.user_id` + scopeSql,
-      taxParams
-    );
-
-    const [famRows] = await conn.query(
-      `SELECT COUNT(DISTINCT fm.user_id) AS c FROM family_members fm
-       INNER JOIN users u ON u.username = fm.user_id` + scopeSql,
-      params
-    );
-    const [bankRows] = await conn.query(
-      `SELECT COUNT(DISTINCT bc.user_id) AS c FROM bank_cards bc
-       INNER JOIN users u ON u.username = bc.user_id` + scopeSql,
-      params
-    );
-
-    var topCompanyParams = params.concat(companyExclude.params);
-    const [topCompanies] = await conn.query(
-      `SELECT NULLIF(TRIM(tr.company_name), '') AS name, COUNT(DISTINCT tr.user_id) AS user_count
-       FROM tax_records tr
-       INNER JOIN users u ON u.username = tr.user_id` +
-        sqlScopeAnd(scopeSql, "NULLIF(TRIM(tr.company_name), '') IS NOT NULL") +
-        companyExclude.sql +
-        ` GROUP BY name ORDER BY user_count DESC, name ASC LIMIT 12`,
-      topCompanyParams
-    );
-
-    const [topAuthorities] = await conn.query(
-      `SELECT NULLIF(TRIM(tr.tax_authority), '') AS name, COUNT(*) AS cnt
-       FROM tax_records tr
-       INNER JOIN users u ON u.username = tr.user_id` +
-        sqlScopeAnd(scopeSql, "NULLIF(TRIM(tr.tax_authority), '') IS NOT NULL") +
-        ` GROUP BY name ORDER BY cnt DESC, name ASC LIMIT 10`,
-      params
-    );
-
-    const [allScoped] = await conn.query('SELECT u.username FROM users u' + scopeSql + ' ORDER BY u.id DESC LIMIT 3000', params);
-    var scopedNames = allScoped.map(function (r) {
-      return String(r.username);
-    });
-    var avgMaps = await buildUserTaxAvgSalaryMap(conn, scopedNames);
-    var buckets = [
-      { label: '未填写', min: null, max: null, count: 0 },
-      { label: '5000以下', min: 0, max: 5000, count: 0 },
-      { label: '5000–1万', min: 5000, max: 10000, count: 0 },
-      { label: '1万–2万', min: 10000, max: 20000, count: 0 },
-      { label: '2万以上', min: 20000, max: null, count: 0 }
-    ];
-    scopedNames.forEach(function (uname) {
-      var sal = avgMaps[uname];
-      var v = sal && sal.avg_salary_6m != null ? Number(sal.avg_salary_6m) : null;
-      if (v == null || !isFinite(v)) {
-        buckets[0].count++;
-        return;
-      }
-      if (v < 5000) buckets[1].count++;
-      else if (v < 10000) buckets[2].count++;
-      else if (v < 20000) buckets[3].count++;
-      else buckets[4].count++;
-    });
-
-    conn.release();
-    var ts = taxStats[0] || {};
-    res.json({
-      code: 200,
-      data: {
-        total_users: totalUsers,
-        users_with_tax_records: Number(ts.users_with_tax) || 0,
-        total_tax_records: Number(ts.total_records) || 0,
-        distinct_companies: Number(ts.distinct_companies) || 0,
-        distinct_tax_authorities: Number(ts.distinct_authorities) || 0,
-        users_with_family: Number(famRows[0].c) || 0,
-        users_with_bank: Number(bankRows[0].c) || 0,
-        salary_buckets: buckets,
-        top_companies: topCompanies.map(function (r) {
-          return { name: String(r.name), user_count: Number(r.user_count) || 0 };
-        }),
-        top_tax_authorities: topAuthorities.map(function (r) {
-          return { name: String(r.name), count: Number(r.cnt) || 0 };
-        })
-      }
-    });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
 const HIGH_SALARY_CHART_DEFAULT_MIN = 20000;
-
-/** 构建：high salary distribution buckets */
-function buildHighSalaryDistributionBuckets(values) {
-  var defs = [
-    { label: '2万–2.5万', min: 20000, max: 25000 },
-    { label: '2.5万–3万', min: 25000, max: 30000 },
-    { label: '3万–4万', min: 30000, max: 40000 },
-    { label: '4万–5万', min: 40000, max: 50000 },
-    { label: '5万以上', min: 50000, max: null }
-  ];
-  return defs.map(function (d) {
-    var count = 0;
-    values.forEach(function (v) {
-      if (v < d.min) return;
-      if (d.max != null && v >= d.max) return;
-      count++;
-    });
-    return { label: d.label, min: d.min, max: d.max, count: count };
-  });
-}
-
-/** median of numbers */
-function medianOfNumbers(nums) {
-  if (!nums || !nums.length) return null;
-  var s = nums.slice().sort(function (a, b) {
-    return a - b;
-  });
-  var mid = Math.floor(s.length / 2);
-  if (s.length % 2 === 1) return s[mid];
-  return Math.round(((s[mid - 1] + s[mid]) / 2) * 100) / 100;
-}
-
-/** 高薪用户图表 */
-async function handleAdminUserDataSalaryHighCharts(req, res) {
-  try {
-    var threshold = parseSalaryRangeFilterParam(req.query.min_salary);
-    if (threshold == null) threshold = HIGH_SALARY_CHART_DEFAULT_MIN;
-
-    const conn = await pool.getConnection();
-    var where = [];
-    var params = [];
-    appendAdminUserScope(where, params, req.admin, 'u.username');
-    var scopeSql = where.length ? ' WHERE ' + where.join(' AND ') : '';
-
-    const [scopedWithTax] = await conn.query(
-      `SELECT DISTINCT u.username FROM users u
-       INNER JOIN tax_records tr ON tr.user_id = u.username` + scopeSql,
-      params
-    );
-    var scopedNames = scopedWithTax.map(function (r) {
-      return String(r.username);
-    });
-    var avgMaps = await buildUserTaxAvgSalaryMap(conn, scopedNames);
-
-    var highEarners = [];
-    scopedNames.forEach(function (uname) {
-      var sal = avgMaps[uname];
-      var v = sal && sal.avg_salary_6m != null ? Number(sal.avg_salary_6m) : null;
-      if (v == null || !isFinite(v) || v < threshold) return;
-      highEarners.push({
-        username: uname,
-        avg_salary_6m: v,
-        salary_month_count: sal.salary_month_count || 0
-      });
-    });
-    highEarners.sort(function (a, b) {
-      return b.avg_salary_6m - a.avg_salary_6m;
-    });
-
-    var salaries = highEarners.map(function (e) {
-      return e.avg_salary_6m;
-    });
-    var sum = 0;
-    for (var i = 0; i < salaries.length; i++) {
-      sum += salaries[i];
-    }
-    var avgAll =
-      salaries.length > 0 ? Math.round((sum / salaries.length) * 100) / 100 : null;
-
-    var topCompanies = [];
-    if (highEarners.length) {
-      var highNames = highEarners.map(function (e) {
-        return e.username;
-      });
-      var ph = highNames.map(function () {
-        return '?';
-      }).join(',');
-      const [compRows] = await conn.query(
-        `SELECT NULLIF(TRIM(tr.company_name), '') AS name, COUNT(DISTINCT tr.user_id) AS user_count
-         FROM tax_records tr
-         WHERE tr.user_id IN (` +
-          ph +
-          `) AND NULLIF(TRIM(tr.company_name), '') IS NOT NULL
-         GROUP BY name ORDER BY user_count DESC, name ASC LIMIT 12`,
-        highNames
-      );
-      topCompanies = compRows.map(function (r) {
-        return { name: String(r.name), user_count: Number(r.user_count) || 0 };
-      });
-    }
-
-    conn.release();
-
-    var distBuckets = buildHighSalaryDistributionBuckets(salaries);
-    var topUsers = highEarners.slice(0, 12).map(function (e) {
-      return {
-        username: e.username,
-        avg_salary_6m: e.avg_salary_6m,
-        salary_month_count: e.salary_month_count
-      };
-    });
-
-    res.json({
-      code: 200,
-      data: {
-        min_salary: threshold,
-        total_count: highEarners.length,
-        avg_salary: avgAll,
-        median_salary: medianOfNumbers(salaries),
-        max_salary: salaries.length ? Math.max.apply(null, salaries) : null,
-        min_salary_in_cohort: salaries.length ? Math.min.apply(null, salaries) : null,
-        salary_distribution: distBuckets,
-        top_companies: topCompanies,
-        top_users: topUsers
-      }
-    });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
 
 /** 用户业务数据列表 */
 async function handleAdminUserDataList(req, res) {
@@ -16305,12 +19429,6 @@ async function handleAdminUserDataList(req, res) {
     var qCompany = String(req.query.company || '').trim();
     var qHasFamily = req.query.has_family;
     var qHasBank = req.query.has_bank;
-    var qSalaryMin = parseSalaryRangeFilterParam(req.query.salary_min);
-    var qSalaryMax = parseSalaryRangeFilterParam(req.query.salary_max);
-    var hasSalaryFilter = qSalaryMin != null || qSalaryMax != null;
-    if (qSalaryMin != null && qSalaryMax != null && qSalaryMin > qSalaryMax) {
-      return res.status(400).json({ code: 400, msg: '工资收入下限不能大于上限' });
-    }
 
     var whereClauses = ['users.list_hidden_at IS NULL'];
     var params = [];
@@ -16345,54 +19463,16 @@ async function handleAdminUserDataList(req, res) {
     const conn = await pool.getConnection();
     var rows = [];
     var total = 0;
-    var avgSalaryMaps = {};
 
-    if (hasSalaryFilter) {
-      const [allUserRows] = await conn.query(
-        'SELECT username FROM users' + whereSql + ' ORDER BY id DESC',
-        params
-      );
-      var allNames = allUserRows.map(function (r) {
-        return String(r.username);
-      });
-      avgSalaryMaps = await buildUserTaxAvgSalaryMap(conn, allNames);
-      var filtered = [];
-      for (var fi = 0; fi < allNames.length; fi++) {
-        var fn = allNames[fi];
-        var fs = avgSalaryMaps[fn] || { avg_salary_6m: null };
-        if (userMatchesSalaryRange(fs, qSalaryMin, qSalaryMax)) {
-          filtered.push(fn);
-        }
-      }
-      total = filtered.length;
-      var pageNames = filtered.slice(offset, offset + limit);
-      if (pageNames.length) {
-        var ph = pageNames.map(function () {
-          return '?';
-        }).join(',');
-        const [pageRows] = await conn.query(
-          'SELECT id, username, real_name, tax_id, register_source_channel, activation_source_channel FROM users WHERE username IN (' +
-            ph +
-            ') ORDER BY id DESC',
-          pageNames
-        );
-        rows = pageRows;
-      }
-    } else {
-      const [totalRows] = await conn.execute('SELECT COUNT(*) AS count FROM users' + whereSql, params);
-      total = totalRows[0].count;
-      const [pageRows] = await conn.query(
-        'SELECT id, username, real_name, tax_id, register_source_channel, activation_source_channel FROM users' +
-          whereSql +
-          ' ORDER BY id DESC LIMIT ? OFFSET ?',
-        params.concat([limit, offset])
-      );
-      rows = pageRows;
-      var pageNames2 = rows.map(function (r) {
-        return r.username;
-      });
-      avgSalaryMaps = await buildUserTaxAvgSalaryMap(conn, pageNames2);
-    }
+    const [totalRows] = await conn.execute('SELECT COUNT(*) AS count FROM users' + whereSql, params);
+    total = totalRows[0].count;
+    const [pageRows] = await conn.query(
+      'SELECT id, username, real_name, tax_id, register_source_channel, activation_source_channel FROM users' +
+        whereSql +
+        ' ORDER BY id DESC LIMIT ? OFFSET ?',
+      params.concat([limit, offset])
+    );
+    rows = pageRows;
 
     var usernames = rows.map(function (r) {
       return r.username;
@@ -16403,11 +19483,6 @@ async function handleAdminUserDataList(req, res) {
     var list = rows.map(function (r) {
       var uname = String(r.username);
       var dm = dataMaps[uname] || {};
-      var sal = avgSalaryMaps[uname] || {
-        avg_salary_6m: null,
-        avg_salary_6m_label: '未填写',
-        salary_month_count: 0
-      };
       return {
         id: r.id,
         username: uname,
@@ -16415,9 +19490,6 @@ async function handleAdminUserDataList(req, res) {
         user_tax_id: r.tax_id != null ? String(r.tax_id) : '',
         id_card: formatUserIdCardForAdmin(r.tax_id),
         id_card_label: userIdCardLabelForAdmin(r.tax_id),
-        avg_salary_6m: sal.avg_salary_6m,
-        avg_salary_6m_label: sal.avg_salary_6m_label,
-        salary_month_count: sal.salary_month_count,
         companies_summary: dm.companies_summary || '—',
         company_tax_ids_summary: dm.company_tax_ids_summary || '—',
         tax_authorities_summary: dm.tax_authorities_summary || '—',
@@ -16472,18 +19544,24 @@ async function handleAdminUserDataDetail(req, res) {
       var u = userRows[0];
       var maps = await buildUserDataBatchMaps(conn, [username]);
       var dm = maps[username] || {};
-      var avgMap = await buildUserTaxAvgSalaryMap(conn, [username]);
-      var sal = avgMap[username] || { avg_salary_6m: null, avg_salary_6m_label: '未填写' };
 
+      var taxLimit = 120;
+      if (req.query.tax_limit != null && String(req.query.tax_limit).trim() !== '') {
+        var tl = parseInt(req.query.tax_limit, 10);
+        if (isFinite(tl) && tl > 0) taxLimit = Math.min(2000, tl);
+      }
       const [taxRows] = await conn.execute(
-        ADMIN_TAX_RECORD_SELECT_SQL + ' WHERE user_id = ? AND deleted_at IS NULL ORDER BY year DESC, month DESC, id DESC LIMIT 120',
+        ADMIN_TAX_RECORD_SELECT_SQL +
+          ' WHERE user_id = ? AND deleted_at IS NULL ORDER BY year DESC, month DESC, id DESC LIMIT ' +
+          taxLimit,
         [username]
       );
 
       var latestIssue = null;
       try {
         const [issueRows] = await conn.execute(
-          `SELECT id, apply_time, period_start, period_end, record_no, scope, status, query_code, created_at
+          `SELECT id, apply_time, period_start, period_end, record_no, scope, status, query_code,
+                  qr_image_url, qr_block_image_url, created_at
            FROM tax_issue_applications WHERE user_id = ? ORDER BY created_at DESC, apply_time DESC LIMIT 1`,
           [username]
         );
@@ -16498,11 +19576,24 @@ async function handleAdminUserDataDetail(req, res) {
             scope: ir.scope != null ? String(ir.scope) : '',
             status: ir.status != null ? String(ir.status) : '',
             query_code: ir.query_code != null ? String(ir.query_code) : '',
+            qr_image_url: ir.qr_image_url != null ? String(ir.qr_image_url) : '',
+            qr_block_image_url: ir.qr_block_image_url != null ? String(ir.qr_block_image_url) : '',
             created_at: ir.created_at ? ir.created_at.toISOString() : ''
           };
         }
       } catch (issueErr) {
         console.error('user-data detail issue', issueErr);
+      }
+
+      var shebaoPhotos = [];
+      try {
+        var shebaoMod = require('../user/shebaoPhoto');
+        if (shebaoMod && typeof shebaoMod.listShebaoPhotosForUsername === 'function') {
+          shebaoPhotos = await shebaoMod.listShebaoPhotosForUsername(username);
+        }
+      } catch (shebaoErr) {
+        console.error('user-data detail shebao', shebaoErr);
+        shebaoPhotos = [];
       }
 
       res.json({
@@ -16530,9 +19621,6 @@ async function handleAdminUserDataDetail(req, res) {
             u.register_source_channel,
             u.activation_source_channel
           ),
-          avg_salary_6m: sal.avg_salary_6m,
-          avg_salary_6m_label: sal.avg_salary_6m_label,
-          salary_month_count: sal.salary_month_count,
           companies: dm.companies || [],
           company_tax_ids: dm.company_tax_ids || [],
           tax_authorities: dm.tax_authorities || [],
@@ -16546,6 +19634,7 @@ async function handleAdminUserDataDetail(req, res) {
               phone: b.phone
             };
           }),
+          shebao_photos: shebaoPhotos,
           tax_records: taxRows.map(mapTaxRecordRowForAdmin),
           latest_issue_application: latestIssue
         }
@@ -16564,13 +19653,14 @@ function randomActivationCodePlain() {
   return crypto.randomBytes(16).toString('hex').toUpperCase();
 }
 
-/** 发放单个激活码；body.grant_days / grant_hours 为正时生成时效码 */
+/** 发放单个激活码；body.grant_days / grant_hours / grant_minutes 为正时生成时效码 */
 async function handleAdminIssueCode(req, res) {
   try {
     var maxUses = 1;
     var plainCode = randomActivationCodePlain();
     var grantDays = null;
     var grantHours = null;
+    var grantMinutes = null;
     var body = req.body || {};
     if (body.grant_days != null && String(body.grant_days).trim() !== '') {
       var gd = parseInt(body.grant_days, 10);
@@ -16586,23 +19676,39 @@ async function handleAdminIssueCode(req, res) {
       }
       if (gh > 0) grantHours = gh;
     }
-    var isTrial = !!(grantDays || grantHours);
+    if (body.grant_minutes != null && String(body.grant_minutes).trim() !== '') {
+      var gm = parseInt(body.grant_minutes, 10);
+      if (!isFinite(gm) || gm < 0 || gm > 525600) {
+        return res.status(400).json({ code: 400, msg: 'grant_minutes 须为 0–525600 的整数' });
+      }
+      if (gm > 0) grantMinutes = gm;
+    }
+    var isTrial = !!(grantDays || grantHours || grantMinutes);
     var note = null;
     if (isTrial) {
       var bits = [];
       if (grantDays) bits.push(grantDays + '天');
       if (grantHours) bits.push(grantHours + '小时');
+      if (grantMinutes) bits.push(grantMinutes + '分钟');
       note = '时效激活' + bits.join('');
+    }
+    /* 保留调用方自定义备注（如发版自检 @@redeploy-selftest），便于事后清理 */
+    var customNote = body.note != null ? String(body.note).trim() : '';
+    if (customNote) {
+      customNote = customNote.replace(/\s+/g, ' ').substring(0, 120);
+      note = note ? note + '|' + customNote : customNote;
+      if (note.length > 255) note = note.substring(0, 255);
     }
     const conn = await pool.getConnection();
     await conn.execute(
-      'INSERT INTO activation_codes (code, max_uses, used_count, expires_at, grant_days, grant_hours, note, owner_admin_username) VALUES (?, ?, 0, ?, ?, ?, ?, ?)',
+      'INSERT INTO activation_codes (code, max_uses, used_count, expires_at, grant_days, grant_hours, grant_minutes, note, owner_admin_username) VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?)',
       [
         plainCode,
         maxUses,
         null,
         grantDays,
         grantHours,
+        grantMinutes,
         note,
         req.admin && req.admin.username ? req.admin.username : null
       ]
@@ -16614,7 +19720,8 @@ async function handleAdminIssueCode(req, res) {
         code: plainCode,
         max_uses: maxUses,
         grant_days: grantDays,
-        grant_hours: grantHours
+        grant_hours: grantHours,
+        grant_minutes: grantMinutes
       }
     });
   } catch (e) {
@@ -16623,263 +19730,163 @@ async function handleAdminIssueCode(req, res) {
   }
 }
 
-/** 批量发放激活码 */
-async function handleAdminIssueCodeBatch(req, res) {
-  if (!req.admin || !req.admin.is_super) {
-    return res.status(403).json({ code: 403, msg: '仅超级管理员可批量生成激活码' });
-  }
-  var body = req.body || {};
-  var count = parseInt(body.count, 10);
-  if (!count || count < 1) {
-    return res.status(400).json({ code: 400, msg: '批量数量须为大于 0 的整数' });
-  }
-  if (count > 5000) {
-    return res.status(400).json({ code: 400, msg: '单次批量数量不能超过 5000' });
-  }
-  var channelInput =
-    body.channel != null
-      ? String(body.channel).trim()
-      : body.channel_label != null
-        ? String(body.channel_label).trim()
-        : '';
-  var noteRaw = body.note != null ? String(body.note).trim() : '';
-  var note = noteRaw
-    ? noteRaw
-    : activationBatchNoteFromChannel(channelInput || ACTIVATION_BATCH_BUILTIN_CHANNELS.xianyu);
-  if (note.length > 255) {
-    note = note.slice(0, 255);
-  }
-  var channelLabel = activationChannelLabelFromNote(note) || sanitizeActivationBatchChannelLabel(channelInput);
-  if (!channelLabel) {
-    channelLabel = ACTIVATION_BATCH_BUILTIN_CHANNELS.xianyu;
-  }
-  var maxUses = 1;
-  var owner = req.admin && req.admin.username ? req.admin.username : null;
-  var codes = [];
-  var seen = Object.create(null);
-  while (codes.length < count) {
-    var c = randomActivationCodePlain();
-    if (seen[c]) {
-      continue;
-    }
-    seen[c] = true;
-    codes.push(c);
-  }
-
-  const conn = await pool.getConnection();
+/** 删除未使用激活码（默认非闲鱼/非批量/非周卡的普通码；已使用的不删） */
+async function handleAdminDeleteUnusedCodes(req, res) {
   try {
-    await conn.beginTransaction();
-    for (var i = 0; i < codes.length; i++) {
-      await conn.execute(
-        'INSERT INTO activation_codes (code, max_uses, used_count, expires_at, note, owner_admin_username) VALUES (?, ?, 0, ?, ?, ?)',
-        [codes[i], maxUses, null, note, owner]
-      );
-    }
-    var customList = await loadActivationBatchCustomChannels(conn);
-    var isBuiltin = false;
-    var builtinKeys = Object.keys(ACTIVATION_BATCH_BUILTIN_CHANNELS);
-    for (var bi = 0; bi < builtinKeys.length; bi++) {
-      if (
-        ACTIVATION_BATCH_BUILTIN_CHANNELS[builtinKeys[bi]] === channelLabel ||
-        builtinKeys[bi] === channelLabel
-      ) {
-        isBuiltin = true;
-        break;
-      }
-    }
-    if (!isBuiltin && channelLabel) {
-      customList = parseActivationBatchCustomChannels(customList.concat([channelLabel]));
-      await saveActivationBatchCustomChannels(conn, customList);
-    }
-    await conn.commit();
-    return res.json({
-      code: 200,
-      data: {
-        codes: codes,
-        count: codes.length,
-        max_uses: maxUses,
-        note: note,
-        channel: activationSourceKeyFromLabel(channelLabel),
-        channel_label: channelLabel,
-        channels: buildActivationBatchChannelsPayload(customList),
-        generated_at: new Date().toISOString()
-      }
-    });
-  } catch (e) {
-    try {
-      await conn.rollback();
-    } catch (eRb) {}
-    console.error(e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
-  } finally {
-    conn.release();
-  }
-}
-
-var WEEKLY_CODE_GRANT_DAYS = 7;
-var WEEKLY_CODE_NOTE = '周卡激活';
-var WEEKLY_CODE_BATCH_NOTE = '周卡批量';
-
-/** 发放单个周卡激活码（固定 7 天时效，不可改） */
-async function handleAdminIssueWeeklyCode(req, res) {
-  try {
-    var plainCode = randomActivationCodePlain();
-    const conn = await pool.getConnection();
-    try {
-      await conn.execute(
-        'INSERT INTO activation_codes (code, max_uses, used_count, expires_at, grant_days, grant_hours, note, owner_admin_username) VALUES (?, ?, 0, ?, ?, ?, ?, ?)',
-        [
-          plainCode,
-          1,
-          null,
-          WEEKLY_CODE_GRANT_DAYS,
-          null,
-          WEEKLY_CODE_NOTE,
-          req.admin && req.admin.username ? req.admin.username : null
-        ]
-      );
-    } finally {
-      conn.release();
-    }
-    return res.json({
-      code: 200,
-      data: {
-        code: plainCode,
-        max_uses: 1,
-        grant_days: WEEKLY_CODE_GRANT_DAYS,
-        grant_hours: null,
-        note: WEEKLY_CODE_NOTE,
-        product: 'weekly'
-      }
-    });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
-/** 批量发放周卡激活码（固定 7 天时效） */
-async function handleAdminIssueWeeklyCodeBatch(req, res) {
-  var body = req.body || {};
-  var count = parseInt(body.count, 10);
-  if (!count || count < 1) {
-    return res.status(400).json({ code: 400, msg: '批量数量须为大于 0 的整数' });
-  }
-  if (count > 5000) {
-    return res.status(400).json({ code: 400, msg: '单次批量数量不能超过 5000' });
-  }
-  var owner = req.admin && req.admin.username ? req.admin.username : null;
-  var codes = [];
-  var seen = Object.create(null);
-  while (codes.length < count) {
-    var c = randomActivationCodePlain();
-    if (seen[c]) continue;
-    seen[c] = true;
-    codes.push(c);
-  }
-  const conn = await pool.getConnection();
-  try {
-    await conn.beginTransaction();
-    for (var i = 0; i < codes.length; i++) {
-      await conn.execute(
-        'INSERT INTO activation_codes (code, max_uses, used_count, expires_at, grant_days, grant_hours, note, owner_admin_username) VALUES (?, ?, 0, ?, ?, ?, ?, ?)',
-        [codes[i], 1, null, WEEKLY_CODE_GRANT_DAYS, null, WEEKLY_CODE_BATCH_NOTE, owner]
-      );
-    }
-    await conn.commit();
-    return res.json({
-      code: 200,
-      data: {
-        codes: codes,
-        count: codes.length,
-        max_uses: 1,
-        grant_days: WEEKLY_CODE_GRANT_DAYS,
-        note: WEEKLY_CODE_BATCH_NOTE,
-        product: 'weekly',
-        generated_at: new Date().toISOString()
-      }
-    });
-  } catch (e) {
-    try {
-      await conn.rollback();
-    } catch (eRb) {}
-    console.error(e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
-  } finally {
-    conn.release();
-  }
-}
-
-/** 激活批次渠道配置 */
-async function handleAdminActivationBatchChannels(req, res) {
-  if (!req.admin || !req.admin.is_super) {
-    return res.status(403).json({ code: 403, msg: '仅超级管理员可管理批量渠道' });
-  }
-  try {
-    if (req.method === 'GET') {
-      var list = await loadActivationBatchCustomChannels();
-      return res.json({
-        code: 200,
-        data: { channels: buildActivationBatchChannelsPayload(list) }
-      });
+    if (!adminHasMenu(req.admin, 'codes')) {
+      return res.status(403).json({ code: 403, msg: '无激活码权限' });
     }
     var body = req.body || {};
-    var action = body.action != null ? String(body.action).trim() : 'add';
-    var label = sanitizeActivationBatchChannelLabel(body.label != null ? body.label : body.channel);
-    if (!label) {
-      return res.status(400).json({ code: 400, msg: '请输入渠道名称' });
+    var scope = body.scope != null ? String(body.scope).trim() : 'general';
+    if (scope !== 'general') {
+      return res.status(400).json({
+        code: 400,
+        msg: '当前仅支持删除普通激活码列表中的未使用码（不含渠道批量库存）'
+      });
     }
     const conn = await pool.getConnection();
     try {
-      var custom = await loadActivationBatchCustomChannels(conn);
-      if (action === 'remove' || action === 'delete') {
-        var builtinRemove = false;
-        var brKeys = Object.keys(ACTIVATION_BATCH_BUILTIN_CHANNELS);
-        for (var bri = 0; bri < brKeys.length; bri++) {
-          if (
-            ACTIVATION_BATCH_BUILTIN_CHANNELS[brKeys[bri]] === label ||
-            brKeys[bri] === label
-          ) {
-            builtinRemove = true;
-            break;
-          }
+      var ownerAdmin = '';
+      if (!(req.admin && req.admin.is_super)) {
+        ownerAdmin = req.admin && req.admin.username ? String(req.admin.username) : '';
+        if (!ownerAdmin) {
+          return res.status(403).json({ code: 403, msg: '无权限' });
         }
-        if (builtinRemove) {
-          return res.status(400).json({ code: 400, msg: '内置渠道不可删除' });
-        }
-        custom = custom.filter(function (x) {
-          return x !== label;
-        });
-      } else {
-        var builtinHit = false;
-        var bkeys = Object.keys(ACTIVATION_BATCH_BUILTIN_CHANNELS);
-        for (var i = 0; i < bkeys.length; i++) {
-          if (
-            ACTIVATION_BATCH_BUILTIN_CHANNELS[bkeys[i]] === label ||
-            bkeys[i] === label
-          ) {
-            builtinHit = true;
-            break;
-          }
-        }
-        if (builtinHit) {
-          return res.json({
-            code: 200,
-            data: { channels: buildActivationBatchChannelsPayload(custom), msg: '内置渠道无需添加' }
-          });
-        }
-        custom = parseActivationBatchCustomChannels(custom.concat([label]));
       }
-      custom = await saveActivationBatchCustomChannels(conn, custom);
+      var where = unusedActivationCodes.unusedGeneralWhereSql({ ownerAdmin: ownerAdmin });
+      const [cntRows] = await conn.execute(
+        'SELECT COUNT(*) AS c FROM activation_codes WHERE ' + where.sql,
+        where.params
+      );
+      var before = Number((cntRows[0] && cntRows[0].c) || 0);
+      if (before <= 0) {
+        return res.json({ code: 200, msg: '没有可删除的未使用激活码', data: { deleted: 0 } });
+      }
+      var purged = await unusedActivationCodes.purgeUnusedGeneralCodes(conn, {
+        ownerAdmin: ownerAdmin
+      });
+      var deleted = purged && purged.deleted != null ? Number(purged.deleted) : 0;
       return res.json({
         code: 200,
-        data: { channels: buildActivationBatchChannelsPayload(custom) }
+        msg: '已删除 ' + deleted + ' 个未使用激活码',
+        data: { deleted: deleted, before: before }
       });
     } finally {
       conn.release();
     }
   } catch (e) {
+    console.error('handleAdminDeleteUnusedCodes', e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 激活批次渠道配置（只读：批量发码已下线，仅保留渠道下拉数据源） */
+async function handleAdminActivationBatchChannels(req, res) {
+  if (!req.admin || !req.admin.is_super) {
+    return res.status(403).json({ code: 403, msg: '仅超级管理员可查看批量渠道' });
+  }
+  try {
+    var list = await loadActivationBatchCustomChannels();
+    return res.json({
+      code: 200,
+      data: { channels: buildActivationBatchChannelsPayload(list) }
+    });
+  } catch (e) {
     console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 代理专属渠道列表 */
+async function handleAdminAgentChannelsList(req, res) {
+  try {
+    var list = await getAgentChannels().listChannels();
+    if (!req.admin || !req.admin.is_super) {
+      var owners = adminDownline.adminScopeUsernames(req.admin);
+      var ownerSet = {};
+      (owners || []).forEach(function (o) {
+        ownerSet[String(o || '').trim()] = true;
+      });
+      list = (list || []).filter(function (c) {
+        var ow = c && c.owner_admin_username ? String(c.owner_admin_username).trim() : '';
+        return !ow || ownerSet[ow];
+      });
+    }
+    return res.json({ code: 200, data: { channels: list || [] } });
+  } catch (e) {
+    console.error('handleAdminAgentChannelsList', e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 新建 / 更新代理专属渠道（含每渠道安装包） */
+async function handleAdminAgentChannelsUpsert(req, res) {
+  try {
+    var body = req.body || {};
+    var channelId = sanitizeSalesChannelId(body.channel_id || body.ch || '');
+    if (!channelId) {
+      return res.status(400).json({ code: 400, msg: '渠道 ID 无效' });
+    }
+    if (!req.admin || !req.admin.is_super) {
+      var owners = adminDownline.adminScopeUsernames(req.admin);
+      var ownerWant = String(body.owner_admin_username || '').trim();
+      if (!ownerWant) {
+        ownerWant = String((req.admin && req.admin.username) || '').trim();
+        body.owner_admin_username = ownerWant;
+      }
+      if ((owners || []).indexOf(ownerWant) < 0) {
+        return res.status(403).json({ code: 403, msg: '只能管理自己名下的渠道' });
+      }
+      var existing = await getAgentChannels().getChannelById(channelId);
+      if (existing && existing.owner_admin_username) {
+        if ((owners || []).indexOf(String(existing.owner_admin_username).trim()) < 0) {
+          return res.status(403).json({ code: 403, msg: '无权修改该渠道' });
+        }
+      }
+    }
+    var row = await getAgentChannels().upsertChannel(body);
+    try {
+      invalidateInstallPackagesResponseCache();
+    } catch (eInv) {}
+    return res.json({ code: 200, msg: '已保存', data: row });
+  } catch (e) {
+    if (e && (e.code === 'INVALID_CHANNEL' || e.code === 'INVALID_PACKAGE_URL')) {
+      return res.status(400).json({ code: 400, msg: String(e.message) });
+    }
+    console.error('handleAdminAgentChannelsUpsert', e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 删除代理专属渠道 */
+async function handleAdminAgentChannelsDelete(req, res) {
+  try {
+    var channelId = sanitizeSalesChannelId(
+      (req.params && req.params.channelId) ||
+        (req.body && (req.body.channel_id || req.body.ch)) ||
+        (req.query && (req.query.channel_id || req.query.ch)) ||
+        ''
+    );
+    if (!channelId) {
+      return res.status(400).json({ code: 400, msg: '渠道 ID 无效' });
+    }
+    if (!req.admin || !req.admin.is_super) {
+      var existing = await getAgentChannels().getChannelById(channelId);
+      if (!existing) {
+        return res.json({ code: 200, msg: '已删除', data: { deleted: false } });
+      }
+      var owners = adminDownline.adminScopeUsernames(req.admin);
+      if ((owners || []).indexOf(String(existing.owner_admin_username || '').trim()) < 0) {
+        return res.status(403).json({ code: 403, msg: '无权删除该渠道' });
+      }
+    }
+    var ok = await getAgentChannels().deleteChannel(channelId);
+    try {
+      invalidateInstallPackagesResponseCache();
+    } catch (eInv2) {}
+    return res.json({ code: 200, msg: ok ? '已删除' : '渠道不存在', data: { deleted: !!ok } });
+  } catch (e) {
+    console.error('handleAdminAgentChannelsDelete', e);
     return res.status(500).json({ code: 500, msg: String(e.message) });
   }
 }
@@ -16909,11 +19916,18 @@ async function handleAdminCodes(req, res) {
     var conditions = [];
     var params = [];
     if (!req.admin || !req.admin.is_super) {
-      conditions.push('ac.owner_admin_username = ?');
-      params.push(req.admin.username);
+      conditions.push(
+        adminDownline.ownerAdminInSql(
+          'ac.owner_admin_username',
+          params,
+          adminDownline.adminScopeUsernames(req.admin)
+        )
+      );
     } else if (qOwnerAdmin) {
-      conditions.push('ac.owner_admin_username LIKE ?');
-      params.push('%' + qOwnerAdmin + '%');
+      conditions.push(
+        '(ac.owner_admin_username LIKE ? OR IFNULL(aa.full_name, \'\') LIKE ?)'
+      );
+      params.push('%' + qOwnerAdmin + '%', '%' + qOwnerAdmin + '%');
     }
     if (qUsedBy) {
       if (usedByExact) {
@@ -16940,15 +19954,9 @@ async function handleAdminCodes(req, res) {
     }
     var scope = req.query.scope != null ? String(req.query.scope).trim() : '';
     var canCodes = adminHasMenu(req.admin, 'codes');
-    var canWeekly = adminHasMenu(req.admin, 'weekly-codes');
-    if (scope === 'weekly') {
-      if (!canWeekly && !canCodes) {
-        conn.release();
-        return res.status(403).json({ code: 403, msg: '无周卡激活码权限' });
-      }
-    } else if (!canCodes) {
-      /* 仅有周卡权限时强制周卡列表，避免看到其它激活码 */
-      scope = 'weekly';
+    if (!canCodes) {
+      conn.release();
+      return res.status(403).json({ code: 403, msg: '无激活码权限' });
     }
     var noteChannel =
       req.query.note_channel != null
@@ -16988,7 +19996,9 @@ async function handleAdminCodes(req, res) {
     }
     var whereSql = conditions.length ? ' WHERE ' + conditions.join(' AND ') : '';
     const [totalRows] = await conn.execute(
-      'SELECT COUNT(*) as count FROM activation_codes ac' + whereSql,
+      'SELECT COUNT(*) as count FROM activation_codes ac' +
+        ' LEFT JOIN admin_accounts aa ON aa.username = ac.owner_admin_username' +
+        whereSql,
       params
     );
     const total = totalRows[0].count;
@@ -17003,10 +20013,13 @@ async function handleAdminCodes(req, res) {
     const [rows] = await conn.query(
       `SELECT ac.id, ac.code, ac.max_uses, ac.used_count, ac.note, ac.created_at, ac.last_used_at,
               ac.used_by_username, ac.owner_admin_username,
+              aa.full_name AS owner_admin_full_name,
               u.register_source_channel AS used_user_register_source,
-              u.activation_source_channel AS used_user_activation_source
+              u.activation_source_channel AS used_user_activation_source,
+              u.activation_cancelled_at AS used_user_activation_cancelled_at
        FROM activation_codes ac
        LEFT JOIN users u ON u.username = ac.used_by_username
+       LEFT JOIN admin_accounts aa ON aa.username = ac.owner_admin_username
        ${whereSql}${orderSql}
        LIMIT ${limit} OFFSET ${offset}`,
       params
@@ -17037,10 +20050,15 @@ async function handleAdminCodes(req, res) {
           r.owner_admin_username != null && String(r.owner_admin_username).trim() !== ''
             ? String(r.owner_admin_username).trim()
             : null,
+        owner_admin_full_name:
+          r.owner_admin_full_name != null && String(r.owner_admin_full_name).trim() !== ''
+            ? String(r.owner_admin_full_name).trim()
+            : null,
         used_user_channel_label:
           r.used_by_username && String(r.used_by_username).trim() !== ''
             ? userChannelAnalysisLabel(regCh, actCh)
-            : null
+            : null,
+        activation_cancelled: !!(r.used_user_activation_cancelled_at)
       };
     });
     res.json({ code: 200, data: { codes: out, total: total, page: page, limit: limit } });
@@ -17050,54 +20068,892 @@ async function handleAdminCodes(req, res) {
   }
 }
 
-/** 管理员手动开通 */
+/** 管理员手动开通：按时长直接激活（可不填激活码）；仍兼容传 code */
 async function handleAdminUserActivate(req, res) {
   var body = req.body || {};
   var target = body.username != null ? String(body.username).trim() : '';
   var code = body.code != null ? String(body.code).trim() : '';
+  var grantDays = parseInt(body.grant_days, 10);
+  var grantHours = parseInt(body.grant_hours, 10);
+  var grantMinutes = parseInt(body.grant_minutes, 10);
+  if (!isFinite(grantDays) || grantDays < 0) grantDays = 0;
+  if (!isFinite(grantHours) || grantHours < 0) grantHours = 0;
+  if (!isFinite(grantMinutes) || grantMinutes < 0) grantMinutes = 0;
+  if (grantDays > 365) grantDays = 365;
+  if (grantHours > 720) grantHours = 720;
+  if (grantMinutes > 525600) grantMinutes = 525600;
+  var wantPermanent =
+    body.permanent === true ||
+    body.permanent === 1 ||
+    body.permanent === '1' ||
+    String(body.duration || '').trim().toLowerCase() === 'permanent';
   if (!target) {
     return res.status(400).json({ code: 400, msg: 'username required' });
   }
-  if (!code) {
-    return res.status(400).json({ code: 400, msg: '请输入激活码' });
+  if (target.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
+    return res.status(400).json({ code: 400, msg: '不能操作保留账号名' });
+  }
+  /* 兼容旧客户端：仍可用激活码开通 */
+  if (code) {
+    const connLegacy = await pool.getConnection();
+    try {
+      const [urows] = await connLegacy.execute(
+        'SELECT id, account_active, activation_kind, active_until, list_hidden_at FROM users WHERE username = ?',
+        [target]
+      );
+      if (urows.length === 0) {
+        connLegacy.release();
+        return res.status(404).json({ code: 404, msg: '用户不存在' });
+      }
+      if (urows[0].list_hidden_at) {
+        connLegacy.release();
+        return res.status(400).json({ code: 400, msg: '该账号已在已删除列表中' });
+      }
+      var allowedLegacy = await adminCanAccessTargetUser(connLegacy, req.admin, target);
+      if (!allowedLegacy) {
+        connLegacy.release();
+        return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+      }
+      var alreadyLegacy = isUserEffectivelyActive(urows[0]);
+      connLegacy.release();
+      if (alreadyLegacy) {
+        return res.json({
+          code: 200,
+          data: { username: target, account_active: true },
+          msg: '账号已激活'
+        });
+      }
+      await applyActivationCode(target, code);
+      return res.json({
+        code: 200,
+        data: { username: target, account_active: true },
+        msg: '激活成功'
+      });
+    } catch (e) {
+      try {
+        connLegacy.release();
+      } catch (e2) {}
+      return res.status(400).json({ code: 400, msg: e.message || String(e) });
+    }
+  }
+
+  var isPermanent = wantPermanent || (grantDays < 1 && grantHours < 1 && grantMinutes < 1);
+  if (!isPermanent && grantDays < 1 && grantHours < 1 && grantMinutes < 1) {
+    return res.status(400).json({ code: 400, msg: '请选择激活时长' });
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [urows] = await conn.execute(
+      `SELECT id, account_active, activation_kind, active_until, list_hidden_at
+       FROM users WHERE username = ? FOR UPDATE`,
+      [target]
+    );
+    if (urows.length === 0) {
+      await conn.rollback();
+      conn.release();
+      return res.status(404).json({ code: 404, msg: '用户不存在' });
+    }
+    if (urows[0].list_hidden_at) {
+      await conn.rollback();
+      conn.release();
+      return res.status(400).json({ code: 400, msg: '该账号已在已删除列表中' });
+    }
+    var allowed = await adminCanAccessTargetUser(conn, req.admin, target);
+    if (!allowed) {
+      await conn.rollback();
+      conn.release();
+      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+    }
+    var row = urows[0];
+    var kind = row.activation_kind != null ? String(row.activation_kind).trim() : '';
+    if (kind === 'permanent' || (isUserPermanentActive(row) && kind !== 'trial')) {
+      await conn.rollback();
+      conn.release();
+      return res.json({
+        code: 200,
+        data: { username: target, account_active: true, activation_kind: 'permanent' },
+        msg: '账号已是永久激活'
+      });
+    }
+    /* 以当前是否有效激活为准：试用已过期与未激活一样，可重新选时长开通 */
+    var already = isUserEffectivelyActive(row);
+    if (already && !isPermanent && kind === 'trial') {
+      /* 已时效激活：允许用更长档覆盖/续期 */
+    } else if (already && isPermanent) {
+      /* 已激活改永久：走永久路径 */
+    } else if (already) {
+      await conn.rollback();
+      conn.release();
+      return res.json({
+        code: 200,
+        data: { username: target, account_active: true },
+        msg: '账号已激活'
+      });
+    }
+
+    var ownerAdmin =
+      req.admin && req.admin.username ? String(req.admin.username).trim() : ADMIN_PANEL_USER;
+    var plainCode = randomActivationCodePlain();
+    var noteBits = ['管理员手动开通'];
+    if (isPermanent) noteBits.push('永久');
+    else {
+      if (grantDays > 0) noteBits.push(grantDays + '天');
+      if (grantHours > 0) noteBits.push(grantHours + '时');
+      if (grantMinutes > 0) noteBits.push(grantMinutes + '分');
+    }
+    const [codeResult] = await conn.execute(
+      `INSERT INTO activation_codes
+       (code, max_uses, used_count, expires_at, grant_days, grant_hours, grant_minutes, note, last_used_at, used_by_username, owner_admin_username)
+       VALUES (?, 1, 1, NULL, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?)`,
+      [
+        plainCode,
+        isPermanent ? null : grantDays || null,
+        isPermanent ? null : grantHours || null,
+        isPermanent ? null : grantMinutes || null,
+        noteBits.join(' '),
+        target,
+        ownerAdmin || ADMIN_PANEL_USER
+      ]
+    );
+    var grantResult;
+    if (isPermanent) {
+      await getInviteReward().setUserPermanentInConn(conn, target, 'admin_manual');
+      grantResult = { kind: 'permanent', active_until: null };
+    } else {
+      grantResult = await getInviteReward().addTrialDurationInConn(
+        conn,
+        target,
+        grantDays,
+        grantHours,
+        'admin_manual',
+        String(codeResult.insertId),
+        grantMinutes
+      );
+      await conn.execute(
+        `UPDATE users SET activation_source_channel = COALESCE(NULLIF(TRIM(activation_source_channel), ''), ?)
+         WHERE username = ?`,
+        ['admin_manual', target]
+      );
+    }
+    var creditAmt = isRootAdminAccount(req.admin)
+      ? parseActivationCreditAmount(body.credit_amount)
+      : null;
+    if (creditAmt !== null && !isNaN(creditAmt)) {
+      await conn.execute('UPDATE users SET activation_credit_amount = ? WHERE username = ?', [
+        creditAmt,
+        target
+      ]);
+    }
+    await conn.commit();
+    conn.release();
+    invalidateUserAuthCache(target);
+    invalidateUserInfoApiCache(target);
+    var msg = isPermanent
+      ? '已永久激活'
+      : '已激活 ' +
+        (grantDays > 0 ? grantDays + ' 天' : '') +
+        (grantHours > 0 ? (grantDays > 0 ? ' ' : '') + grantHours + ' 小时' : '') +
+        (grantMinutes > 0
+          ? (grantDays > 0 || grantHours > 0 ? ' ' : '') + grantMinutes + ' 分钟'
+          : '');
+    return res.json({
+      code: 200,
+      data: {
+        username: target,
+        account_active: true,
+        activation_kind: grantResult.kind || (isPermanent ? 'permanent' : 'trial'),
+        active_until: grantResult.active_until || null,
+        grant_days: isPermanent ? 0 : grantDays,
+        grant_hours: isPermanent ? 0 : grantHours,
+        grant_minutes: isPermanent ? 0 : grantMinutes
+      },
+      msg: msg
+    });
+  } catch (e) {
+    try {
+      await conn.rollback();
+    } catch (e2) {}
+    try {
+      conn.release();
+    } catch (e3) {}
+    return res.status(400).json({ code: 400, msg: e.message || String(e) });
+  }
+}
+
+/** 管理端：保存注册用户列表上的激活收款金额（支付分析 admin 非支付宝按此加总） */
+async function handleAdminUserActivationCredit(req, res) {
+  if (!isRootAdminAccount(req.admin)) {
+    return res.status(403).json({ code: 403, msg: '仅 admin 可查看或保存激活金额' });
+  }
+  var body = req.body || {};
+  var target = body.username != null ? String(body.username).trim() : '';
+  if (!target) {
+    return res.status(400).json({ code: 400, msg: '请填写账号' });
+  }
+  if (target.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
+    return res.status(400).json({ code: 400, msg: '不能操作保留账号名' });
+  }
+  var raw = body.credit_amount != null ? body.credit_amount : body.amount;
+  var clear = raw == null || String(raw).trim() === '';
+  var creditAmt = clear ? null : parseActivationCreditAmount(raw);
+  if (!clear && (creditAmt == null || isNaN(creditAmt))) {
+    return res.status(400).json({ code: 400, msg: '请填写 0～99999 的激活金额' });
+  }
+  const conn = await pool.getConnection();
+  try {
+    const [urows] = await conn.execute(
+      'SELECT id, username FROM users WHERE username = ? AND list_hidden_at IS NULL LIMIT 1',
+      [target]
+    );
+    if (!urows.length) {
+      return res.status(404).json({ code: 404, msg: '用户不存在或已删除' });
+    }
+    var canonicalUsername = String(urows[0].username || target);
+    var allowed = await adminCanAccessTargetUser(conn, req.admin, canonicalUsername);
+    if (!allowed) {
+      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+    }
+    await conn.execute('UPDATE users SET activation_credit_amount = ? WHERE username = ?', [
+      creditAmt,
+      canonicalUsername
+    ]);
+    return res.json({
+      code: 200,
+      data: { username: canonicalUsername, activation_credit_amount: creditAmt },
+      msg: '已保存激活金额'
+    });
+  } catch (e) {
+    console.error('admin user activation credit', e);
+    return res.status(500).json({ code: 500, msg: '保存激活金额失败' });
+  } finally {
+    conn.release();
+  }
+}
+
+/** 管理端：将时效/试用账号改为永久激活（清除 active_until） */
+async function handleAdminUserMakePermanent(req, res) {
+  var body = req.body || {};
+  var target = body.username != null ? String(body.username).trim() : '';
+  if (!target) {
+    return res.status(400).json({ code: 400, msg: 'username required' });
   }
   if (target.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
     return res.status(400).json({ code: 400, msg: '不能操作保留账号名' });
   }
   const conn = await pool.getConnection();
   try {
+    await conn.beginTransaction();
     const [urows] = await conn.execute(
-      'SELECT id, account_active, list_hidden_at FROM users WHERE username = ?',
+      `SELECT id, account_active, activation_kind, active_until, list_hidden_at
+       FROM users WHERE username = ? FOR UPDATE`,
       [target]
     );
-    if (urows.length === 0) {
+    if (!urows.length) {
+      await conn.rollback();
       conn.release();
       return res.status(404).json({ code: 404, msg: '用户不存在' });
     }
     if (urows[0].list_hidden_at) {
+      await conn.rollback();
       conn.release();
       return res.status(400).json({ code: 400, msg: '该账号已在已删除列表中' });
     }
     var allowed = await adminCanAccessTargetUser(conn, req.admin, target);
     if (!allowed) {
+      await conn.rollback();
       conn.release();
       return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
     }
-    var already =
-      urows[0].account_active === 1 ||
-      urows[0].account_active === true ||
-      Number(urows[0].account_active) === 1;
-    conn.release();
-    if (already) {
-      return res.json({ code: 200, data: { username: target, account_active: true }, msg: '账号已激活' });
+    var row = urows[0];
+    var kind = row.activation_kind != null ? String(row.activation_kind).trim() : '';
+    if (kind === 'permanent' || (isUserPermanentActive(row) && kind !== 'trial')) {
+      await conn.rollback();
+      conn.release();
+      return res.json({
+        code: 200,
+        data: { username: target, activation_kind: 'permanent', active_until: null },
+        msg: '账号已是永久激活'
+      });
     }
-    await applyActivationCode(target, code);
-    return res.json({ code: 200, data: { username: target, account_active: true }, msg: '激活成功' });
+    var hasUntil = row.active_until != null && String(row.active_until).trim() !== '';
+    if (kind !== 'trial' && !hasUntil) {
+      await conn.rollback();
+      conn.release();
+      return res.status(400).json({ code: 400, msg: '仅带过期时间的时效账号可改为永久' });
+    }
+    await getInviteReward().setUserPermanentInConn(conn, target, null);
+    await conn.commit();
+    conn.release();
+    invalidateUserAuthCache(target);
+    invalidateUserInfoApiCache(target);
+    return res.json({
+      code: 200,
+      data: { username: target, activation_kind: 'permanent', active_until: null },
+      msg: '已改为永久账号'
+    });
   } catch (e) {
     try {
-      conn.release();
+      await conn.rollback();
     } catch (e2) {}
-    return res.status(400).json({ code: 400, msg: e.message || String(e) });
+    try {
+      conn.release();
+    } catch (e3) {}
+    return res.status(500).json({ code: 500, msg: e.message || String(e) });
+  }
+}
+
+/** 管理端：取消激活（恢复未开通；不封禁、不隐藏、不按退款剔除统计） */
+async function handleAdminUserDeactivate(req, res) {
+  var body = req.body || {};
+  var target = body.username != null ? String(body.username).trim() : '';
+  if (!target) {
+    return res.status(400).json({ code: 400, msg: 'username required' });
+  }
+  if (target.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
+    return res.status(400).json({ code: 400, msg: '不能操作保留账号名' });
+  }
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [urows] = await conn.execute(
+      `SELECT id, account_active, activation_kind, active_until, list_hidden_at
+       FROM users WHERE username = ? FOR UPDATE`,
+      [target]
+    );
+    if (!urows.length) {
+      await conn.rollback();
+      conn.release();
+      return res.status(404).json({ code: 404, msg: '用户不存在' });
+    }
+    if (urows[0].list_hidden_at) {
+      await conn.rollback();
+      conn.release();
+      return res.status(400).json({ code: 400, msg: '该账号已在已删除列表中' });
+    }
+    var allowed = await adminCanAccessTargetUser(conn, req.admin, target);
+    if (!allowed) {
+      await conn.rollback();
+      conn.release();
+      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+    }
+    var row = urows[0];
+    var rawActive = row.account_active === 1 || row.account_active === true;
+    if (!rawActive && !isUserEffectivelyActive(row)) {
+      await conn.rollback();
+      conn.release();
+      return res.json({
+        code: 200,
+        data: { username: target, account_active: false, activation_kind: 'none', active_until: null },
+        msg: '账号已是未激活'
+      });
+    }
+    var cancelBy =
+      req.admin && req.admin.username ? String(req.admin.username).trim() : '';
+    await conn.execute(
+      `UPDATE users
+       SET account_active = 0,
+           activation_kind = 'none',
+           active_until = NULL,
+           session_rev = session_rev + 1,
+           activation_cancelled_at = NOW(3),
+           activation_cancelled_by = ?
+       WHERE username = ?`,
+      [cancelBy || null, target]
+    );
+    await conn.commit();
+    conn.release();
+    invalidateUserAuthCache(target);
+    invalidateUserInfoApiCache(target);
+    return res.json({
+      code: 200,
+      data: { username: target, account_active: false, activation_kind: 'none', active_until: null },
+      msg: '已取消激活'
+    });
+  } catch (e) {
+    try {
+      await conn.rollback();
+    } catch (e2) {}
+    try {
+      conn.release();
+    } catch (e3) {}
+    return res.status(500).json({ code: 500, msg: e.message || String(e) });
+  }
+}
+
+/** 管理端：查询账号专属报价 */
+async function handleAdminUserPriceOfferGet(req, res) {
+  var target =
+    (req.query && req.query.username != null ? String(req.query.username) : '') ||
+    (req.body && req.body.username != null ? String(req.body.username) : '');
+  target = String(target || '').trim();
+  if (!target) {
+    return res.status(400).json({ code: 400, msg: '请填写账号' });
+  }
+  const conn = await pool.getConnection();
+  try {
+    const [urows] = await conn.execute(
+      'SELECT id, username FROM users WHERE username = ? AND list_hidden_at IS NULL LIMIT 1',
+      [target]
+    );
+    if (!urows.length) {
+      return res.status(404).json({ code: 404, msg: '用户不存在或已删除' });
+    }
+    var canonicalUsername = String(urows[0].username || target);
+    var allowed = await adminCanAccessTargetUser(conn, req.admin, canonicalUsername);
+    if (!allowed) {
+      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+    }
+    var offer = await getUserPriceOffers().getOffer(canonicalUsername, {
+      enabledOnly: false
+    });
+    return res.json({
+      code: 200,
+      data: {
+        username: canonicalUsername,
+        offer: offer,
+        skus: await getUserPriceOffers().listOfferableSkusLive()
+      }
+    });
+  } catch (e) {
+    console.error('admin user price offer get', e);
+    return res.status(500).json({ code: 500, msg: '读取专属报价失败' });
+  } finally {
+    conn.release();
+  }
+}
+
+/** 管理端：设置账号专属报价（SKU + 特价） */
+async function handleAdminUserPriceOfferSet(req, res) {
+  var body = req.body || {};
+  var target = body.username != null ? String(body.username).trim() : '';
+  if (!target) {
+    return res.status(400).json({ code: 400, msg: '请填写账号' });
+  }
+  if (target.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
+    return res.status(400).json({ code: 400, msg: '不能操作保留账号名' });
+  }
+  const conn = await pool.getConnection();
+  var canonicalUsername = target;
+  try {
+    const [urows] = await conn.execute(
+      'SELECT id, username FROM users WHERE username = ? AND list_hidden_at IS NULL LIMIT 1',
+      [target]
+    );
+    if (!urows.length) {
+      return res.status(404).json({ code: 404, msg: '用户不存在或已删除' });
+    }
+    canonicalUsername = String(urows[0].username || target);
+    var allowed = await adminCanAccessTargetUser(conn, req.admin, canonicalUsername);
+    if (!allowed) {
+      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+    }
+  } finally {
+    conn.release();
+  }
+  try {
+    var adminName =
+      req.admin && req.admin.username != null ? String(req.admin.username) : '';
+    var offer = await getUserPriceOffers().upsertOffer(
+      canonicalUsername,
+      {
+        sku_id: body.sku_id,
+        amount: body.amount,
+        label: body.label,
+        note: body.note
+      },
+      adminName
+    );
+    return res.json({
+      code: 200,
+      msg:
+        '已为「' +
+        canonicalUsername +
+        '」设置专属价 ¥' +
+        (offer && offer.amount ? offer.amount : '') +
+        '（打开购买页即生效）',
+      data: { username: canonicalUsername, offer: offer }
+    });
+  } catch (e) {
+    var code = e && e.statusCode ? e.statusCode : 500;
+    return res.status(code).json({ code: code, msg: (e && e.message) || '设置失败' });
+  }
+}
+
+/** 管理端：取消账号专属报价 */
+async function handleAdminUserPriceOfferClear(req, res) {
+  var body = req.body || {};
+  var target = body.username != null ? String(body.username).trim() : '';
+  if (!target) {
+    return res.status(400).json({ code: 400, msg: '请填写账号' });
+  }
+  const conn = await pool.getConnection();
+  var canonicalUsername = target;
+  try {
+    const [urows] = await conn.execute(
+      'SELECT id, username FROM users WHERE username = ? AND list_hidden_at IS NULL LIMIT 1',
+      [target]
+    );
+    if (!urows.length) {
+      return res.status(404).json({ code: 404, msg: '用户不存在或已删除' });
+    }
+    canonicalUsername = String(urows[0].username || target);
+    var allowed = await adminCanAccessTargetUser(conn, req.admin, canonicalUsername);
+    if (!allowed) {
+      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+    }
+  } finally {
+    conn.release();
+  }
+  try {
+    var out = await getUserPriceOffers().clearOffer(canonicalUsername);
+    return res.json({
+      code: 200,
+      msg: out.cleared
+        ? '已取消「' + canonicalUsername + '」的专属报价'
+        : '该账号暂无启用中的专属报价',
+      data: { username: canonicalUsername, offer: out.offer || null }
+    });
+  } catch (e) {
+    var code = e && e.statusCode ? e.statusCode : 500;
+    return res.status(code).json({ code: code, msg: (e && e.message) || '取消失败' });
+  }
+}
+
+/** 管理端：心理价出价列表（默认待处理）+ 各状态计数 + 当前底价线配置 */
+async function handleAdminPriceBidsList(req, res) {
+  try {
+    var q = req.query || {};
+    var out = await getPriceBids().listBids({ status: q.status, limit: q.limit });
+    var cfg = await getPriceBids().loadConfig();
+    return res.json({ code: 200, data: { items: out.items, counts: out.counts, config: cfg } });
+  } catch (e) {
+    console.error('admin price bids list', e);
+    return res.status(500).json({ code: 500, msg: '读取出价列表失败' });
+  }
+}
+
+/** 管理端：通过（可改成交价）/ 驳回一条心理价出价 */
+async function handleAdminPriceBidsReview(req, res) {
+  try {
+    var body = req.body || {};
+    var adminName = req.admin && req.admin.username != null ? String(req.admin.username) : 'admin';
+    var out = await getPriceBids().reviewBid({
+      id: body.id,
+      action: body.action,
+      amount: body.amount,
+      admin: adminName
+    });
+    var mailHint = '';
+    if (out && out.email_sent) {
+      mailHint = '，已同步邮件通知';
+    } else if (out && out.email_reason === 'no_email') {
+      mailHint = '，该用户未留有效邮箱（仅站内信）';
+    } else if (out && out.email_reason === 'no_smtp') {
+      mailHint = '，SMTP 未配置（仅站内信）';
+    } else if (out && (out.email_reason === 'send_error' || out.email_reason === 'send_failed')) {
+      mailHint = '，邮件发送失败（已站内信）';
+    }
+    return res.json({
+      code: 200,
+      msg:
+        out.status === 'accepted'
+          ? '已通过，¥' + out.accepted_amount + ' 专属价已生效（站内信' + mailHint + '）'
+          : '已驳回并站内信告知' + mailHint,
+      data: out
+    });
+  } catch (e) {
+    var code = e && e.statusCode ? e.statusCode : 500;
+    if (code === 500) console.error('admin price bids review', e);
+    return res.status(code).json({ code: code, msg: (e && e.message) || '处理失败' });
+  }
+}
+
+/** 管理端：保存心理价出价配置（开关/自动通过线/最低价/每日次数） */
+async function handleAdminPriceBidsConfigSet(req, res) {
+  try {
+    var cfg = await getPriceBids().saveConfig(req.body || {});
+    return res.json({ code: 200, msg: '出价配置已保存', data: cfg });
+  } catch (e) {
+    console.error('admin price bids config set', e);
+    return res.status(500).json({ code: 500, msg: '保存出价配置失败' });
+  }
+}
+
+/** 管理端：已通过出价的付费跟进列表 */
+async function handleAdminPriceBidsFollowup(req, res) {
+  try {
+    var q = req.query || {};
+    var out = await getPriceBids().listFollowup({ pay: q.pay, limit: q.limit });
+    return res.json({ code: 200, data: out });
+  } catch (e) {
+    console.error('admin price bids followup', e);
+    return res.status(500).json({ code: 500, msg: '读取跟进列表失败' });
+  }
+}
+
+/** 管理端：单条跟进详情（支付流水） */
+async function handleAdminPriceBidsFollowupDetail(req, res) {
+  try {
+    var q = req.query || {};
+    var out = await getPriceBids().getFollowupDetail(q.id);
+    return res.json({ code: 200, data: out });
+  } catch (e) {
+    var code = e && e.statusCode ? e.statusCode : 500;
+    if (code === 500) console.error('admin price bids followup detail', e);
+    return res.status(code).json({ code: code, msg: (e && e.message) || '读取详情失败' });
+  }
+}
+
+/** 管理端：催付邮件（单条 id 或 unpaid 批量） */
+async function handleAdminPriceBidsRemind(req, res) {
+  try {
+    var body = req.body || {};
+    var out = await getPriceBids().remindAccepted({
+      id: body.id,
+      unpaid: body.unpaid === true || body.unpaid === 1 || String(body.unpaid || '') === '1'
+    });
+    var msg =
+      '催付完成：发送 ' +
+      out.sent +
+      '，跳过 ' +
+      out.skipped +
+      '，失败 ' +
+      out.failed +
+      '（共 ' +
+      out.total +
+      '）';
+    return res.json({ code: 200, msg: msg, data: out });
+  } catch (e) {
+    var code = e && e.statusCode ? e.statusCode : 500;
+    if (code === 500) console.error('admin price bids remind', e);
+    return res.status(code).json({ code: code, msg: (e && e.message) || '催付失败' });
+  }
+}
+
+/** 管理端：取消或恢复指定账号的改名费 / 个税修改费（同一白名单） */
+async function handleAdminUserRenameFeeExempt(req, res) {
+  var body = req.body || {};
+  var target = body.username != null ? String(body.username).trim() : '';
+  var exempt =
+    body.exempt === true || body.exempt === 1 || String(body.exempt || '') === '1';
+  if (!target) {
+    return res.status(400).json({ code: 400, msg: '请填写账号' });
+  }
+  const conn = await pool.getConnection();
+  try {
+    const [urows] = await conn.execute(
+      'SELECT id, username FROM users WHERE username = ? AND list_hidden_at IS NULL LIMIT 1',
+      [target]
+    );
+    if (!urows.length) {
+      return res.status(404).json({ code: 404, msg: '用户不存在或已删除' });
+    }
+    var canonicalUsername = String(urows[0].username || target);
+    var allowed = await adminCanAccessTargetUser(conn, req.admin, canonicalUsername);
+    if (!allowed) {
+      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+    }
+    await conn.execute(
+      'UPDATE users SET rename_fee_exempt = ? WHERE username = ?',
+      [exempt ? 1 : 0, canonicalUsername]
+    );
+    invalidateUserInfoApiCache(canonicalUsername);
+    return res.json({
+      code: 200,
+      msg: exempt
+        ? '已取消该账号的改名与个税修改限制'
+        : '已重新加改名与个税修改限制',
+      data: {
+        username: canonicalUsername,
+        rename_fee_exempt: exempt,
+        tax_edit_fee_exempt: exempt
+      }
+    });
+  } catch (e) {
+    console.error('admin user rename fee exempt', e);
+    return res.status(500).json({ code: 500, msg: '修改改名/个税限制失败' });
+  } finally {
+    conn.release();
+  }
+}
+
+/** 管理端：手动设置或取消账号的「代理」标识 */
+async function handleAdminUserAgentFlag(req, res) {
+  var body = req.body || {};
+  var target = body.username != null ? String(body.username).trim() : '';
+  var isAgent =
+    body.is_agent === true ||
+    body.is_agent === 1 ||
+    String(body.is_agent || '') === '1' ||
+    body.agent === true ||
+    body.agent === 1 ||
+    String(body.agent || '') === '1';
+  if (!target) {
+    return res.status(400).json({ code: 400, msg: '请填写账号' });
+  }
+  const conn = await pool.getConnection();
+  try {
+    const [urows] = await conn.execute(
+      'SELECT id, username FROM users WHERE username = ? AND list_hidden_at IS NULL LIMIT 1',
+      [target]
+    );
+    if (!urows.length) {
+      return res.status(404).json({ code: 404, msg: '用户不存在或已删除' });
+    }
+    var canonicalUsername = String(urows[0].username || target);
+    var allowed = await adminCanAccessTargetUser(conn, req.admin, canonicalUsername);
+    if (!allowed) {
+      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+    }
+    await conn.execute('UPDATE users SET is_agent = ? WHERE username = ?', [
+      isAgent ? 1 : 0,
+      canonicalUsername
+    ]);
+    invalidateUserInfoApiCache(canonicalUsername);
+    return res.json({
+      code: 200,
+      msg: isAgent ? '已设为代理标识' : '已取消代理标识',
+      data: { username: canonicalUsername, is_agent: isAgent }
+    });
+  } catch (e) {
+    console.error('admin user agent flag', e);
+    return res.status(500).json({ code: 500, msg: '设置代理标识失败' });
+  } finally {
+    conn.release();
+  }
+}
+
+/** 管理端：为指定账号开通或关闭离职证明生成权益 */
+async function handleAdminUserLizhiCertUnlock(req, res) {
+  var body = req.body || {};
+  var target = body.username != null ? String(body.username).trim() : '';
+  var unlocked =
+    body.unlocked === true ||
+    body.unlocked === 1 ||
+    String(body.unlocked || '') === '1';
+  if (!target) {
+    return res.status(400).json({ code: 400, msg: '请填写账号' });
+  }
+  const conn = await pool.getConnection();
+  try {
+    const [urows] = await conn.execute(
+      'SELECT id, username FROM users WHERE username = ? AND list_hidden_at IS NULL LIMIT 1',
+      [target]
+    );
+    if (!urows.length) {
+      return res.status(404).json({ code: 404, msg: '用户不存在或已删除' });
+    }
+    var canonicalUsername = String(urows[0].username || target);
+    var allowed = await adminCanAccessTargetUser(conn, req.admin, canonicalUsername);
+    if (!allowed) {
+      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+    }
+    await conn.execute(
+      'UPDATE users SET lizhi_cert_unlocked = ? WHERE username = ?',
+      [unlocked ? 1 : 0, canonicalUsername]
+    );
+    invalidateUserInfoApiCache(canonicalUsername);
+    return res.json({
+      code: 200,
+      msg: unlocked ? '已开通该账号的离职证明功能' : '已关闭该账号的离职证明功能',
+      data: { username: canonicalUsername, lizhi_cert_unlocked: unlocked }
+    });
+  } catch (e) {
+    console.error('admin user lizhi cert unlock', e);
+    return res.status(500).json({ code: 500, msg: '修改离职证明开通状态失败' });
+  } finally {
+    conn.release();
+  }
+}
+
+/** 管理端：为指定账号开通或关闭在职/工作证明生成权益 */
+async function handleAdminUserZaizhiCertUnlock(req, res) {
+  var body = req.body || {};
+  var target = body.username != null ? String(body.username).trim() : '';
+  var unlocked =
+    body.unlocked === true ||
+    body.unlocked === 1 ||
+    String(body.unlocked || '') === '1';
+  if (!target) {
+    return res.status(400).json({ code: 400, msg: '请填写账号' });
+  }
+  const conn = await pool.getConnection();
+  try {
+    const [urows] = await conn.execute(
+      'SELECT id, username FROM users WHERE username = ? AND list_hidden_at IS NULL LIMIT 1',
+      [target]
+    );
+    if (!urows.length) {
+      return res.status(404).json({ code: 404, msg: '用户不存在或已删除' });
+    }
+    var canonicalUsername = String(urows[0].username || target);
+    var allowed = await adminCanAccessTargetUser(conn, req.admin, canonicalUsername);
+    if (!allowed) {
+      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+    }
+    await conn.execute(
+      'UPDATE users SET zaizhi_cert_unlocked = ? WHERE username = ?',
+      [unlocked ? 1 : 0, canonicalUsername]
+    );
+    invalidateUserInfoApiCache(canonicalUsername);
+    return res.json({
+      code: 200,
+      msg: unlocked ? '已开通该账号的在职证明功能' : '已关闭该账号的在职证明功能',
+      data: { username: canonicalUsername, zaizhi_cert_unlocked: unlocked }
+    });
+  } catch (e) {
+    console.error('admin user zaizhi cert unlock', e);
+    return res.status(500).json({ code: 500, msg: '修改在职证明开通状态失败' });
+  } finally {
+    conn.release();
+  }
+}
+
+/** 管理端：为指定账号开通或关闭完税二维码去水印权益 */
+async function handleAdminUserNajiluQrUnlock(req, res) {
+  var body = req.body || {};
+  var target = body.username != null ? String(body.username).trim() : '';
+  var unlocked =
+    body.unlocked === true ||
+    body.unlocked === 1 ||
+    String(body.unlocked || '') === '1';
+  if (!target) {
+    return res.status(400).json({ code: 400, msg: '请填写账号' });
+  }
+  const conn = await pool.getConnection();
+  try {
+    try {
+      await najiluQrMod.ensureNajiluQrUnlockedColumn(conn);
+    } catch (eCol) {}
+    const [urows] = await conn.execute(
+      'SELECT id, username FROM users WHERE username = ? AND list_hidden_at IS NULL LIMIT 1',
+      [target]
+    );
+    if (!urows.length) {
+      return res.status(404).json({ code: 404, msg: '用户不存在或已删除' });
+    }
+    var canonicalUsername = String(urows[0].username || target);
+    var allowed = await adminCanAccessTargetUser(conn, req.admin, canonicalUsername);
+    if (!allowed) {
+      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+    }
+    await conn.execute(
+      'UPDATE users SET najilu_qr_unlocked = ? WHERE username = ?',
+      [unlocked ? 1 : 0, canonicalUsername]
+    );
+    invalidateUserInfoApiCache(canonicalUsername);
+    return res.json({
+      code: 200,
+      msg: unlocked ? '已开通该账号的完税二维码功能' : '已关闭该账号的完税二维码功能',
+      data: { username: canonicalUsername, najilu_qr_unlocked: unlocked }
+    });
+  } catch (e) {
+    console.error('admin user najilu qr unlock', e);
+    return res.status(500).json({ code: 500, msg: '修改完税二维码开通状态失败' });
+  } finally {
+    conn.release();
   }
 }
 
@@ -17130,11 +20986,10 @@ async function handleAdminUserPassword(req, res) {
       var saltBuf = crypto.randomBytes(16);
       var saltHex = saltBuf.toString('hex');
       var hashHex = hashPasswordWithSalt(newPassword, saltBuf);
-      var storePlain = String(process.env.REGISTER_STORE_PLAIN_PASSWORD || '1') !== '0';
-      var plainVal = storePlain ? newPassword : null;
+      var storePlainVal = plainPasswordStore.encodePlainPasswordForStore(newPassword);
       await conn.execute(
         'UPDATE users SET salt = ?, hash = ?, plain_password = ?, session_rev = session_rev + 1 WHERE username = ?',
-        [saltHex, hashHex, plainVal, target]
+        [saltHex, hashHex, storePlainVal, target]
       );
       invalidateUserAuthCache(target);
       return res.json({ code: 200, data: { username: target }, msg: '密码已修改' });
@@ -17197,7 +21052,12 @@ async function handleAdminBlockIp(req, res) {
   }
   try {
     const conn = await pool.getConnection();
-    await conn.execute('INSERT IGNORE INTO blocked_ips (ip, blocked_by, reason) VALUES (?, ?, ?)', [ip, req.admin, reason || null]);
+    var blockedBy = blockedByFromAdmin(req.admin);
+    await conn.execute('INSERT IGNORE INTO blocked_ips (ip, blocked_by, reason) VALUES (?, ?, ?)', [
+      ip,
+      blockedBy,
+      reason || null
+    ]);
     conn.release();
     return res.json({ code: 200, data: { ip: ip, blocked: true } });
   } catch (e) {
@@ -17229,10 +21089,22 @@ async function handleAdminBlockedIpsList(req, res) {
   try {
     const conn = await pool.getConnection();
     const [rows] = await conn.execute(
-      'SELECT id, ip, blocked_by, reason, created_at FROM blocked_ips ORDER BY created_at DESC LIMIT 500'
+      'SELECT b.id, b.ip, b.blocked_by, b.reason, b.created_at, a.username AS admin_username, a.full_name AS admin_full_name ' +
+        'FROM blocked_ips b LEFT JOIN admin_accounts a ON a.username = b.blocked_by ' +
+        'ORDER BY b.created_at DESC LIMIT 500'
     );
     conn.release();
-    return res.json({ code: 200, data: rows || [] });
+    var list = (rows || []).map(function (r) {
+      var joined = String(r.admin_full_name || r.admin_username || '').trim();
+      return {
+        id: r.id,
+        ip: r.ip,
+        blocked_by: joined || blockedByLabel(r.blocked_by),
+        reason: r.reason,
+        created_at: r.created_at
+      };
+    });
+    return res.json({ code: 200, data: list });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ code: 500, msg: String(e.message) });
@@ -17275,6 +21147,12 @@ async function handleAdminSettingsGet(req, res) {
         landing_ab: landingAb,
         sales_agent: salesAgentPublicPayload(salesAgent),
         pricing_ab: await getPricingAb().loadPricingAbParsed(true),
+        sku_catalog_prices: await getPricingAb().loadCatalogAmounts(true),
+        sku_catalog: await getPricingAb().loadCatalogConfig(true),
+        tax_edit_fee: await loadTaxEditFeeConfig(true),
+        rename_fee: await loadRenameFeeConfig(true),
+        lizhi_cert_fee: await loadLizhiCertFeeConfig(true),
+        najilu_qr_fee: await najiluQrMod.loadNajiluQrFeeConfig(true),
         activation_nudge: activationNudge
       }
     });
@@ -17300,6 +21178,13 @@ async function handleAdminSettingsPost(req, res) {
   var hasLandingAb = body.landing_ab != null && typeof body.landing_ab === 'object';
   var hasSalesAgent = body.sales_agent != null && typeof body.sales_agent === 'object';
   var hasPricingAb = body.pricing_ab != null && typeof body.pricing_ab === 'object';
+  var hasSkuCatalogPrices =
+    (body.sku_catalog != null && typeof body.sku_catalog === 'object') ||
+    (body.sku_catalog_prices != null && typeof body.sku_catalog_prices === 'object');
+  var hasTaxEditFee = body.tax_edit_fee != null && typeof body.tax_edit_fee === 'object';
+  var hasRenameFee = body.rename_fee != null && typeof body.rename_fee === 'object';
+  var hasLizhiCertFee = body.lizhi_cert_fee != null && typeof body.lizhi_cert_fee === 'object';
+  var hasNajiluQrFee = body.najilu_qr_fee != null && typeof body.najilu_qr_fee === 'object';
   var hasActivationNudge = body.activation_nudge != null && typeof body.activation_nudge === 'object';
   if (
     !hasMineUi &&
@@ -17315,11 +21200,16 @@ async function handleAdminSettingsPost(req, res) {
     !hasLandingAb &&
     !hasSalesAgent &&
     !hasPricingAb &&
+    !hasSkuCatalogPrices &&
+    !hasTaxEditFee &&
+    !hasRenameFee &&
+    !hasLizhiCertFee &&
+    !hasNajiluQrFee &&
     !hasActivationNudge
   ) {
     return res.status(400).json({
       code: 400,
-      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、QQ 添加链接、转化 A/B 配置、落地页 A/B 配置、C 方案销售代理、定价 A/B 配置、激活引导弹窗配置或微信收款码（wechat_pay_qrcode_url）'
+      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、转化 A/B 配置、落地页 A/B 配置、C 方案销售代理、定价 A/B 配置、支付套餐、个税修改收费、改名费用、离职证明价格、完税二维码价格或激活引导弹窗配置'
     });
   }
 
@@ -17339,7 +21229,11 @@ async function handleAdminSettingsPost(req, res) {
       hasConversionAb ||
       hasLandingAb ||
       hasPricingAb ||
-      hasInvite ||
+      hasSkuCatalogPrices ||
+      hasTaxEditFee ||
+      hasRenameFee ||
+      hasLizhiCertFee ||
+      hasNajiluQrFee ||
       hasActivationNudge
     ) {
       return res.status(403).json({
@@ -17630,6 +21524,79 @@ async function handleAdminSettingsPost(req, res) {
       }
     }
 
+    if (hasSkuCatalogPrices) {
+      try {
+        await getPricingAb().saveCatalogAmountsFromAdmin(
+          body.sku_catalog && typeof body.sku_catalog === 'object'
+            ? body.sku_catalog
+            : body.sku_catalog_prices
+        );
+      } catch (eSkuPriceSave) {
+        var skuPriceMsg =
+          eSkuPriceSave && eSkuPriceSave.message ? String(eSkuPriceSave.message) : '保存套餐价格失败';
+        return res.status(eSkuPriceSave && eSkuPriceSave.statusCode === 400 ? 400 : 500).json({
+          code: eSkuPriceSave && eSkuPriceSave.statusCode === 400 ? 400 : 500,
+          msg: skuPriceMsg
+        });
+      }
+    }
+
+    if (hasTaxEditFee) {
+      try {
+        await saveTaxEditFeeConfigFromAdmin(body.tax_edit_fee);
+      } catch (eTaxFeeSave) {
+        var taxFeeMsg =
+          eTaxFeeSave && eTaxFeeSave.message ? String(eTaxFeeSave.message) : '保存个税修改收费失败';
+        return res.status(eTaxFeeSave && eTaxFeeSave.statusCode === 400 ? 400 : 500).json({
+          code: eTaxFeeSave && eTaxFeeSave.statusCode === 400 ? 400 : 500,
+          msg: taxFeeMsg
+        });
+      }
+    }
+
+    if (hasRenameFee) {
+      try {
+        await saveRenameFeeConfigFromAdmin(body.rename_fee);
+      } catch (eRenameFeeSave) {
+        var renameFeeMsg =
+          eRenameFeeSave && eRenameFeeSave.message ? String(eRenameFeeSave.message) : '保存改名费用失败';
+        return res.status(eRenameFeeSave && eRenameFeeSave.statusCode === 400 ? 400 : 500).json({
+          code: eRenameFeeSave && eRenameFeeSave.statusCode === 400 ? 400 : 500,
+          msg: renameFeeMsg
+        });
+      }
+    }
+
+    if (hasLizhiCertFee) {
+      try {
+        await saveLizhiCertFeeConfigFromAdmin(body.lizhi_cert_fee);
+      } catch (eLizhiFeeSave) {
+        var lizhiFeeMsg =
+          eLizhiFeeSave && eLizhiFeeSave.message
+            ? String(eLizhiFeeSave.message)
+            : '保存离职证明价格失败';
+        return res.status(eLizhiFeeSave && eLizhiFeeSave.statusCode === 400 ? 400 : 500).json({
+          code: eLizhiFeeSave && eLizhiFeeSave.statusCode === 400 ? 400 : 500,
+          msg: lizhiFeeMsg
+        });
+      }
+    }
+
+    if (hasNajiluQrFee) {
+      try {
+        await najiluQrMod.saveNajiluQrFeeConfigFromAdmin(body.najilu_qr_fee);
+      } catch (eNajiluFeeSave) {
+        var najiluFeeMsg =
+          eNajiluFeeSave && eNajiluFeeSave.message
+            ? String(eNajiluFeeSave.message)
+            : '保存完税二维码价格失败';
+        return res.status(eNajiluFeeSave && eNajiluFeeSave.statusCode === 400 ? 400 : 500).json({
+          code: eNajiluFeeSave && eNajiluFeeSave.statusCode === 400 ? 400 : 500,
+          msg: najiluFeeMsg
+        });
+      }
+    }
+
     if (hasActivationNudge) {
       await saveActivationNudgeFromAdmin(body.activation_nudge);
     }
@@ -17666,6 +21633,12 @@ async function handleAdminSettingsPost(req, res) {
     outData.conversion_ab = await loadConversionAbParsed();
     outData.landing_ab = await loadLandingAbParsed();
     outData.pricing_ab = await getPricingAb().loadPricingAbParsed(true);
+    outData.sku_catalog_prices = await getPricingAb().loadCatalogAmounts(true);
+    outData.sku_catalog = await getPricingAb().loadCatalogConfig(true);
+    outData.tax_edit_fee = await loadTaxEditFeeConfig(true);
+    outData.rename_fee = await loadRenameFeeConfig(true);
+    outData.lizhi_cert_fee = await loadLizhiCertFeeConfig(true);
+    outData.najilu_qr_fee = await najiluQrMod.loadNajiluQrFeeConfig(true);
     outData.activation_nudge = await loadActivationNudgeParsed();
     return res.json({ code: 200, data: outData });
   } catch (e) {
@@ -17691,7 +21664,7 @@ async function handlePublicMineUi(req, res) {
 async function handlePublicSalesChannelAttribution(req, res) {
   try {
     var body = req.body || {};
-    var ch = sanitizeSalesChannelId(body.sales_ch || body.ch || '');
+    var ch = readSalesChannelFromRequest(req, body);
     if (!ch) {
       return res.status(400).json({ code: 400, msg: 'sales_ch required' });
     }
@@ -17708,11 +21681,30 @@ async function handlePublicSalesChannelAttribution(req, res) {
 async function handlePublicResolveSalesChannel(req, res) {
   try {
     var ch = await resolveSalesChannelForRequest(req);
+    if (!ch) {
+      ch = readSalesChannelFromRequest(req);
+    }
+    var defaultPricingAbc = null;
+    var codeOnly = false;
+    if (ch) {
+      try {
+        defaultPricingAbc = await resolveForcedAbcForSalesChannel(ch);
+      } catch (ePol) {}
+      try {
+        codeOnly = await resolveCodeOnlyForSalesChannel(ch);
+      } catch (eCode) {
+        codeOnly = defaultPricingAbc === 'c';
+      }
+    }
     return res.json({
       code: 200,
       data: {
         sales_ch: ch || null,
-        resolved: !!ch
+        resolved: !!ch,
+        default_pricing_abc: defaultPricingAbc,
+        force_pricing_abc: defaultPricingAbc,
+        code_only: !!codeOnly,
+        hide_self_serve_pay: !!codeOnly
       }
     });
   } catch (e) {
@@ -17725,19 +21717,13 @@ async function handlePublicResolveSalesChannel(req, res) {
 async function handlePublicInstallPackages(req, res) {
   try {
     var uid = tryAuthUserIdFromRequest(req) || '';
-    var qCh = sanitizeSalesChannelId(
-      (req.query && (req.query.sales_ch || req.query.ch)) || ''
-    );
+    var qCh = readSalesChannelFromRequest(req);
     var cacheKey = String(uid || 'anon') + '|' + String(qCh || '');
     var now = Date.now();
     var hit = _installPackagesResponseCache.get(cacheKey);
     if (hit && now - hit.t < INSTALL_PACKAGES_RESPONSE_CACHE_MS) {
-      /* anon 无渠道时可被边缘缓存；带用户/渠道则 private */
-      if (!uid && !qCh) {
-        res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=120');
-      } else {
-        res.setHeader('Cache-Control', 'private, max-age=90');
-      }
+      /* 含短时签名 URL，禁止边缘/浏览器长缓存 */
+      res.setHeader('Cache-Control', 'private, max-age=30, no-store');
       return res.json(hit.body);
     }
 
@@ -17750,15 +21736,54 @@ async function handlePublicInstallPackages(req, res) {
     var qqGroup = toPublicInstallDownloadUrl(raw.qq_group);
     var salesCh = ctx.salesCh;
     var hideXianyu = ctx.hideXianyu;
+    var channelPolicy = ctx.channelPolicy;
+    /* 渠道专用安装包优先于全局代理包 / 公开包 */
+    if (channelPolicy) {
+      var chAndroid = toPublicInstallDownloadUrl(channelPolicy.android_apk_url || '');
+      var chIos = toPublicInstallDownloadUrl(channelPolicy.ios_mobileconfig_url || '');
+      if (chAndroid) android = chAndroid;
+      if (chIos) ios = chIos;
+    }
     if (hideXianyu) {
       xianyu = '';
-      var agentApk = toPublicInstallDownloadUrl(raw.agent_android);
-      if (agentApk) {
-        android = agentApk;
+      if (!(channelPolicy && channelPolicy.android_apk_url)) {
+        var agentApk = toPublicInstallDownloadUrl(raw.agent_android);
+        if (agentApk) {
+          android = agentApk;
+        }
       }
     }
     var qrRef = hideXianyu ? '' : await getWechatPayQrcodeUrl();
     var salesAgentPub = salesAgentPublicPayload(await loadSalesAgentParsed());
+    var defaultPricingAbc = '';
+    var codeOnly = false;
+    if (salesCh) {
+      try {
+        defaultPricingAbc = (await resolveForcedAbcForSalesChannel(salesCh)) || '';
+      } catch (eForceAbc) {
+        defaultPricingAbc = '';
+      }
+      try {
+        codeOnly = await resolveCodeOnlyForSalesChannel(salesCh);
+      } catch (eCode) {
+        codeOnly = defaultPricingAbc === 'c';
+      }
+    }
+    if (codeOnly) {
+      xianyu = '';
+      qrRef = '';
+      if (!hideXianyu) {
+        hideXianyu = true;
+        if (!(channelPolicy && channelPolicy.android_apk_url)) {
+          var agentApkCode = toPublicInstallDownloadUrl(raw.agent_android);
+          if (agentApkCode) {
+            android = agentApkCode;
+          }
+        }
+      } else {
+        hideXianyu = true;
+      }
+    }
     var body = {
       code: 200,
       data: {
@@ -17770,22 +21795,26 @@ async function handlePublicInstallPackages(req, res) {
         wechat_pay_qrcode_display_url: resolvePublicAssetUrl(qrRef),
         show_wechat_pay_qrcode: !hideXianyu && !!qrRef,
         sales_channel: salesCh || null,
+        default_pricing_abc: defaultPricingAbc || null,
+        force_pricing_abc: defaultPricingAbc || null,
+        code_only: !!codeOnly,
+        hide_self_serve_pay: !!codeOnly,
         qq_add_url: qq,
         qq_group_url: qqGroup,
         show_qq_group: !!qqGroup,
         show_qq_add: !!qq,
-        sales_agent: salesAgentPub
+        sales_agent: salesAgentPub,
+        channel_package: !!(
+          channelPolicy &&
+          (channelPolicy.android_apk_url || channelPolicy.ios_mobileconfig_url)
+        )
       }
     };
     _installPackagesResponseCache.set(cacheKey, { t: now, body: body });
     if (_installPackagesResponseCache.size > 500) {
       _installPackagesResponseCache.clear();
     }
-    if (!uid && !qCh) {
-      res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=120');
-    } else {
-      res.setHeader('Cache-Control', 'private, max-age=90');
-    }
+    res.setHeader('Cache-Control', 'private, max-age=30, no-store');
     return res.json(body);
   } catch (e) {
     console.error(e);
@@ -17808,7 +21837,7 @@ async function handleAdminUserTaxRecords(req, res) {
       }
       const [rows] = await conn.execute(
         ADMIN_TAX_RECORD_SELECT_SQL +
-          ' WHERE user_id = ? ORDER BY year DESC, month DESC, id DESC LIMIT 200',
+          ' WHERE user_id = ? AND deleted_at IS NULL ORDER BY year DESC, month DESC, id DESC LIMIT 200',
         [username]
       );
       const [devices] = await conn.execute(
@@ -17834,7 +21863,8 @@ async function handleAdminUserTaxRecords(req, res) {
         [username, username]
       );
       const [issueRows] = await conn.execute(
-        `SELECT id, apply_time, period_start, period_end, record_no, scope, status, query_code, created_at, updated_at
+        `SELECT id, apply_time, period_start, period_end, record_no, scope, status, query_code,
+                qr_image_url, qr_block_image_url, created_at, updated_at
          FROM tax_issue_applications
          WHERE user_id = ?
          ORDER BY created_at DESC
@@ -17889,11 +21919,12 @@ async function handleAdminUserTaxRecords(req, res) {
           scope: r.scope != null ? String(r.scope) : '',
           status: r.status != null ? String(r.status) : '',
           query_code: r.query_code != null ? String(r.query_code) : '',
+          qr_image_url: r.qr_image_url != null ? String(r.qr_image_url) : '',
+          qr_block_image_url: r.qr_block_image_url != null ? String(r.qr_block_image_url) : '',
           created_at: r.created_at ? r.created_at.toISOString() : '',
           updated_at: r.updated_at ? r.updated_at.toISOString() : ''
         };
       });
-      var salaryInfo = computeTaxRecordsAvgSalary6m(out);
       var changeDate =
         req.query.change_date != null && /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.change_date).trim())
           ? String(req.query.change_date).trim()
@@ -17908,9 +21939,6 @@ async function handleAdminUserTaxRecords(req, res) {
           devices: devOut,
           recent_pages: pageOut,
           issue_applications: issueOut,
-          avg_salary_6m: salaryInfo.avg_salary_6m,
-          avg_salary_6m_label: salaryInfo.avg_salary_6m_label,
-          salary_month_count: salaryInfo.salary_month_count,
           change_date: changeDate,
           tax_modified_on_date: !!taxFlag.tax_modified_on_date,
           today_tax_changes: todayChanges
@@ -17925,90 +21953,188 @@ async function handleAdminUserTaxRecords(req, res) {
   }
 }
 
-/** 页面路径 → 中文 title（与 C 端 HTML title 一致，供行为分析展示） */
-var CERT_PAGE_TITLE_ZH = {
-  'index.html': '个人所得税',
-  'login.html': '个人所得税',
-  'shouye.html': '首页',
-  'mine.html': '我的',
-  'consult.html': '个人中心',
-  'profile.html': '个人中心',
-  'shuiming.html': '收入纳税明细',
-  'shuiming_result.html': '收入纳税明细',
-  'xiangqing.html': '收入纳税明细详情',
-  'daiban.html': '待办',
-  'bancha.html': '办查',
-  'message.html': '消息',
-  'message_detail.html': '消息详情',
-  'zonghe.html': '综合所得年度汇算',
-  'renzhi.html': '任职受雇',
-  'renzhi_detail.html': '详情',
-  'jtcy.html': '家庭成员',
-  'jtcy_add.html': '添加家庭成员',
-  'jtcy_detail.html': '详情',
-  'yhk.html': '银行卡',
-  'yhk_add.html': '添加银行卡',
-  'yhk_manage.html': '管理',
-  'aqzx.html': '安全中心',
-  'xiugaimima.html': '修改密码',
-  'gerenxinxi.html': '个人信息',
-  'personal_info.html': '个人信息',
-  'register.html': '注册账号',
-  'najilu.html': '纳税记录开具',
-  'shenbao_jilu.html': '申报记录',
-  'shenbao_jilu_detail.html': '申报记录详情',
-  'shenbao_income_detail.html': '工资薪金',
-  'shuikuanjisuan.html': '税款计算',
-  'zxkouchu.html': '专项附加扣除',
-  'help_center.html': '帮助中心',
-  'install_guide.html': '引导安装'
-};
-
-/** html file from page path */
-function htmlFileFromPagePath(pagePath) {
-  var p = String(pagePath || '').trim().toLowerCase();
-  if (!p) return '';
-  var eventM = p.match(/\/event\/jump\/([a-z0-9_-]+)_html/);
-  if (eventM) return eventM[1].replace(/-/g, '_') + '.html';
-  var fileM = p.match(/\/([^/?#]+\.html)$/);
-  return fileM ? fileM[1] : '';
-}
-
-/** chinese title from page path */
-function chineseTitleFromPagePath(pagePath) {
-  var p = String(pagePath || '').trim().toLowerCase();
-  if (!p) return '—';
-  if (p.indexOf('__history_back__') >= 0 || p.indexOf('_history_back__') >= 0) {
-    return '返回上一页';
+/** 管理端：指定用户个税记录增改删（复用 saveRecord / deleteRecord） */
+async function handleAdminUserTaxRecordsWrite(req, res) {
+  var body = req.body || {};
+  var username = body.username != null ? String(body.username).trim() : '';
+  var action = body.action != null ? String(body.action).trim() : '';
+  if (!username) {
+    return res.status(400).json({ code: 400, msg: 'username required' });
   }
-  var file = htmlFileFromPagePath(p);
-  var title = file && CERT_PAGE_TITLE_ZH[file] ? CERT_PAGE_TITLE_ZH[file] : '';
-  if (!title && file) {
-    title = file.replace(/\.html$/, '');
+  if (username.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
+    return res.status(400).json({ code: 400, msg: '不能操作保留账号名' });
   }
-  var tabM = p.match(/tab_([a-z0-9_]+)/);
-  if (tabM) {
-    var tabMap = {
-      employers: '任职信息',
-      messages: '消息通知',
-      records: '税务记录',
-      profile: '个人资料'
-    };
-    var tabLabel = tabMap[tabM[1]] || tabM[1];
-    return (title || '个人中心') + ' - ' + tabLabel;
+  if (!action) {
+    return res.status(400).json({ code: 400, msg: 'action required' });
   }
-  if (title) return title;
-  if (p.indexOf('/event/') === 0) return '页面内操作';
-  return p;
-}
+  try {
+    const conn = await pool.getConnection();
+    var canonical = username;
+    var userRow = null;
+    try {
+      const [urows] = await conn.execute(
+        `SELECT username, real_name, account_active, user_type
+         FROM users WHERE username = ? LIMIT 1`,
+        [username]
+      );
+      if (!urows.length) {
+        return res.status(404).json({ code: 404, msg: '用户不存在' });
+      }
+      userRow = urows[0];
+      canonical = String(userRow.username || username);
+      var allowed = await adminCanAccessTargetUser(conn, req.admin, canonical);
+      if (!allowed) {
+        return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+      }
+    } finally {
+      conn.release();
+    }
 
-/** beijing date key from created at */
-function beijingDateKeyFromCreatedAt(createdAt) {
-  if (!createdAt) return '';
-  var d = createdAt instanceof Date ? createdAt : new Date(createdAt);
-  if (isNaN(d.getTime())) return '';
-  var utcMs = d.getTime() + d.getTimezoneOffset() * 60000;
-  return formatDateKey(new Date(utcMs + 8 * 3600000));
+    if (action === 'list' || action === 'load') {
+      const conn2 = await pool.getConnection();
+      try {
+        const [rows] = await conn2.execute(
+          ADMIN_TAX_RECORD_SELECT_SQL +
+            ' WHERE user_id = ? AND deleted_at IS NULL ORDER BY year DESC, month DESC, id DESC LIMIT 200',
+          [canonical]
+        );
+        const [cntRows] = await conn2.execute(
+          'SELECT COUNT(*) AS c FROM tax_records WHERE user_id = ? AND ' + TAX_RECORD_NOT_DELETED_SQL,
+          [canonical]
+        );
+        return res.json({
+          code: 200,
+          data: {
+            username: canonical,
+            real_name: userRow.real_name != null ? String(userRow.real_name) : '',
+            account_active:
+              userRow.account_active === true ||
+              userRow.account_active === 1 ||
+              userRow.account_active === '1',
+            user_type: userRow.user_type != null ? Number(userRow.user_type) : null,
+            record_count: cntRows && cntRows[0] ? Number(cntRows[0].c) || 0 : 0,
+            records: (rows || []).map(mapTaxRecordRowForAdmin)
+          }
+        });
+      } finally {
+        conn2.release();
+      }
+    }
+
+    if (action === 'save_record' || action === 'add_record') {
+      var record = body.record && typeof body.record === 'object' ? body.record : null;
+      if (!record) {
+        return res.status(400).json({ code: 400, msg: 'record required' });
+      }
+      var companyName = record.company_name != null ? String(record.company_name).trim() : '';
+      if (!companyName) {
+        return res.status(400).json({ code: 400, msg: '请填写扣缴义务人（公司名称）' });
+      }
+      var yearN = parseInt(record.year, 10);
+      var monthN = parseInt(record.month, 10);
+      if (!isFinite(yearN) || yearN < 2000 || yearN > 2100) {
+        return res.status(400).json({ code: 400, msg: '年份无效' });
+      }
+      if (!isFinite(monthN) || monthN < 1 || monthN > 12) {
+        return res.status(400).json({ code: 400, msg: '月份无效' });
+      }
+      record.year = yearN;
+      record.month = monthN;
+      record.company_name = companyName;
+      if (!record.tax_period) {
+        record.tax_period = yearN + '-' + String(monthN).padStart(2, '0');
+      }
+      var saved = await saveRecord(canonical, record);
+      return res.json({
+        code: 200,
+        msg: '已保存',
+        data: { id: saved && saved.id ? saved.id : record.id || '', username: canonical }
+      });
+    }
+
+    if (action === 'delete_record') {
+      var delId =
+        body.id != null
+          ? String(body.id).trim()
+          : body.record && body.record.id != null
+            ? String(body.record.id).trim()
+            : '';
+      if (!delId) {
+        return res.status(400).json({ code: 400, msg: 'id required' });
+      }
+      await deleteRecord(canonical, delId);
+      return res.json({
+        code: 200,
+        msg: '已删除',
+        data: { id: delId, username: canonical }
+      });
+    }
+
+    if (action === 'batch_save_records') {
+      var batchRecords = body.records;
+      if (!Array.isArray(batchRecords) || batchRecords.length === 0) {
+        return res.status(400).json({ code: 400, msg: 'records 须为非空数组' });
+      }
+      if (batchRecords.length > TAX_BATCH_MAX_RECORDS) {
+        return res.status(400).json({
+          code: 400,
+          msg: '单次最多写入 ' + TAX_BATCH_MAX_RECORDS + ' 条记录'
+        });
+      }
+      var batchOut = await batchSaveRecords(canonical, batchRecords);
+      return res.json({
+        code: 200,
+        msg: '批量已保存',
+        data: Object.assign({}, batchOut, { username: canonical })
+      });
+    }
+
+    if (action === 'batch_replace_records') {
+      var idsToDelete = body.ids_to_delete;
+      var replaceRecords = body.records;
+      if (!Array.isArray(idsToDelete)) {
+        return res.status(400).json({ code: 400, msg: 'ids_to_delete 须为数组' });
+      }
+      if (!Array.isArray(replaceRecords) || replaceRecords.length === 0) {
+        return res.status(400).json({ code: 400, msg: 'records 须为非空数组' });
+      }
+      if (idsToDelete.length > TAX_BATCH_MAX_RECORDS || replaceRecords.length > TAX_BATCH_MAX_RECORDS) {
+        return res.status(400).json({
+          code: 400,
+          msg: '单次最多处理 ' + TAX_BATCH_MAX_RECORDS + ' 条删除或写入'
+        });
+      }
+      var replaceOut = await batchReplaceTaxRecords(canonical, idsToDelete, replaceRecords);
+      return res.json({
+        code: 200,
+        msg: '批量已覆盖',
+        data: Object.assign({}, replaceOut, { username: canonical })
+      });
+    }
+
+    if (action === 'delete_records_by_company') {
+      var delCompany =
+        body.company_name != null
+          ? String(body.company_name).trim()
+          : body.company != null
+            ? String(body.company).trim()
+            : '';
+      if (!delCompany) {
+        return res.status(400).json({ code: 400, msg: 'company_name required' });
+      }
+      var delCompanyOut = await deleteRecordsByCompany(canonical, delCompany);
+      return res.json({
+        code: 200,
+        msg: '已按公司删除',
+        data: Object.assign({}, delCompanyOut, { username: canonical })
+      });
+    }
+
+    return res.status(400).json({ code: 400, msg: 'unknown action' });
+  } catch (e) {
+    console.error('handleAdminUserTaxRecordsWrite', e);
+    return res.status(500).json({ code: 500, msg: (e && e.message) || String(e) });
+  }
 }
 
 /** 格式化：stay seconds label */
@@ -18019,892 +22145,6 @@ function formatStaySecondsLabel(sec) {
   var h = Math.floor(s / 3600);
   var m = Math.round((s % 3600) / 60);
   return h + ' 小时' + (m > 0 ? ' 分' : '');
-}
-
-var NO_TAX_BEHAVIOR_MAX_DAILY_SPAN_SEC = 4 * 3600;
-var NO_TAX_BEHAVIOR_SINGLE_DAY_SEC = 120;
-/** 用户行为页：低于该停留秒数时展示最近上报机型 */
-var NO_TAX_BEHAVIOR_SHORT_STAY_SEC = 10 * 60;
-
-/** compute behavior metrics from events */
-function computeBehaviorMetricsFromEvents(events) {
-  events = Array.isArray(events) ? events : [];
-  if (!events.length) {
-    return {
-      event_count: 0,
-      active_days: 0,
-      stay_seconds: 0,
-      stay_label: '无记录',
-      distinct_page_count: 0,
-      first_at: null,
-      last_at: null,
-      pages: [],
-      path_summary: '—'
-    };
-  }
-  var byDay = {};
-  var pageMap = {};
-  var pathSteps = [];
-  events.forEach(function (e) {
-    var ts = e.created_at instanceof Date ? e.created_at : new Date(e.created_at);
-    if (isNaN(ts.getTime())) return;
-    var day = beijingDateKeyFromCreatedAt(ts);
-    if (!byDay[day]) byDay[day] = [];
-    byDay[day].push(ts.getTime());
-    var pp = String(e.page_path || '');
-    var title = chineseTitleFromPagePath(pp);
-    if (!pageMap[title]) {
-      pageMap[title] = { title: title, page_path: pp, hit_count: 0, last_at: ts.toISOString() };
-    }
-    pageMap[title].hit_count++;
-    if (new Date(pageMap[title].last_at).getTime() < ts.getTime()) {
-      pageMap[title].last_at = ts.toISOString();
-    }
-    pathSteps.push({
-      at: ts.toISOString(),
-      page_path: pp,
-      route_key: e.route_key != null ? String(e.route_key) : '',
-      title: title
-    });
-  });
-  var staySeconds = 0;
-  Object.keys(byDay).forEach(function (day) {
-    var tsList = byDay[day].sort(function (a, b) {
-      return a - b;
-    });
-    if (tsList.length === 1) {
-      staySeconds += NO_TAX_BEHAVIOR_SINGLE_DAY_SEC;
-    } else {
-      var span = (tsList[tsList.length - 1] - tsList[0]) / 1000;
-      staySeconds += Math.min(span, NO_TAX_BEHAVIOR_MAX_DAILY_SPAN_SEC);
-    }
-  });
-  var pages = Object.keys(pageMap)
-    .map(function (k) {
-      return pageMap[k];
-    })
-    .sort(function (a, b) {
-      return b.hit_count - a.hit_count;
-    });
-  var summaryTitles = [];
-  var seen = {};
-  pathSteps.forEach(function (step) {
-    if (seen[step.title]) return;
-    seen[step.title] = true;
-    summaryTitles.push(step.title);
-  });
-  var pathSummary = summaryTitles.length ? summaryTitles.slice(0, 12).join(' → ') : '—';
-  if (summaryTitles.length > 12) pathSummary += ' …';
-  return {
-    event_count: events.length,
-    active_days: Object.keys(byDay).length,
-    stay_seconds: staySeconds,
-    stay_label: formatStaySecondsLabel(staySeconds),
-    distinct_page_count: pages.length,
-    first_at: pathSteps[0].at,
-    last_at: pathSteps[pathSteps.length - 1].at,
-    pages: pages,
-    path_summary: pathSummary
-  };
-}
-
-/** 加载：page events for users */
-async function loadPageEventsForUsers(conn, usernames, maxPerUser) {
-  var out = {};
-  if (!usernames.length) return out;
-  usernames.forEach(function (u) {
-    out[u] = [];
-  });
-  var limitPer = maxPerUser != null ? Math.max(50, Math.min(800, Number(maxPerUser) || 400)) : 400;
-  var ph = usernames.map(function () {
-    return '?';
-  }).join(',');
-  const [rows] = await conn.query(
-    `SELECT username, page_path, route_key, created_at
-     FROM user_page_events
-     WHERE username IN (` +
-      ph +
-      `)
-     ORDER BY username ASC, created_at ASC`,
-    usernames
-  );
-  var counts = {};
-  rows.forEach(function (r) {
-    var u = String(r.username);
-    counts[u] = (counts[u] || 0) + 1;
-    if (counts[u] > limitPer) return;
-    if (!out[u]) out[u] = [];
-    out[u].push({
-      page_path: r.page_path != null ? String(r.page_path) : '',
-      route_key: r.route_key != null ? String(r.route_key) : '',
-      created_at: r.created_at
-    });
-  });
-  return out;
-}
-
-/** 加载：latest devices for users */
-async function loadLatestDevicesForUsers(conn, usernames) {
-  var out = {};
-  if (!usernames || !usernames.length) return out;
-  var ph = usernames.map(function () {
-    return '?';
-  }).join(',');
-  const [rows] = await conn.query(
-    `SELECT username, user_agent_short, device_detail_json FROM (
-       SELECT username, user_agent_short, device_detail_json,
-              ROW_NUMBER() OVER (PARTITION BY username ORDER BY last_seen DESC) AS rn
-       FROM user_devices
-       WHERE username IN (` +
-      ph +
-      `)
-     ) t WHERE rn = 1`,
-    usernames
-  );
-  rows.forEach(function (r) {
-    var uname = String(r.username);
-    var cls = classifyUserDeviceRow(r.user_agent_short, r.device_detail_json);
-    var osFamily = DEVICE_STATS_OS_FAMILY_LABEL[cls.os_key] || cls.os_key || '';
-    var osDisplay = osFamily;
-    if (cls.os_version) {
-      osDisplay = (osFamily + ' ' + cls.os_version).trim();
-    }
-    out[uname] = {
-      model_label: cls.model_label,
-      os_display: osDisplay
-    };
-  });
-  return out;
-}
-
-/** no tax user where sql */
-function noTaxUserWhereSql(req) {
-  var where = ["NOT EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = users.username AND tr.deleted_at IS NULL)"];
-  var params = [];
-  appendAdminUserScope(where, params, req.admin, 'users.username');
-  return { sql: where.length ? ' WHERE ' + where.join(' AND ') : '', params: params };
-}
-
-/** 未填税行为分析 */
-async function handleAdminUserDataNoTaxBehavior(req, res) {
-  try {
-    var page = parseInt(req.query.page, 10) || 1;
-    var limit = parseInt(req.query.limit, 10) || 20;
-    if (page < 1) page = 1;
-    if (limit < 1) limit = 20;
-    if (limit > 50) limit = 50;
-    var offset = (page - 1) * limit;
-    var scope = noTaxUserWhereSql(req);
-
-    const conn = await pool.getConnection();
-    try {
-      const [[countRow]] = await conn.execute('SELECT COUNT(*) AS c FROM users' + scope.sql, scope.params);
-      var total = Number(countRow.c) || 0;
-
-      const [userRows] = await conn.query(
-        'SELECT username, real_name, created_at, register_source_channel, activation_source_channel FROM users' +
-          scope.sql +
-          ' ORDER BY id DESC LIMIT ? OFFSET ?',
-        scope.params.concat([limit, offset])
-      );
-      var names = userRows.map(function (r) {
-        return String(r.username);
-      });
-      var eventMap = await loadPageEventsForUsers(conn, names, 400);
-      var deviceMap = await loadLatestDevicesForUsers(conn, names);
-
-      var cohortPageHits = {};
-      var activeCount = 0;
-      var totalStay = 0;
-      var items = userRows.map(function (r) {
-        var uname = String(r.username);
-        var metrics = computeBehaviorMetricsFromEvents(eventMap[uname] || []);
-        if (metrics.event_count > 0) {
-          activeCount++;
-          totalStay += metrics.stay_seconds;
-        }
-        (metrics.pages || []).forEach(function (p) {
-          var t = p.title || '—';
-          if (!cohortPageHits[t]) cohortPageHits[t] = 0;
-          cohortPageHits[t] += p.hit_count;
-        });
-        var shortStay = metrics.stay_seconds < NO_TAX_BEHAVIOR_SHORT_STAY_SEC;
-        var dev = deviceMap[uname];
-        return {
-          username: uname,
-          real_name: r.real_name != null ? String(r.real_name) : '',
-          register_source_channel_label: registerSourceChannelLabel(r.register_source_channel),
-          channel_analysis_label: userChannelAnalysisLabel(
-            r.register_source_channel,
-            r.activation_source_channel
-          ),
-          created_at: r.created_at ? r.created_at.toISOString() : '',
-          event_count: metrics.event_count,
-          active_days: metrics.active_days,
-          stay_seconds: metrics.stay_seconds,
-          stay_label: metrics.stay_label,
-          device_model_label: shortStay && dev ? dev.model_label : '',
-          device_os_label: shortStay && dev ? dev.os_display : '',
-          distinct_page_count: metrics.distinct_page_count,
-          first_at: metrics.first_at,
-          last_at: metrics.last_at,
-          pages: metrics.pages,
-          path_summary: metrics.path_summary
-        };
-      });
-
-      var topPages = Object.keys(cohortPageHits)
-        .map(function (title) {
-          return { title: title, hit_count: cohortPageHits[title] };
-        })
-        .sort(function (a, b) {
-          return b.hit_count - a.hit_count;
-        })
-        .slice(0, 15);
-
-      const [allNoTaxCount] = await conn.execute(
-        `SELECT COUNT(*) AS total_users,
-                SUM(CASE WHEN EXISTS (SELECT 1 FROM user_page_events upe WHERE upe.username = users.username) THEN 1 ELSE 0 END) AS with_activity
-         FROM users` + scope.sql,
-        scope.params
-      );
-      var summaryRow = allNoTaxCount[0] || {};
-      var totalNoTax = Number(summaryRow.total_users) || 0;
-      var withActivityAll = Number(summaryRow.with_activity) || 0;
-
-      return res.json({
-        code: 200,
-        data: {
-          summary: {
-            total_no_tax_users: totalNoTax,
-            with_page_activity: withActivityAll,
-            without_page_activity: Math.max(0, totalNoTax - withActivityAll),
-            avg_stay_seconds:
-              activeCount > 0 ? Math.round(totalStay / activeCount) : 0,
-            avg_stay_label:
-              activeCount > 0 ? formatStaySecondsLabel(Math.round(totalStay / activeCount)) : '—'
-          },
-          top_pages: topPages,
-          items: items,
-          total: total,
-          page: page,
-          limit: limit
-        }
-      });
-    } finally {
-      conn.release();
-    }
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
-/** 未填税路径明细 */
-async function handleAdminUserDataNoTaxBehaviorPath(req, res) {
-  var username = req.query.username != null ? String(req.query.username).trim() : '';
-  if (!username) {
-    return res.status(400).json({ code: 400, msg: 'username required' });
-  }
-  try {
-    const conn = await pool.getConnection();
-    try {
-      var allowed = await adminCanAccessTargetUser(conn, req.admin, username);
-      if (!allowed) {
-        return res.status(403).json({ code: 403, msg: '无权限查看该用户' });
-      }
-      const [taxCnt] = await conn.execute(
-        'SELECT COUNT(*) AS c FROM tax_records WHERE user_id = ? AND ' + TAX_RECORD_NOT_DELETED_SQL,
-        [username]
-      );
-      if (Number(taxCnt[0].c) > 0) {
-        return res.status(400).json({ code: 400, msg: '该用户已有个税记录，请使用档案详情' });
-      }
-      const [rows] = await conn.execute(
-        `SELECT page_path, route_key, created_at
-         FROM user_page_events
-         WHERE username = ?
-         ORDER BY created_at ASC
-         LIMIT 800`,
-        [username]
-      );
-      var events = rows.map(function (r) {
-        return {
-          page_path: r.page_path != null ? String(r.page_path) : '',
-          route_key: r.route_key != null ? String(r.route_key) : '',
-          created_at: r.created_at
-        };
-      });
-      var metrics = computeBehaviorMetricsFromEvents(events);
-      var timeline = events.map(function (e, idx) {
-        var ts = e.created_at instanceof Date ? e.created_at : new Date(e.created_at);
-        return {
-          step: idx + 1,
-          at: isNaN(ts.getTime()) ? '' : ts.toISOString(),
-          page_path: e.page_path,
-          route_key: e.route_key,
-          title: chineseTitleFromPagePath(e.page_path)
-        };
-      });
-      return res.json({
-        code: 200,
-        data: {
-          username: username,
-          metrics: metrics,
-          timeline: timeline
-        }
-      });
-    } finally {
-      conn.release();
-    }
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
-/** append activated user scope */
-function appendActivatedUserScope(whereClauses, params, admin, userCol) {
-  userCol = userCol || 'u.username';
-  var userAlias = userCol.indexOf('.') >= 0 ? userCol.split('.')[0] : 'u';
-  whereClauses.push(userAlias + '.account_active = 1');
-  whereClauses.push(userAlias + '.list_hidden_at IS NULL');
-  whereClauses.push(userAlias + '.activation_refunded_at IS NULL');
-  appendAdminUserScope(whereClauses, params, admin, userCol);
-}
-
-/** activated user scope sql */
-function activatedUserScopeSql(req, userCol) {
-  var where = [];
-  var params = [];
-  appendActivatedUserScope(where, params, req.admin, userCol || 'u.username');
-  return { sql: where.length ? ' WHERE ' + where.join(' AND ') : '', params: params, where: where };
-}
-
-/** 加载：activated user activity map */
-async function loadActivatedUserActivityMap(conn, usernames, activityDays) {
-  var map = {};
-  if (!usernames || !usernames.length) return map;
-  usernames.forEach(function (u) {
-    map[u] = { active_days: 0, last_active: '', event_count: 0 };
-  });
-  var span = Math.max(0, (Number(activityDays) || 30) - 1);
-  var ph = usernames.map(function () {
-    return '?';
-  }).join(',');
-  const [dauRows] = await conn.query(
-    `SELECT username, COUNT(DISTINCT activity_date) AS active_days, MAX(activity_date) AS last_active
-     FROM user_daily_activity
-     WHERE username IN (` +
-      ph +
-      `)
-       AND activity_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-     GROUP BY username`,
-    usernames.concat([span])
-  );
-  dauRows.forEach(function (r) {
-    var u = String(r.username || '');
-    if (!map[u]) return;
-    map[u].active_days = Number(r.active_days) || 0;
-    if (r.last_active instanceof Date) {
-      map[u].last_active = r.last_active.toISOString().slice(0, 10);
-    } else if (r.last_active) {
-      map[u].last_active = String(r.last_active).slice(0, 10);
-    }
-  });
-  const [evtRows] = await conn.query(
-    `SELECT username, COUNT(*) AS cnt
-     FROM user_page_events
-     WHERE username IN (` +
-      ph +
-      `)
-       AND created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-     GROUP BY username`,
-    usernames.concat([span])
-  );
-  evtRows.forEach(function (r) {
-    var u = String(r.username || '');
-    if (!map[u]) return;
-    map[u].event_count = Number(r.cnt) || 0;
-  });
-  return map;
-}
-
-/** 已激活用户分析总览 */
-async function handleAdminActivatedUserAnalysisOverview(req, res) {
-  try {
-    var days = clampAnalyticsDays(req.query.days, 14, 90);
-    var activityDays = clampAnalyticsDays(req.query.activity_days, 30, 90);
-    var span = Math.max(0, days - 1);
-    var actSpan = Math.max(0, activityDays - 1);
-    const conn = await pool.getConnection();
-    try {
-      var scope = activatedUserScopeSql(req, 'u.username');
-      var scopeJoin = scope.sql ? scope.sql.replace(/^ WHERE /, ' AND ') : '';
-
-      const [[countRow]] = await conn.query('SELECT COUNT(*) AS c FROM users u' + scope.sql, scope.params);
-      var totalActivated = Number(countRow.c) || 0;
-
-      const [taxStatRows] = await conn.query(
-        `SELECT COUNT(DISTINCT tr.user_id) AS with_tax, COUNT(*) AS total_records
-         FROM tax_records tr
-         INNER JOIN users u ON u.username = tr.user_id` +
-          scopeJoin +
-          ' AND ' +
-          TAX_RECORD_NOT_DELETED_SQL,
-        scope.params
-      );
-      var withTax = Number((taxStatRows[0] || {}).with_tax) || 0;
-      var totalTaxRecords = Number((taxStatRows[0] || {}).total_records) || 0;
-
-      const [allScoped] = await conn.query(
-        'SELECT u.username FROM users u' + scope.sql + ' ORDER BY u.id DESC LIMIT 5000',
-        scope.params
-      );
-      var scopedNames = allScoped.map(function (r) {
-        return String(r.username);
-      });
-      var avgMaps = await buildUserTaxAvgSalaryMap(conn, scopedNames);
-      var salaryBuckets = [
-        { label: '未填写', min: null, max: null, count: 0 },
-        { label: '5000以下', min: 0, max: 5000, count: 0 },
-        { label: '5000–1万', min: 5000, max: 10000, count: 0 },
-        { label: '1万–2万', min: 10000, max: 20000, count: 0 },
-        { label: '2万以上', min: 20000, max: null, count: 0 }
-      ];
-      var taxRecordBuckets = [
-        { label: '未填写', min: 0, max: 0, count: 0 },
-        { label: '1–6条', min: 1, max: 6, count: 0 },
-        { label: '7–12条', min: 7, max: 12, count: 0 },
-        { label: '13条以上', min: 13, max: null, count: 0 }
-      ];
-      var withSalary = 0;
-      var salaryValues = [];
-      scopedNames.forEach(function (uname) {
-        var sal = avgMaps[uname];
-        var v = sal && sal.avg_salary_6m != null ? Number(sal.avg_salary_6m) : null;
-        if (v == null || !isFinite(v)) {
-          salaryBuckets[0].count++;
-        } else {
-          withSalary++;
-          salaryValues.push(v);
-          if (v < 5000) salaryBuckets[1].count++;
-          else if (v < 10000) salaryBuckets[2].count++;
-          else if (v < 20000) salaryBuckets[3].count++;
-          else salaryBuckets[4].count++;
-        }
-      });
-      var salaryAvg = null;
-      var salaryMedian = null;
-      if (salaryValues.length) {
-        var salarySum = 0;
-        for (var si = 0; si < salaryValues.length; si++) {
-          salarySum += salaryValues[si];
-        }
-        salaryAvg = Math.round((salarySum / salaryValues.length) * 100) / 100;
-        salaryMedian = medianOfNumbers(salaryValues);
-      }
-
-      if (scopedNames.length) {
-        var ph = scopedNames.map(function () {
-          return '?';
-        }).join(',');
-        const [taxCntRows] = await conn.query(
-          `SELECT user_id, COUNT(*) AS cnt FROM tax_records
-           WHERE user_id IN (` +
-            ph +
-            `) AND ` +
-            TAX_RECORD_NOT_DELETED_SQL +
-            ' GROUP BY user_id',
-          scopedNames
-        );
-        var taxCntMap = {};
-        taxCntRows.forEach(function (r) {
-          taxCntMap[String(r.user_id)] = Number(r.cnt) || 0;
-        });
-        scopedNames.forEach(function (uname) {
-          var cnt = taxCntMap[uname] || 0;
-          if (cnt <= 0) taxRecordBuckets[0].count++;
-          else if (cnt <= 6) taxRecordBuckets[1].count++;
-          else if (cnt <= 12) taxRecordBuckets[2].count++;
-          else taxRecordBuckets[3].count++;
-        });
-      } else {
-        taxRecordBuckets[0].count = totalActivated;
-      }
-
-      const [dauSeries] = await conn.query(
-        `SELECT uda.activity_date AS d, COUNT(DISTINCT uda.username) AS cnt
-         FROM user_daily_activity uda
-         INNER JOIN users u ON u.username = uda.username` +
-          scopeJoin +
-          `
-         WHERE uda.activity_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-         GROUP BY uda.activity_date
-         ORDER BY uda.activity_date ASC`,
-        scope.params.concat([span])
-      );
-
-      var todayKey = chinaDateKeyNow();
-      const [[todayDauRow]] = await conn.query(
-        `SELECT COUNT(DISTINCT uda.username) AS c
-         FROM user_daily_activity uda
-         INNER JOIN users u ON u.username = uda.username` +
-          scopeJoin +
-          ' AND uda.activity_date = ?',
-        scope.params.concat([todayKey])
-      );
-      var todayDau = Number((todayDauRow || {}).c) || 0;
-
-      var activityFreq = { none: 0, low: 0, medium: 0, high: 0 };
-      if (scopedNames.length) {
-        var actMap = await loadActivatedUserActivityMap(conn, scopedNames, activityDays);
-        scopedNames.forEach(function (uname) {
-          var ad = (actMap[uname] && actMap[uname].active_days) || 0;
-          if (ad <= 0) activityFreq.none++;
-          else if (ad === 1) activityFreq.low++;
-          else if (ad <= 4) activityFreq.medium++;
-          else activityFreq.high++;
-        });
-      }
-
-      const [topPages] = await conn.query(
-        `SELECT e.page_path, COUNT(*) AS hit_count
-         FROM user_page_events e
-         INNER JOIN users u ON u.username = e.username` +
-          scopeJoin +
-          `
-         WHERE e.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-         GROUP BY e.page_path
-         ORDER BY hit_count DESC
-         LIMIT 12`,
-        scope.params.concat([actSpan])
-      );
-
-      const [[nameChangeRow]] = await conn.query(
-        `SELECT COUNT(*) AS total_changes, COUNT(DISTINCT upc.username) AS users_changed
-         FROM user_profile_change_logs upc
-         INNER JOIN users u ON u.username = upc.username` +
-          scopeJoin +
-          ` AND upc.field_key = 'real_name'`,
-        scope.params
-      );
-      const [[taxEditRow]] = await conn.query(
-        `SELECT COUNT(*) AS total_edits, COUNT(DISTINCT tcl.user_id) AS users_edited
-         FROM tax_record_change_logs tcl
-         INNER JOIN users u ON u.username = tcl.user_id` +
-          scopeJoin,
-        scope.params
-      );
-      var totalNameChanges = Number((nameChangeRow || {}).total_changes) || 0;
-      var usersRenamed = Number((nameChangeRow || {}).users_changed) || 0;
-      var totalTaxEdits = Number((taxEditRow || {}).total_edits) || 0;
-      var usersTaxEdited = Number((taxEditRow || {}).users_edited) || 0;
-
-      return res.json({
-        code: 200,
-        data: {
-          days: days,
-          activity_days: activityDays,
-          total_activated: totalActivated,
-          with_tax_records: withTax,
-          without_tax_records: Math.max(0, totalActivated - withTax),
-          with_salary_filled: withSalary,
-          salary_avg_6m: salaryAvg,
-          salary_median_6m: salaryMedian,
-          salary_avg_6m_label: salaryAvg != null ? formatAvgSalary6mLabel(salaryAvg, 0) : '—',
-          salary_median_6m_label: salaryMedian != null ? formatAvgSalary6mLabel(salaryMedian, 0) : '—',
-          total_tax_records: totalTaxRecords,
-          dau_today: todayDau,
-          total_name_changes: totalNameChanges,
-          users_renamed: usersRenamed,
-          total_tax_edits: totalTaxEdits,
-          users_tax_edited: usersTaxEdited,
-          salary_buckets: salaryBuckets,
-          tax_record_buckets: taxRecordBuckets,
-          activity_frequency: activityFreq,
-          dau_series: dauSeries.map(function (r) {
-            return {
-              date: r.d instanceof Date ? r.d.toISOString().slice(0, 10) : String(r.d).slice(0, 10),
-              active_users: Number(r.cnt) || 0
-            };
-          }),
-          top_pages: topPages.map(function (r) {
-            return {
-              title: chineseTitleFromPagePath(String(r.page_path || '')),
-              page_path: String(r.page_path || ''),
-              hit_count: Number(r.hit_count) || 0
-            };
-          })
-        }
-      });
-    } finally {
-      conn.release();
-    }
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
-/** 已激活用户分析列表 */
-async function handleAdminActivatedUserAnalysisUsers(req, res) {
-  try {
-    var page = parseInt(req.query.page, 10) || 1;
-    var limit = parseInt(req.query.limit, 10) || 20;
-    if (page < 1) page = 1;
-    if (limit < 1) limit = 20;
-    if (limit > 50) limit = 50;
-    var activityDays = clampAnalyticsDays(req.query.activity_days, 30, 90);
-
-    var qUsername = req.query.username != null ? String(req.query.username).trim() : '';
-    var qTax = req.query.tax_status != null ? String(req.query.tax_status).trim() : '';
-    var qActivity = req.query.activity != null ? String(req.query.activity).trim() : '';
-    var qSalaryMin = parseSalaryRangeFilterParam(req.query.salary_min);
-    var qSalaryMax = parseSalaryRangeFilterParam(req.query.salary_max);
-    var hasSalaryFilter = qSalaryMin != null || qSalaryMax != null;
-    if (qSalaryMin != null && qSalaryMax != null && qSalaryMin > qSalaryMax) {
-      return res.status(400).json({ code: 400, msg: '工资收入下限不能大于上限' });
-    }
-
-    var where = [];
-    var params = [];
-    appendActivatedUserScope(where, params, req.admin, 'users.username');
-    if (qUsername) {
-      where.push('users.username LIKE ?');
-      params.push('%' + qUsername + '%');
-    }
-    if (qTax === 'with_tax') {
-      where.push(
-        'EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = users.username AND ' + TAX_RECORD_NOT_DELETED_SQL + ')'
-      );
-    } else if (qTax === 'without_tax') {
-      where.push(
-        'NOT EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = users.username AND ' + TAX_RECORD_NOT_DELETED_SQL + ')'
-      );
-    }
-    var scopeSql = where.length ? ' WHERE ' + where.join(' AND ') : '';
-    var actSpan = Math.max(0, activityDays - 1);
-
-    const conn = await pool.getConnection();
-    try {
-      var rows = [];
-      var total = 0;
-
-      if (hasSalaryFilter || qActivity === 'active_7d' || qActivity === 'inactive_7d') {
-        const [allRows] = await conn.query(
-          'SELECT username, real_name, created_at, activation_source_channel, register_source_channel FROM users' +
-            scopeSql +
-            ' ORDER BY id DESC',
-          params
-        );
-        var allNames = allRows.map(function (r) {
-          return String(r.username);
-        });
-        var avgMaps = await buildUserTaxAvgSalaryMap(conn, allNames);
-        var actMap = await loadActivatedUserActivityMap(conn, allNames, activityDays);
-        var filtered = [];
-        allRows.forEach(function (r) {
-          var uname = String(r.username);
-          var sal = avgMaps[uname] || { avg_salary_6m: null, avg_salary_6m_label: '未填写', salary_month_count: 0 };
-          var v = sal.avg_salary_6m != null ? Number(sal.avg_salary_6m) : null;
-          if (hasSalaryFilter) {
-            if (v == null || !isFinite(v)) {
-              if (qSalaryMin != null || qSalaryMax != null) return;
-            } else {
-              if (qSalaryMin != null && v < qSalaryMin) return;
-              if (qSalaryMax != null && v > qSalaryMax) return;
-            }
-          }
-          var ad = (actMap[uname] && actMap[uname].active_days) || 0;
-          if (qActivity === 'active_7d' && ad < 1) return;
-          if (qActivity === 'inactive_7d' && ad > 0) return;
-          filtered.push({ row: r, sal: sal, act: actMap[uname] || { active_days: 0, last_active: '', event_count: 0 } });
-        });
-        total = filtered.length;
-        var offset = (page - 1) * limit;
-        var pageSlice = filtered.slice(offset, offset + limit);
-        rows = pageSlice.map(function (item) {
-          return Object.assign({}, item.row, { _sal: item.sal, _act: item.act });
-        });
-      } else {
-        const [[countRow]] = await conn.execute('SELECT COUNT(*) AS c FROM users' + scopeSql, params);
-        total = Number(countRow.c) || 0;
-        var offset2 = (page - 1) * limit;
-        const [userRows] = await conn.query(
-          'SELECT username, real_name, created_at, activation_source_channel, register_source_channel FROM users' +
-            scopeSql +
-            ' ORDER BY id DESC LIMIT ? OFFSET ?',
-          params.concat([limit, offset2])
-        );
-        rows = userRows;
-      }
-
-      var pageNames = rows.map(function (r) {
-        return String(r.username);
-      });
-      var batchMaps = await buildUserDataBatchMaps(conn, pageNames);
-      var avgMapsPage =
-        rows[0] && rows[0]._sal != null
-          ? null
-          : await buildUserTaxAvgSalaryMap(conn, pageNames);
-      var actMapPage =
-        rows[0] && rows[0]._act != null
-          ? null
-          : await loadActivatedUserActivityMap(conn, pageNames, activityDays);
-      var eventMap = await loadPageEventsForUsers(conn, pageNames, 400);
-      var nameChangeMap = {};
-      var taxEditMap = {};
-      if (pageNames.length) {
-        var phNames = pageNames
-          .map(function () {
-            return '?';
-          })
-          .join(',');
-        const [nameCntRows] = await conn.query(
-          `SELECT username, COUNT(*) AS cnt FROM user_profile_change_logs
-           WHERE field_key = 'real_name' AND username IN (` +
-            phNames +
-            `) GROUP BY username`,
-          pageNames
-        );
-        nameCntRows.forEach(function (r) {
-          nameChangeMap[String(r.username)] = Number(r.cnt) || 0;
-        });
-        const [taxCntEditRows] = await conn.query(
-          `SELECT user_id, COUNT(*) AS cnt FROM tax_record_change_logs
-           WHERE user_id IN (` +
-            phNames +
-            `) GROUP BY user_id`,
-          pageNames
-        );
-        taxCntEditRows.forEach(function (r) {
-          taxEditMap[String(r.user_id)] = Number(r.cnt) || 0;
-        });
-      }
-
-      var items = rows.map(function (r) {
-        var uname = String(r.username);
-        var bd = batchMaps[uname] || {};
-        var sal =
-          r._sal ||
-          (avgMapsPage && avgMapsPage[uname]) || {
-            avg_salary_6m: null,
-            avg_salary_6m_label: '未填写',
-            salary_month_count: 0
-          };
-        var act = r._act || (actMapPage && actMapPage[uname]) || { active_days: 0, last_active: '', event_count: 0 };
-        var metrics = computeBehaviorMetricsFromEvents(eventMap[uname] || []);
-        var freqPerDay =
-          act.active_days > 0 ? Math.round((act.event_count / act.active_days) * 10) / 10 : 0;
-        return {
-          username: uname,
-          real_name: r.real_name != null ? String(r.real_name) : '',
-          created_at: r.created_at ? r.created_at.toISOString() : '',
-          channel_analysis_label: userChannelAnalysisLabel(
-            r.register_source_channel,
-            r.activation_source_channel
-          ),
-          avg_salary_6m: sal.avg_salary_6m,
-          avg_salary_6m_label: sal.avg_salary_6m_label || '未填写',
-          salary_month_count: sal.salary_month_count || 0,
-          tax_record_count: bd.tax_record_count || 0,
-          has_tax_records: (bd.tax_record_count || 0) > 0,
-          name_change_count: nameChangeMap[uname] || 0,
-          tax_edit_count: taxEditMap[uname] || 0,
-          active_days: act.active_days,
-          event_count: act.event_count,
-          events_per_active_day: freqPerDay,
-          stay_label: metrics.stay_label,
-          distinct_page_count: metrics.distinct_page_count,
-          last_active: act.last_active || (metrics.last_at ? String(metrics.last_at).slice(0, 10) : ''),
-          path_summary: metrics.path_summary
-        };
-      });
-
-      return res.json({
-        code: 200,
-        data: {
-          items: items,
-          total: total,
-          page: page,
-          limit: limit,
-          activity_days: activityDays
-        }
-      });
-    } finally {
-      conn.release();
-    }
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
-/** 已激活用户行为路径 */
-async function handleAdminActivatedUserAnalysisBehaviorPath(req, res) {
-  var username = req.query.username != null ? String(req.query.username).trim() : '';
-  if (!username) {
-    return res.status(400).json({ code: 400, msg: 'username required' });
-  }
-  try {
-    const conn = await pool.getConnection();
-    try {
-      var allowed = await adminCanAccessTargetUser(conn, req.admin, username);
-      if (!allowed) {
-        return res.status(403).json({ code: 403, msg: '无权限查看该用户' });
-      }
-      const [userRows] = await conn.execute(
-        'SELECT username, account_active FROM users WHERE username = ? AND list_hidden_at IS NULL LIMIT 1',
-        [username]
-      );
-      if (!userRows.length) {
-        return res.status(404).json({ code: 404, msg: '用户不存在' });
-      }
-      if (!(userRows[0].account_active === 1 || userRows[0].account_active === true)) {
-        return res.status(400).json({ code: 400, msg: '该用户未激活' });
-      }
-      const [rows] = await conn.execute(
-        `SELECT page_path, route_key, created_at
-         FROM user_page_events
-         WHERE username = ?
-         ORDER BY created_at ASC
-         LIMIT 800`,
-        [username]
-      );
-      var events = rows.map(function (r) {
-        return {
-          page_path: r.page_path != null ? String(r.page_path) : '',
-          route_key: r.route_key != null ? String(r.route_key) : '',
-          created_at: r.created_at
-        };
-      });
-      var metrics = computeBehaviorMetricsFromEvents(events);
-      var timeline = events.map(function (e, idx) {
-        var ts = e.created_at instanceof Date ? e.created_at : new Date(e.created_at);
-        return {
-          step: idx + 1,
-          at: isNaN(ts.getTime()) ? '' : ts.toISOString(),
-          page_path: e.page_path,
-          route_key: e.route_key,
-          title: chineseTitleFromPagePath(e.page_path)
-        };
-      });
-      return res.json({
-        code: 200,
-        data: {
-          username: username,
-          metrics: metrics,
-          timeline: timeline
-        }
-      });
-    } finally {
-      conn.release();
-    }
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
-  }
 }
 
 /** 清理疑似机器人 */
@@ -18965,25 +22205,6 @@ async function handleAdminUserRefund(req, res) {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
-    const [urows] = await conn.execute(
-      'SELECT id, account_active, activation_refunded_at FROM users WHERE username = ? FOR UPDATE',
-      [target]
-    );
-    if (urows.length === 0) {
-      await conn.rollback();
-      conn.release();
-      return res.status(404).json({ code: 404, msg: '用户不存在' });
-    }
-    if (urows[0].activation_refunded_at) {
-      await conn.rollback();
-      conn.release();
-      return res.status(400).json({ code: 400, msg: '该账号已退款' });
-    }
-    if (!(urows[0].account_active === 1 || urows[0].account_active === true)) {
-      await conn.rollback();
-      conn.release();
-      return res.status(400).json({ code: 400, msg: '仅已激活账号可退款' });
-    }
     var allowed = await adminCanAccessTargetUser(conn, req.admin, target);
     if (!allowed) {
       await conn.rollback();
@@ -18991,12 +22212,30 @@ async function handleAdminUserRefund(req, res) {
       return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
     }
     var adminName = req.admin && req.admin.username ? String(req.admin.username) : '';
+    var result = await applyActivationRefundForUser(conn, target, adminName);
+    if (result.missing) {
+      await conn.rollback();
+      conn.release();
+      return res.status(404).json({ code: 404, msg: '用户不存在' });
+    }
+    if (result.already) {
+      await conn.rollback();
+      conn.release();
+      return res.status(400).json({ code: 400, msg: '该账号已退款' });
+    }
+    if (result.inactive) {
+      await conn.rollback();
+      conn.release();
+      return res.status(400).json({ code: 400, msg: '仅已激活账号可退款' });
+    }
+    /* 管理端退款：尽量把该用户仍为 paid 的激活类订单标为 refunded，GMV 同步回退 */
     await conn.execute(
-      `UPDATE users SET banned = 1, session_rev = session_rev + 1, account_active = 0,
-              list_hidden_at = NOW(3), list_hidden_by = ?,
-              activation_refunded_at = NOW(3), activation_refunded_by = ?
-       WHERE username = ?`,
-      [adminName, adminName, target]
+      `UPDATE payment_orders
+       SET status = 'refunded'
+       WHERE username = ? AND status = 'paid'
+         AND (grant_kind IS NULL OR grant_kind IN ('trial', 'permanent', ''))
+         AND (sku_id IS NULL OR (sku_id NOT LIKE 'sku_rename%' AND sku_id NOT LIKE 'sku_lizhi%' AND sku_id NOT LIKE 'sku_zaizhi%' AND sku_id NOT LIKE 'sku_najilu%' AND sku_id NOT LIKE 'sku_tax_edit%'))`,
+      [target]
     );
     await conn.commit();
     conn.release();
@@ -19106,11 +22345,8 @@ async function handleAdminDeletedUsers(req, res) {
         params.push('%' + qRealName + '%');
       }
     }
-    if (!req.admin || !req.admin.is_super) {
-      whereClauses.push(
-        'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = users.username AND ac.owner_admin_username = ?)'
-      );
-      params.push(req.admin.username);
+    if (!req.admin || !adminHasFullUserScope(req.admin)) {
+      appendSubAdminOwnedUsersScopeForAdmin(whereClauses, params, req.admin, 'users.username');
     }
 
     var whereSql = ' WHERE ' + whereClauses.join(' AND ');
@@ -19218,16 +22454,57 @@ async function handleAdminUserRestore(req, res) {
   }
 }
 
-/** clamp analytics days */
-function clampAnalyticsDays(raw, def, max) {
-  var n = parseInt(raw, 10);
-  if (isNaN(n) || n < 1) {
-    n = def;
+/** 硬删除：彻底清除已软删账号及其业务数据（不可恢复） */
+async function handleAdminUserHardDelete(req, res) {
+  var body = req.body || {};
+  var target = body.username != null ? String(body.username).trim() : '';
+  if (!target) {
+    return res.status(400).json({ code: 400, msg: 'username required' });
   }
-  if (n > max) {
-    n = max;
+  if (target.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
+    return res.status(400).json({ code: 400, msg: '不能删除保留账号名' });
   }
-  return n;
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [urows] = await conn.execute(
+      'SELECT id, list_hidden_at FROM users WHERE username = ? FOR UPDATE',
+      [target]
+    );
+    if (urows.length === 0) {
+      await conn.rollback();
+      conn.release();
+      return res.status(404).json({ code: 404, msg: '用户不存在' });
+    }
+    if (!urows[0].list_hidden_at) {
+      await conn.rollback();
+      conn.release();
+      return res.status(400).json({ code: 400, msg: '仅「已删除账号」列表中的账号可彻底删除，请先软删除' });
+    }
+    var allowed = await adminCanAccessTargetUser(conn, req.admin, target);
+    if (!allowed) {
+      await conn.rollback();
+      conn.release();
+      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+    }
+    await registerGuard.deleteUserAndRelated(conn, target);
+    await conn.commit();
+    conn.release();
+    invalidateUserAuthCache(target);
+    return res.json({
+      code: 200,
+      data: { username: target, hard_deleted: true }
+    });
+  } catch (e) {
+    try {
+      await conn.rollback();
+    } catch (rbErr) {}
+    try {
+      conn.release();
+    } catch (relErr) {}
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
 }
 
 /** 解析：device detail json for stats */
@@ -19483,207 +22760,40 @@ var DEVICE_STATS_MODEL_ICON_LABEL = {
   other: '其他'
 };
 
-/** 解析：model icon key */
-function resolveModelIconKey(osKey, modelLabel, ua, detail) {
-  var label = String(modelLabel || '').trim();
-  var u = String(ua || '');
-  var brand = detail && detail.brand ? String(detail.brand).trim() : '';
-  var model = detail && detail.model ? String(detail.model).trim() : '';
-  var combined = (label + ' ' + brand + ' ' + model + ' ' + u);
-
-  if (/^iphone$/i.test(label) || /\biPhone\b/i.test(u) && !/iPad/i.test(u)) {
-    return 'iphone';
-  }
-  if (/^ipad$/i.test(label) || /\biPad\b/i.test(u)) {
-    return 'ipad';
-  }
-  if (/windows\s*pc/i.test(label) || (osKey === 'windows' && !/phone/i.test(label))) {
-    return 'windows_pc';
-  }
-  if (/^mac$/i.test(label) || (osKey === 'macos' && !/iPhone|iPad/i.test(u))) {
-    return 'mac';
-  }
-  if (/chromebook/i.test(label) || osKey === 'chromeos') {
-    return 'chromebook';
-  }
-  if (/linux\s*pc/i.test(label) || (osKey === 'linux' && !/Android/i.test(u))) {
-    return 'linux_pc';
-  }
-  if (/nexus|pixel/i.test(combined)) {
-    return 'google';
-  }
-  if (/23127PN|2201PN|2211133C|PKB110|25060RK16C|2410DPN|24117RK|24122RK|Redmi|Xiaomi|Miui|HyperOS|小米/i.test(combined)) {
-    return 'xiaomi';
-  }
-  if (/PGT-AN|ANN-AN|Honor|HONOR|Magic|荣耀/i.test(combined)) {
-    return 'honor';
-  }
-  if (/HBN-AL|HLY-AL|ADY-AL|MLA-AL|Huawei|HUAWEI|HarmonyOS|Mate|Pura|华为/i.test(combined)) {
-    return 'huawei';
-  }
-  if (/OPPO|CPH\d|OnePlus|ONEPLUS|一加/i.test(combined)) {
-    return 'oppo';
-  }
-  if (/\bvivo\b|V\d{4}[A-Z]{2,}/i.test(combined)) {
-    return 'vivo';
-  }
-  if (/SM-[A-Z]\d|Samsung|Galaxy|三星/i.test(combined)) {
-    return 'samsung';
-  }
-  if (osKey === 'ios') {
-    return 'iphone';
-  }
-  if (osKey === 'android') {
-    return 'android_phone';
-  }
-  return DEVICE_STATS_OS_ICON_KEY[osKey] || 'other';
-}
-
-/** 解析：model icon hint */
-function resolveModelIconHint(iconKey, modelLabel, ua) {
-  var hints = {
-    iphone: 'UA/平台含 iPhone',
-    ipad: 'UA/平台含 iPad',
-    android_phone: 'Android 机型代号或未知品牌',
-    xiaomi: '小米 / Redmi 型号或 UA（如 23127PN、PKB110）',
-    huawei: '华为 / 鸿蒙 型号或 UA（如 HBN-AL、Pura）',
-    honor: '荣耀 型号或 UA（如 PGT-AN、ANN-AN00）',
-    oppo: 'OPPO / 一加 型号或 UA',
-    vivo: 'vivo 型号或 UA',
-    samsung: '三星 Galaxy 型号或 UA',
-    google: 'Nexus / Pixel 等',
-    windows_pc: 'Windows 桌面端',
-    mac: 'macOS 桌面端',
-    chromebook: 'Chrome OS',
-    linux_pc: 'Linux 桌面端'
-  };
-  var base = hints[iconKey] || '未能识别品牌，按系统家族显示';
-  if (modelLabel) {
-    return base + ' · ' + String(modelLabel).substring(0, 80);
-  }
-  return base;
-}
-
-/** 解析：os icon hint */
-function resolveOsIconHint(iconKey, osLabel) {
-  var hints = {
-    ios: 'iOS 系统（含版本号来自上报或 UA）',
-    android: 'Android 系统',
-    windows: 'Windows 系统',
-    macos: 'macOS 系统',
-    linux: 'Linux 系统',
-    chromeos: 'Chrome OS',
-    other: '其他或未识别系统'
-  };
-  return (hints[iconKey] || hints.other) + ' · ' + String(osLabel || '');
-}
-
-/** sort device stat list */
-function sortDeviceStatList(map) {
-  var arr = Object.keys(map).map(function (k) {
-    var o = map[k];
-    return {
-      key: k,
-      label: o.label,
-      icon_key: o.icon_key,
-      icon_hint: o.icon_hint || '',
-      count: o.count
-    };
-  });
-  arr.sort(function (a, b) {
-    return b.count - a.count;
-  });
-  return arr;
-}
-
-/** 设备统计 */
-async function handleAdminAnalyticsDeviceStats(req, res) {
-  if (!pool) {
-    return res.status(503).json({ code: 503, msg: '数据库未就绪' });
-  }
-  try {
-    const conn = await pool.getConnection();
-    try {
-      const [rows] = await conn.execute(
-        'SELECT user_agent_short, device_detail_json FROM user_devices'
-      );
-      var osMap = {};
-      var modelMap = {};
-      var modelIconSummary = {};
-      rows.forEach(function (r) {
-        var c = classifyUserDeviceRow(r.user_agent_short, r.device_detail_json);
-        var detail = parseDeviceDetailJsonForStats(r.device_detail_json);
-        var ua = detail && detail.user_agent ? String(detail.user_agent) : String(r.user_agent_short || '');
-        var ok = c.os_key;
-        var family = DEVICE_STATS_OS_FAMILY_LABEL[ok] || DEVICE_STATS_OS_FAMILY_LABEL.other;
-        var ver = c.os_version ? String(c.os_version).trim() : '';
-        var osLabel = ver ? family + ' ' + ver : family;
-        var osAggKey = ok + '\0' + (ver || '');
-        var osIconKey = DEVICE_STATS_OS_ICON_KEY[ok] || 'other';
-        if (!osMap[osAggKey]) {
-          osMap[osAggKey] = {
-            label: osLabel,
-            icon_key: osIconKey,
-            icon_hint: resolveOsIconHint(osIconKey, osLabel),
-            count: 0
-          };
-        }
-        osMap[osAggKey].count += 1;
-
-        var mk = c.model_key;
-        var modelIconKey = resolveModelIconKey(c.os_key, c.model_label, ua, detail);
-        if (!modelMap[mk]) {
-          modelMap[mk] = {
-            label: c.model_label,
-            icon_key: modelIconKey,
-            icon_hint: resolveModelIconHint(modelIconKey, c.model_label, ua),
-            count: 0
-          };
-        }
-        modelMap[mk].count += 1;
-        modelIconSummary[modelIconKey] = (modelIconSummary[modelIconKey] || 0) + 1;
-      });
-      var iconSummaryList = Object.keys(modelIconSummary)
-        .map(function (ik) {
-          return {
-            icon_key: ik,
-            label: DEVICE_STATS_MODEL_ICON_LABEL[ik] || ik,
-            count: modelIconSummary[ik]
-          };
-        })
-        .sort(function (a, b) {
-          return b.count - a.count;
-        });
-      var osFamilyMap = {};
-      Object.keys(osMap).forEach(function (k) {
-        var o = osMap[k];
-        var fk = o.icon_key || 'other';
-        if (!osFamilyMap[fk]) {
-          osFamilyMap[fk] = {
-            icon_key: fk,
-            label: DEVICE_STATS_OS_FAMILY_LABEL[fk] || DEVICE_STATS_OS_FAMILY_LABEL.other,
-            count: 0
-          };
-        }
-        osFamilyMap[fk].count += o.count;
-      });
-      return res.json({
-        code: 200,
-        data: {
-          total_devices: rows.length,
-          by_os: sortDeviceStatList(osMap),
-          by_os_family: sortDeviceStatList(osFamilyMap),
-          by_model: sortDeviceStatList(modelMap),
-          icon_summary: iconSummaryList
-        }
-      });
-    } finally {
-      conn.release();
-    }
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
-  }
+/** 日活按 IP 去重键：优先当日成功登录 IP，其次任意成功/注册 IP，再次设备 ip_last；无 IP 则按账号各计 1 */
+function dauActivityIpKeySql(udaAlias) {
+  var u = udaAlias || 'uda';
+  return (
+    'COALESCE(' +
+    'NULLIF(TRIM((' +
+    'SELECT ule.ip FROM user_login_events ule ' +
+    'WHERE ule.username = ' +
+    u +
+    '.username AND ule.ok = 1 AND DATE(ule.created_at) = ' +
+    u +
+    ".activity_date AND ule.ip IS NOT NULL AND TRIM(ule.ip) <> '' " +
+    'ORDER BY ule.created_at DESC, ule.id DESC LIMIT 1' +
+    ")), '')," +
+    'NULLIF(TRIM((' +
+    'SELECT ule.ip FROM user_login_events ule ' +
+    'WHERE ule.username = ' +
+    u +
+    ".username AND (ule.ok = 1 OR ule.reason LIKE 'register_%') " +
+    "AND ule.ip IS NOT NULL AND TRIM(ule.ip) <> '' " +
+    'ORDER BY ule.created_at DESC, ule.id DESC LIMIT 1' +
+    ")), '')," +
+    'NULLIF(TRIM((' +
+    'SELECT ud.ip_last FROM user_devices ud ' +
+    'WHERE ud.username = ' +
+    u +
+    ".username AND ud.ip_last IS NOT NULL AND TRIM(ud.ip_last) <> '' " +
+    'ORDER BY ud.last_seen DESC LIMIT 1' +
+    ")), '')," +
+    "CONCAT('__nouip:', " +
+    u +
+    '.username)' +
+    ')'
+  );
 }
 
 /** 加载：tax record flags for usernames */
@@ -19723,7 +22833,7 @@ async function loadTaxRecordFlagsForUsernames(conn, usernames, activityDate) {
   return flags;
 }
 
-/** DAU 用户列表 */
+/** DAU 用户列表（按 IP 去重：同 IP 多账号只保留一个代表账号） */
 async function handleAdminAnalyticsDauUsers(req, res) {
   try {
     var dateStr = req.query.date != null ? String(req.query.date).trim() : '';
@@ -19743,44 +22853,79 @@ async function handleAdminAnalyticsDauUsers(req, res) {
     }
     const conn = await pool.getConnection();
     try {
-      const [[countRow]] = await conn.execute(
-        'SELECT COUNT(*) AS c FROM user_daily_activity WHERE activity_date = ?',
+      var ipKeySql = dauActivityIpKeySql('uda');
+      const [rawRows] = await conn.query(
+        'SELECT uda.username AS username, ' +
+          ipKeySql +
+          ' AS ip_key FROM user_daily_activity uda WHERE uda.activity_date = ? ORDER BY uda.username ASC',
         [dateStr]
       );
-      var total = countRow && countRow.c != null ? Number(countRow.c) : 0;
+      var byIp = Object.create(null);
+      var groups = [];
+      (rawRows || []).forEach(function (r) {
+        var un = String(r.username || '').trim();
+        if (!un) {
+          return;
+        }
+        var ipKey = String(r.ip_key || '').trim() || '__nouip:' + un;
+        if (!byIp[ipKey]) {
+          byIp[ipKey] = {
+            username: un,
+            ip_key: ipKey,
+            same_ip_count: 1,
+            accounts: [un]
+          };
+          groups.push(byIp[ipKey]);
+        } else {
+          byIp[ipKey].same_ip_count += 1;
+          byIp[ipKey].accounts.push(un);
+        }
+      });
+      var total = groups.length;
       var totalPages = limit > 0 ? Math.ceil(total / limit) : 0;
       if (totalPages > 0 && page > totalPages) {
         page = totalPages;
       }
       var offset = Math.max(0, ((page - 1) * limit) | 0);
-      var limInt = limit | 0;
-      const [rows] = await conn.query(
-        'SELECT username FROM user_daily_activity WHERE activity_date = ? ORDER BY username ASC LIMIT ' +
-          limInt +
-          ' OFFSET ' +
-          offset,
-        [dateStr]
-      );
+      var pageGroups = groups.slice(offset, offset + limit);
       if (total > 0 && totalPages < 1) {
         totalPages = 1;
       }
-      var pageUsernames = rows.map(function (r) {
-        return String(r.username || '');
+      var allNames = [];
+      pageGroups.forEach(function (g) {
+        g.accounts.forEach(function (n) {
+          allNames.push(n);
+        });
       });
-      var taxFlags = await loadTaxRecordFlagsForUsernames(conn, pageUsernames, dateStr);
+      var taxFlags = await loadTaxRecordFlagsForUsernames(conn, allNames, dateStr);
       return res.json({
         code: 200,
         data: {
           date: dateStr,
-          users: pageUsernames.map(function (uname) {
-            var f = taxFlags[uname] || { has_tax_records: false, tax_modified_on_date: false };
+          users: pageGroups.map(function (g) {
+            var hasTax = false;
+            var modTax = false;
+            g.accounts.forEach(function (un) {
+              var f = taxFlags[un] || {};
+              if (f.has_tax_records) {
+                hasTax = true;
+              }
+              if (f.tax_modified_on_date) {
+                modTax = true;
+              }
+            });
+            var ipDisp =
+              g.ip_key.indexOf('__nouip:') === 0 ? '' : g.ip_key;
             return {
-              username: uname,
-              has_tax_records: !!f.has_tax_records,
-              tax_modified_on_date: !!f.tax_modified_on_date
+              username: g.username,
+              ip: ipDisp,
+              same_ip_count: g.same_ip_count,
+              has_tax_records: hasTax,
+              tax_modified_on_date: modTax
             };
           }),
           total: total,
+          account_total: (rawRows || []).length,
           page: page,
           limit: limit,
           total_pages: totalPages
@@ -19803,18 +22948,65 @@ async function handleAdminAnalyticsOverview(req, res) {
     var loginPf = analyticsPeriodLoginDatetimeFilter(period);
     const conn = await pool.getConnection();
     try {
+      var ipKeySql = dauActivityIpKeySql('uda');
       const [dauRows] = await conn.execute(
-        `SELECT activity_date AS d, COUNT(*) AS cnt FROM user_daily_activity
-         WHERE ${actPf.sql}
-         GROUP BY activity_date ORDER BY activity_date ASC`,
+        `SELECT uda.activity_date AS d, COUNT(DISTINCT ${ipKeySql}) AS cnt
+         FROM user_daily_activity uda
+         WHERE ${actPf.sql.replace(/activity_date/g, 'uda.activity_date')}
+         GROUP BY uda.activity_date ORDER BY uda.activity_date ASC`,
         actPf.params
       );
+      var sameClock = null;
+      try {
+        const [clockRows] = await conn.execute(
+          `SELECT DATE_FORMAT(DATE_ADD(NOW(), INTERVAL 8 HOUR), '%H:%i') AS as_of_bj,
+                  CURDATE() AS today_d,
+                  DATE_SUB(CURDATE(), INTERVAL 1 DAY) AS yday_d,
+                  (SELECT COUNT(DISTINCT ${ipKeySql})
+                     FROM user_daily_activity uda
+                    WHERE uda.activity_date = CURDATE()) AS today_cnt,
+                  (SELECT COUNT(DISTINCT ${ipKeySql})
+                     FROM user_daily_activity uda
+                    WHERE uda.activity_date = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+                      AND EXISTS (
+                        SELECT 1 FROM user_page_events p
+                         WHERE p.username = uda.username
+                           AND p.created_at >= DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+                           AND p.created_at < DATE_SUB(NOW(), INTERVAL 1 DAY)
+                        UNION ALL
+                        SELECT 1 FROM user_login_events e
+                         WHERE e.username = uda.username
+                           AND e.ok = 1
+                           AND e.created_at >= DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+                           AND e.created_at < DATE_SUB(NOW(), INTERVAL 1 DAY)
+                      )) AS yday_cnt`
+        );
+        if (clockRows && clockRows[0]) {
+          var cr = clockRows[0];
+          var todayN = Number(cr.today_cnt) || 0;
+          var ydayN = Number(cr.yday_cnt) || 0;
+          sameClock = {
+            as_of: cr.as_of_bj != null ? String(cr.as_of_bj) : '',
+            today_date:
+              cr.today_d instanceof Date ? cr.today_d.toISOString().slice(0, 10) : String(cr.today_d).slice(0, 10),
+            yesterday_date:
+              cr.yday_d instanceof Date ? cr.yday_d.toISOString().slice(0, 10) : String(cr.yday_d).slice(0, 10),
+            today: todayN,
+            yesterday: ydayN,
+            vs_pct: ydayN > 0 ? Math.round((todayN / ydayN) * 100) : null
+          };
+        }
+      } catch (eClock) {
+        console.error('analytics same clock', eClock);
+      }
+      var loginProbeExcl = sqlExcludeInternalLoginProbeUsernames('username');
       const [loginRows] = await conn.execute(
         `SELECT DATE(created_at) AS d,
            SUM(CASE WHEN ok = 1 THEN 1 ELSE 0 END) AS success_cnt,
            SUM(CASE WHEN ok = 0 THEN 1 ELSE 0 END) AS fail_cnt
          FROM user_login_events
          WHERE ${loginPf.sql}
+           AND ${loginProbeExcl}
          GROUP BY DATE(created_at) ORDER BY d ASC`,
         loginPf.params
       );
@@ -19823,6 +23015,7 @@ async function handleAdminAnalyticsOverview(req, res) {
          FROM user_login_events
          WHERE ok = 0
            AND ${loginPf.sql}
+           AND ${loginProbeExcl}
          GROUP BY reason_key
          ORDER BY cnt DESC
          LIMIT 20`,
@@ -19848,224 +23041,8 @@ async function handleAdminAnalyticsOverview(req, res) {
             fail_reasons: failReasonRows.map(function (r) {
               var k = r.reason_key != null ? String(r.reason_key) : 'unknown_error';
               return { reason_key: k, reason_label: userLoginReasonLabel(k), cnt: Number(r.cnt || 0) };
-            })
-          },
-          conversionAnalyticsPeriodMeta(period)
-        )
-      });
-    } finally {
-      conn.release();
-    }
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
-/** 埋点查询 API */
-async function handleAdminAnalyticsApi(req, res) {
-  try {
-    var period = parseAnalyticsPeriod(req.query.days, 90);
-    var pf = analyticsPeriodStatDateFilter(period);
-    var slowDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
-    var slowPf = analyticsPeriodCnDateFilter(slowDay, period);
-    const conn = await pool.getConnection();
-    try {
-      const [byCat] = await conn.execute(
-        `SELECT biz_category AS cat,
-                SUM(cnt) AS total,
-                SUM(sum_ms) AS total_ms,
-                MAX(max_ms) AS max_ms
-         FROM analytics_api_daily
-         WHERE ${pf.sql}
-         GROUP BY biz_category ORDER BY total DESC`,
-        pf.params
-      );
-      const [topRoutes] = await conn.execute(
-        `SELECT MAX(biz_category) AS cat, route_key AS route,
-                SUM(cnt) AS total,
-                SUM(sum_ms) AS total_ms,
-                MAX(max_ms) AS max_ms
-         FROM analytics_api_daily
-         WHERE ${pf.sql}
-           AND biz_category <> '管理后台'
-         GROUP BY route_key
-         ORDER BY total DESC LIMIT 10`,
-        pf.params
-      );
-      var slowSummary = {
-        threshold_ms: API_SLOW_THRESHOLD_MS,
-        total: 0,
-        server_cnt: 0,
-        client_cnt: 0,
-        avg_total_ms: null,
-        max_total_ms: 0
-      };
-      var slowTopRoutes = [];
-      var slowRecent = [];
-      try {
-        const [slowAgg] = await conn.query(
-          `SELECT COUNT(*) AS total,
-                  SUM(CASE WHEN source = 'server' THEN 1 ELSE 0 END) AS server_cnt,
-                  SUM(CASE WHEN source = 'client' THEN 1 ELSE 0 END) AS client_cnt,
-                  AVG(total_ms) AS avg_total_ms,
-                  MAX(total_ms) AS max_total_ms
-           FROM api_slow_events
-           WHERE ${slowPf.sql}`,
-          slowPf.params
-        );
-        var sa = (slowAgg && slowAgg[0]) || {};
-        slowSummary.total = Number(sa.total) || 0;
-        slowSummary.server_cnt = Number(sa.server_cnt) || 0;
-        slowSummary.client_cnt = Number(sa.client_cnt) || 0;
-        slowSummary.avg_total_ms =
-          sa.avg_total_ms != null && isFinite(Number(sa.avg_total_ms))
-            ? Math.round(Number(sa.avg_total_ms))
-            : null;
-        slowSummary.max_total_ms = Number(sa.max_total_ms) || 0;
-        const [slowTop] = await conn.query(
-          `SELECT route_key, COUNT(*) AS cnt, ROUND(AVG(total_ms)) AS avg_ms, MAX(total_ms) AS max_ms
-           FROM api_slow_events
-           WHERE ${slowPf.sql}
-           GROUP BY route_key
-           ORDER BY cnt DESC
-           LIMIT 10`,
-          slowPf.params
-        );
-        slowTopRoutes = (slowTop || []).map(function (r) {
-          return {
-            route_key: String(r.route_key || ''),
-            cnt: Number(r.cnt) || 0,
-            avg_ms: Number(r.avg_ms) || 0,
-            max_ms: Number(r.max_ms) || 0
-          };
-        });
-        const [slowRows] = await conn.query(
-          `SELECT source, route_key, net_ms, render_ms, total_ms, item_count, username, client_id,
-                  page_path, viewport, net_type, http_status, ip, created_at
-           FROM api_slow_events
-           WHERE ${slowPf.sql}
-           ORDER BY id DESC
-           LIMIT 30`,
-          slowPf.params
-        );
-        slowRecent = (slowRows || []).map(function (r) {
-          return {
-            source: String(r.source || ''),
-            route_key: String(r.route_key || ''),
-            net_ms: Number(r.net_ms) || 0,
-            render_ms: Number(r.render_ms) || 0,
-            total_ms: Number(r.total_ms) || 0,
-            item_count: r.item_count != null ? Number(r.item_count) : null,
-            username: r.username != null ? String(r.username) : '',
-            client_id: r.client_id != null ? String(r.client_id) : '',
-            page_path: r.page_path != null ? String(r.page_path) : '',
-            viewport: r.viewport != null ? String(r.viewport) : '',
-            net_type: r.net_type != null ? String(r.net_type) : '',
-            http_status: r.http_status != null ? Number(r.http_status) : null,
-            ip: r.ip != null ? String(r.ip) : '',
-            created_at: r.created_at ? new Date(r.created_at).toISOString() : ''
-          };
-        });
-      } catch (slowErr) {
-        console.error('handleAdminAnalyticsApi slow', slowErr);
-      }
-      var errorSummary = { total: 0, http_5xx_cnt: 0, biz_5xx_cnt: 0 };
-      var errorTopRoutes = [];
-      var errorRecent = [];
-      try {
-        const [errAgg] = await conn.query(
-          `SELECT COUNT(*) AS total,
-                  SUM(CASE WHEN http_status >= 500 AND http_status < 600 THEN 1 ELSE 0 END) AS http_5xx_cnt,
-                  SUM(CASE WHEN biz_code >= 500 AND biz_code < 600 THEN 1 ELSE 0 END) AS biz_5xx_cnt
-           FROM api_error_events
-           WHERE ${slowPf.sql}`,
-          slowPf.params
-        );
-        var ea = (errAgg && errAgg[0]) || {};
-        errorSummary.total = Number(ea.total) || 0;
-        errorSummary.http_5xx_cnt = Number(ea.http_5xx_cnt) || 0;
-        errorSummary.biz_5xx_cnt = Number(ea.biz_5xx_cnt) || 0;
-        const [errTop] = await conn.query(
-          `SELECT route_key, COUNT(*) AS cnt,
-                  MAX(http_status) AS http_status,
-                  MAX(biz_code) AS biz_code
-           FROM api_error_events
-           WHERE ${slowPf.sql}
-           GROUP BY route_key
-           ORDER BY cnt DESC
-           LIMIT 10`,
-          slowPf.params
-        );
-        errorTopRoutes = (errTop || []).map(function (r) {
-          return {
-            route_key: String(r.route_key || ''),
-            cnt: Number(r.cnt) || 0,
-            http_status: r.http_status != null ? Number(r.http_status) : null,
-            biz_code: r.biz_code != null ? Number(r.biz_code) : null
-          };
-        });
-        const [errRows] = await conn.query(
-          `SELECT route_key, biz_category, http_status, biz_code, latency_ms,
-                  username, client_id, page_path, ip, created_at
-           FROM api_error_events
-           WHERE ${slowPf.sql}
-           ORDER BY id DESC
-           LIMIT 30`,
-          slowPf.params
-        );
-        errorRecent = (errRows || []).map(function (r) {
-          return {
-            route_key: String(r.route_key || ''),
-            biz_category: r.biz_category != null ? String(r.biz_category) : '',
-            http_status: r.http_status != null ? Number(r.http_status) : 0,
-            biz_code: r.biz_code != null ? Number(r.biz_code) : null,
-            latency_ms: Number(r.latency_ms) || 0,
-            username: r.username != null ? String(r.username) : '',
-            client_id: r.client_id != null ? String(r.client_id) : '',
-            page_path: r.page_path != null ? String(r.page_path) : '',
-            ip: r.ip != null ? String(r.ip) : '',
-            created_at: r.created_at ? new Date(r.created_at).toISOString() : ''
-          };
-        });
-      } catch (errErr) {
-        console.error('handleAdminAnalyticsApi errors', errErr);
-      }
-      return res.json({
-        code: 200,
-        data: Object.assign(
-          {
-            by_category: byCat.map(function (r) {
-              var calls = Number(r.total) || 0;
-              var totalMs = Number(r.total_ms) || 0;
-              return {
-                category: String(r.cat),
-                calls: calls,
-                avg_ms: calls > 0 ? Math.round(totalMs / calls) : null,
-                max_ms: Number(r.max_ms) || 0
-              };
             }),
-            top_routes: topRoutes.map(function (r) {
-              var calls = Number(r.total) || 0;
-              var totalMs = Number(r.total_ms) || 0;
-              return {
-                category: String(r.cat),
-                route_key: String(r.route),
-                cnt: calls,
-                avg_ms: calls > 0 ? Math.round(totalMs / calls) : null,
-                max_ms: Number(r.max_ms) || 0
-              };
-            }),
-            slow: {
-              summary: slowSummary,
-              top_routes: slowTopRoutes,
-              recent: slowRecent
-            },
-            errors: {
-              summary: errorSummary,
-              top_routes: errorTopRoutes,
-              recent: errorRecent
-            }
+            same_clock: sameClock
           },
           conversionAnalyticsPeriodMeta(period)
         )
@@ -20095,25 +23072,35 @@ var PURCHASE_PAGE_TRACK_EVENT_KEYS = [
   'track_pricing_ab_expose_control',
   'track_pricing_ab_expose_treatment',
   'track_pricing_ab_expose_code',
+  'track_purchase_pay_cta_click',
   'track_alipay_payment_start',
+  'track_alipay_order_create_ok',
+  'track_alipay_order_create_fail',
   'track_alipay_open_click',
   'track_alipay_payment_success',
+  'track_purchase_faq_expand',
+  'track_purchase_success_cases_view',
+  'track_purchase_fold_expand',
+  'track_purchase_share_teaser_click',
+  'track_purchase_price_survey_open',
+  'track_purchase_price_survey_submit',
+  'track_purchase_price_survey_skip',
+  'track_purchase_price_survey_soft_dismiss',
+  'track_purchase_price_survey_to_bid',
+  'track_price_bid_open',
+  'track_price_bid_submit',
   'track_purchase_activate_success',
   'track_purchase_activate_fail',
   'track_kufaka_purchase_click',
-  'track_purchase_wechat_view',
-  'track_purchase_wechat_expand',
-  'track_xianyu_purchase_click',
   'track_purchase_sales_agent_view',
   'track_purchase_sales_agent_copy_wechat',
   'track_purchase_sales_agent_qr',
   'track_purchase_sales_agent_copy_phone',
   'track_purchase_sales_agent_copy_qq',
   'track_purchase_sales_agent_xianyu',
-  'track_online_chat_click',
-  'track_qq_group_click',
   'track_qq_add_click',
-  'track_purchase_back_click'
+  'track_purchase_back_click',
+  'track_purchase_page_leave'
 ];
 
 var PURCHASE_PAGE_TRACK_EVENT_KEY_SET = {};
@@ -20144,27 +23131,236 @@ function purchasePageTrackEventLabel(eventKey) {
     track_pricing_ab_expose_control: '支付页A曝光·对照',
     track_pricing_ab_expose_treatment: '支付页B曝光·多档',
     track_pricing_ab_expose_code: '支付页C曝光·激活码',
+    track_purchase_pay_cta_click: '支付CTA点击',
     track_alipay_payment_start: '生成支付宝付款',
+    track_alipay_order_create_ok: '下单创建成功',
+    track_alipay_order_create_fail: '下单创建失败',
     track_alipay_open_click: '打开支付宝',
     track_alipay_payment_success: '支付宝支付成功',
+    track_purchase_faq_expand: '支付FAQ展开',
+    track_purchase_success_cases_view: '成功案例曝光',
+    track_purchase_fold_expand: '折叠区展开',
+    track_purchase_share_teaser_click: '分享优惠入口点击',
+    track_purchase_price_survey_open: '离开调研打开',
+    track_purchase_price_survey_submit: '离开调研提交',
+    track_purchase_price_survey_skip: '离开调研跳过',
+    track_purchase_price_survey_soft_dismiss: '离开调研软关闭',
+    track_purchase_price_survey_to_bid: '离开调研偏贵转出价',
+    track_price_bid_open: '心理价出价打开',
+    track_price_bid_submit: '心理价出价提交',
     track_purchase_activate_success: '激活码开通成功',
     track_purchase_activate_fail: '激活码开通失败',
     track_kufaka_purchase_click: '酷发卡购买',
-    track_purchase_wechat_view: '微信购买入口',
-    track_purchase_wechat_expand: '展开微信收款码',
-    track_xianyu_purchase_click: '闲鱼购买',
     track_purchase_sales_agent_view: 'C·销售代理入口',
     track_purchase_sales_agent_copy_wechat: 'C·复制销售微信',
     track_purchase_sales_agent_qr: 'C·销售微信二维码',
     track_purchase_sales_agent_copy_phone: 'C·复制销售手机',
     track_purchase_sales_agent_copy_qq: 'C·复制销售QQ',
     track_purchase_sales_agent_xianyu: 'C·销售闲鱼',
-    track_online_chat_click: '在线客服',
-    track_qq_group_click: '加入QQ群',
     track_qq_add_click: '添加QQ号',
-    track_purchase_back_click: '购买页返回'
+    track_purchase_back_click: '购买页返回',
+    track_purchase_page_leave: '购买页离开'
   };
   return labels[eventKey] || eventKey;
+}
+
+function isRootAdminAccount(admin) {
+  var name = admin && admin.username != null ? String(admin.username).trim().toLowerCase() : '';
+  if (!name) return false;
+  var root = String(ADMIN_PANEL_USER || 'admin').trim().toLowerCase() || 'admin';
+  return name === root;
+}
+
+function parseActivationCreditAmount(raw) {
+  if (raw == null) return null;
+  var s = String(raw).trim();
+  if (s === '') return null;
+  var n = Number(s);
+  if (!isFinite(n) || n < 0) return NaN;
+  if (n > 99999) n = 99999;
+  return Math.round(n * 100) / 100;
+}
+
+/** 支付分析：指定管理员名下激活码开通计入 GMV；admin 按用户列表填写金额加总 */
+function purchaseAnalyticsAdminActivationCreditRules() {
+  var rootAdmin = String(ADMIN_PANEL_USER || 'admin').trim() || 'admin';
+  return [
+    { admin_username: '18933137956', unit_amount: 100, exclude_alipay: false, label_note: '', use_user_amount: false },
+    { admin_username: '19106014552', unit_amount: 60, exclude_alipay: false, label_note: '', use_user_amount: false },
+    {
+      admin_username: rootAdmin,
+      unit_amount: null,
+      exclude_alipay: true,
+      label_note: '非支付宝',
+      use_user_amount: true
+    }
+  ];
+}
+
+function purchaseAnalyticsAdminActivationCreditList() {
+  return purchaseAnalyticsAdminActivationCreditRules().map(function (rule) {
+    return {
+      admin_username: rule.admin_username,
+      unit_amount: rule.unit_amount,
+      use_user_amount: !!rule.use_user_amount,
+      label_note: rule.label_note || ''
+    };
+  });
+}
+
+function emptyPurchaseAnalyticsAdminActivationCredit() {
+  return {
+    by_admin: purchaseAnalyticsAdminActivationCreditList().map(function (row) {
+      return {
+        admin_username: row.admin_username,
+        unit_amount: row.unit_amount,
+        use_user_amount: !!row.use_user_amount,
+        label_note: row.label_note || '',
+        orders: 0,
+        gmv: 0
+      };
+    }),
+    total_orders: 0,
+    total_gmv: 0
+  };
+}
+
+function purchaseAnalyticsAdminActivationOwnerFilter(rule) {
+  var sql = 'ac.owner_admin_username = ?';
+  var params = [rule.admin_username];
+  if (rule.exclude_alipay) {
+    sql +=
+      " AND (COALESCE(NULLIF(TRIM(u.activation_source_channel), ''), '__none__') <> ?" +
+      ' AND NOT (' +
+      'ac.note IS NOT NULL AND ac.note LIKE ?))';
+    params = params.concat(['alipay', '%支付宝%']);
+  }
+  return { sql: sql, params: params };
+}
+
+async function queryPurchaseAnalyticsAdminActivationCredits(conn, period) {
+  var rules = purchaseAnalyticsAdminActivationCreditRules();
+  var out = emptyPurchaseAnalyticsAdminActivationCredit();
+  if (!rules.length) {
+    return { summary: out, dailyMap: {} };
+  }
+  var cnActDay = 'DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR))';
+  var actPf = analyticsPeriodCnDateFilter(cnActDay, period);
+  var byAdminMap = {};
+  out.by_admin.forEach(function (row) {
+    byAdminMap[row.admin_username] = row;
+  });
+  var dailyMap = {};
+  try {
+    for (var ri = 0; ri < rules.length; ri++) {
+      var rule = rules[ri];
+      var ownerFilter = purchaseAnalyticsAdminActivationOwnerFilter(rule);
+      var baseWhere =
+        'ac.last_used_at IS NOT NULL AND ac.used_count > 0 AND ac.used_by_username IS NOT NULL AND TRIM(ac.used_by_username) <> \'\' AND ' +
+        ownerFilter.sql +
+        ' AND ' +
+        actPf.sql +
+        ' AND ' +
+        userActivationStatsEligibleSql('u.username');
+      var baseParams = ownerFilter.params.concat(actPf.params);
+
+      var summarySql = rule.use_user_amount
+        ? 'SELECT COUNT(*) AS cnt, COALESCE(SUM(amt), 0) AS gmv FROM (' +
+          'SELECT u.username, MAX(COALESCE(u.activation_credit_amount, 0)) AS amt' +
+          ' FROM activation_codes ac' +
+          ' INNER JOIN users u ON u.username = ac.used_by_username' +
+          ' WHERE ' +
+          baseWhere +
+          ' GROUP BY u.username) t'
+        : 'SELECT COUNT(DISTINCT ac.used_by_username) AS cnt' +
+          ' FROM activation_codes ac' +
+          ' INNER JOIN users u ON u.username = ac.used_by_username' +
+          ' WHERE ' +
+          baseWhere;
+      const [summaryRows] = await conn.execute(summarySql, baseParams);
+      var orders = Number((summaryRows[0] || {}).cnt) || 0;
+      if (orders > 0) {
+        var gmv = rule.use_user_amount
+          ? Math.round(Number((summaryRows[0] || {}).gmv || 0) * 100) / 100
+          : Math.round(orders * Number(rule.unit_amount || 0) * 100) / 100;
+        var summaryRow = byAdminMap[rule.admin_username];
+        if (!summaryRow) {
+          summaryRow = {
+            admin_username: rule.admin_username,
+            unit_amount: rule.unit_amount,
+            use_user_amount: !!rule.use_user_amount,
+            label_note: rule.label_note || '',
+            orders: 0,
+            gmv: 0
+          };
+          byAdminMap[rule.admin_username] = summaryRow;
+          out.by_admin.push(summaryRow);
+        }
+        summaryRow.orders = orders;
+        summaryRow.gmv = gmv;
+        out.total_orders += orders;
+        out.total_gmv += gmv;
+      }
+
+      var dailySql = rule.use_user_amount
+        ? 'SELECT d, COUNT(*) AS cnt, COALESCE(SUM(amt), 0) AS gmv FROM (' +
+          'SELECT ' +
+          cnActDay +
+          ' AS d, u.username, MAX(COALESCE(u.activation_credit_amount, 0)) AS amt' +
+          ' FROM activation_codes ac' +
+          ' INNER JOIN users u ON u.username = ac.used_by_username' +
+          ' WHERE ' +
+          baseWhere +
+          ' GROUP BY d, u.username) t GROUP BY d ORDER BY d DESC'
+        : 'SELECT ' +
+          cnActDay +
+          ' AS d, COUNT(DISTINCT ac.used_by_username) AS cnt' +
+          ' FROM activation_codes ac' +
+          ' INNER JOIN users u ON u.username = ac.used_by_username' +
+          ' WHERE ' +
+          baseWhere +
+          ' GROUP BY ' +
+          cnActDay +
+          ' ORDER BY d DESC';
+      const [dailyRows] = await conn.execute(dailySql, baseParams);
+      (dailyRows || []).forEach(function (r) {
+        var dk = formatDateKey(r.d);
+        var dayOrders = Number(r.cnt) || 0;
+        if (!dk || dayOrders <= 0) return;
+        if (!dailyMap[dk]) {
+          dailyMap[dk] = {
+            admin_activation_orders: 0,
+            admin_activation_gmv: 0,
+            by_admin: {}
+          };
+        }
+        var dayGmv = rule.use_user_amount
+          ? Math.round(Number(r.gmv || 0) * 100) / 100
+          : Math.round(dayOrders * Number(rule.unit_amount || 0) * 100) / 100;
+        dailyMap[dk].admin_activation_orders += dayOrders;
+        dailyMap[dk].admin_activation_gmv += dayGmv;
+        dailyMap[dk].by_admin[rule.admin_username] = {
+          admin_username: rule.admin_username,
+          unit_amount: rule.unit_amount,
+          use_user_amount: !!rule.use_user_amount,
+          label_note: rule.label_note || '',
+          orders: dayOrders,
+          gmv: dayGmv
+        };
+      });
+    }
+    out.total_gmv = Math.round(out.total_gmv * 100) / 100;
+    out.by_admin.sort(function (a, b) {
+      return String(a.admin_username).localeCompare(String(b.admin_username));
+    });
+    Object.keys(dailyMap).forEach(function (dk) {
+      dailyMap[dk].admin_activation_gmv = Math.round(dailyMap[dk].admin_activation_gmv * 100) / 100;
+    });
+    return { summary: out, dailyMap: dailyMap };
+  } catch (eAdminAct) {
+    console.error('[admin purchase-events] admin_activation_credit', eAdminAct && eAdminAct.message);
+    return { summary: out, dailyMap: {} };
+  }
 }
 
 /**
@@ -20203,9 +23399,13 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
         prompt_confirm: {},
         view: {},
         expose: {},
+        pay_cta: {},
         alipay_start: {},
+        order_create_ok: {},
+        order_create_fail: {},
         alipay_open: {},
         alipay_success: {},
+        faq_expand: {},
         activate_ok: {},
         activate_fail: {}
       };
@@ -20233,9 +23433,13 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
               prompt_confirm: {},
               view: {},
               expose: {},
+              pay_cta: {},
               alipay_start: {},
+              order_create_ok: {},
+              order_create_fail: {},
               alipay_open: {},
               alipay_success: {},
+              faq_expand: {},
               activate_ok: {},
               activate_fail: {}
             }
@@ -20267,9 +23471,13 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
         ) {
           markFunnel('expose');
         }
+        if (ek === 'track_purchase_pay_cta_click') markFunnel('pay_cta');
         if (ek === 'track_alipay_payment_start') markFunnel('alipay_start');
+        if (ek === 'track_alipay_order_create_ok') markFunnel('order_create_ok');
+        if (ek === 'track_alipay_order_create_fail') markFunnel('order_create_fail');
         if (ek === 'track_alipay_open_click') markFunnel('alipay_open');
         if (ek === 'track_alipay_payment_success') markFunnel('alipay_success');
+        if (ek === 'track_purchase_faq_expand') markFunnel('faq_expand');
         if (ek === 'track_purchase_activate_success') markFunnel('activate_ok');
         if (ek === 'track_purchase_activate_fail') markFunnel('activate_fail');
       });
@@ -20283,29 +23491,153 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
       }
 
       var viewUv = countSet(funnelUsers.view);
+      var payCtaUv = countSet(funnelUsers.pay_cta);
+      var startUv = countSet(funnelUsers.alipay_start);
+      var createOkUv = countSet(funnelUsers.order_create_ok);
+      var openUv = countSet(funnelUsers.alipay_open);
+      var successUv = countSet(funnelUsers.alipay_success);
+      var faqUv = countSet(funnelUsers.faq_expand);
       var funnel = {
         prompt_open_uv: countSet(funnelUsers.prompt_open),
         prompt_confirm_uv: countSet(funnelUsers.prompt_confirm),
         prompt_to_view_pct: pctRate(viewUv, countSet(funnelUsers.prompt_open)),
         view_uv: viewUv,
         expose_uv: countSet(funnelUsers.expose),
-        alipay_start_uv: countSet(funnelUsers.alipay_start),
-        alipay_open_uv: countSet(funnelUsers.alipay_open),
-        alipay_success_uv: countSet(funnelUsers.alipay_success),
+        pay_cta_uv: payCtaUv,
+        alipay_start_uv: startUv,
+        order_create_ok_uv: createOkUv,
+        order_create_fail_uv: countSet(funnelUsers.order_create_fail),
+        alipay_open_uv: openUv,
+        alipay_success_uv: successUv,
+        faq_expand_uv: faqUv,
         activate_ok_uv: countSet(funnelUsers.activate_ok),
         activate_fail_uv: countSet(funnelUsers.activate_fail),
-        view_to_start_pct: pctRate(countSet(funnelUsers.alipay_start), viewUv),
-        start_to_open_pct: pctRate(
-          countSet(funnelUsers.alipay_open),
-          countSet(funnelUsers.alipay_start)
-        ),
-        open_to_success_pct: pctRate(
-          countSet(funnelUsers.alipay_success),
-          countSet(funnelUsers.alipay_open)
-        ),
-        view_to_pay_pct: pctRate(countSet(funnelUsers.alipay_success), viewUv),
+        view_to_cta_pct: pctRate(payCtaUv, viewUv),
+        view_to_start_pct: pctRate(startUv, viewUv),
+        cta_to_create_ok_pct: pctRate(createOkUv, payCtaUv || startUv),
+        start_to_create_ok_pct: pctRate(createOkUv, startUv),
+        create_ok_to_success_pct: pctRate(successUv, createOkUv),
+        start_to_open_pct: pctRate(openUv, startUv),
+        open_to_success_pct: pctRate(successUv, openUv),
+        view_to_pay_pct: pctRate(successUv, viewUv),
+        view_to_faq_pct: pctRate(faqUv, viewUv),
         view_to_activate_pct: pctRate(countSet(funnelUsers.activate_ok), viewUv)
       };
+
+      var priceSurvey = {
+        total: 0,
+        submitted: 0,
+        skipped: 0,
+        expensive: 0,
+        fair: 0,
+        cheap: 0,
+        expensive_pct: 0,
+        fair_pct: 0,
+        cheap_pct: 0,
+        skipped_pct: 0,
+        with_expected_price: 0,
+        avg_expected_price: null,
+        expected_price_buckets: [],
+        recent: []
+      };
+      try {
+        var cnSurveyDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
+        var surveyPf = analyticsPeriodCnDateFilter(cnSurveyDay, period);
+        const [surveyRows] = await conn.execute(
+          `SELECT skipped, sentiment, COUNT(*) AS cnt
+           FROM purchase_price_survey
+           WHERE ${surveyPf.sql}
+           GROUP BY skipped, sentiment`,
+          surveyPf.params
+        );
+        (surveyRows || []).forEach(function (r) {
+          var c = Number(r.cnt) || 0;
+          priceSurvey.total += c;
+          if (Number(r.skipped) === 1) {
+            priceSurvey.skipped += c;
+            return;
+          }
+          priceSurvey.submitted += c;
+          var s = String(r.sentiment || '').toLowerCase();
+          if (s === 'expensive') priceSurvey.expensive += c;
+          else if (s === 'cheap') priceSurvey.cheap += c;
+          else if (s === 'fair') priceSurvey.fair += c;
+          /* sentiment=skipped 且 skipped=0 的异常行不计入 fair */
+        });
+        priceSurvey.expensive_pct = pctRate(priceSurvey.expensive, priceSurvey.submitted);
+        priceSurvey.fair_pct = pctRate(priceSurvey.fair, priceSurvey.submitted);
+        priceSurvey.cheap_pct = pctRate(priceSurvey.cheap, priceSurvey.submitted);
+        priceSurvey.skipped_pct = pctRate(priceSurvey.skipped, priceSurvey.total);
+        var surveyBidJoin = purchasePriceSurvey.latestBidJoinSql('s', 'bid');
+        var surveyExpectSql = purchasePriceSurvey.coalescedExpectedPriceSql('s', 'bid');
+        var cnSurveyDayAliased = 'DATE(DATE_ADD(s.created_at, INTERVAL 8 HOUR))';
+        var surveyPfAliased = analyticsPeriodCnDateFilter(cnSurveyDayAliased, period);
+        const [priceAgg] = await conn.execute(
+          `SELECT COUNT(*) AS with_price, AVG(${surveyExpectSql}) AS avg_price
+           FROM purchase_price_survey s
+           ${surveyBidJoin}
+           WHERE ${surveyPfAliased.sql}
+             AND s.skipped = 0
+             AND ${surveyExpectSql} IS NOT NULL`,
+          surveyPfAliased.params
+        );
+        if (priceAgg && priceAgg[0]) {
+          priceSurvey.with_expected_price = Number(priceAgg[0].with_price) || 0;
+          var avgP = Number(priceAgg[0].avg_price);
+          priceSurvey.avg_expected_price = isFinite(avgP) ? Math.round(avgP * 100) / 100 : null;
+        }
+        const [bucketRows] = await conn.execute(
+          `SELECT ${surveyExpectSql} AS price, COUNT(*) AS cnt
+           FROM purchase_price_survey s
+           ${surveyBidJoin}
+           WHERE ${surveyPfAliased.sql}
+             AND s.skipped = 0
+             AND ${surveyExpectSql} IS NOT NULL
+           GROUP BY ${surveyExpectSql}
+           ORDER BY cnt DESC, price ASC
+           LIMIT 40`,
+          surveyPfAliased.params
+        );
+        var knownPrices = { 50: 1, 98: 1, 148: 1, 198: 1, 199: 1 };
+        var bucketMap = { '50': 0, '98': 0, '148': 0, '198': 0, '199': 0, other: 0 };
+        (bucketRows || []).forEach(function (r) {
+          var p = Number(r.price);
+          var c = Number(r.cnt) || 0;
+          if (!isFinite(p) || c < 1) return;
+          var key = String(Math.round(p));
+          if (knownPrices[key]) bucketMap[key] += c;
+          else bucketMap.other += c;
+        });
+        priceSurvey.expected_price_buckets = [
+          { label: '¥50', price: 50, count: bucketMap['50'] },
+          { label: '¥98', price: 98, count: bucketMap['98'] },
+          { label: '¥148', price: 148, count: bucketMap['148'] },
+          { label: '¥198', price: 198, count: bucketMap['198'] },
+          { label: '¥199', price: 199, count: bucketMap['199'] },
+          { label: '其他', price: null, count: bucketMap.other }
+        ];
+        const [recentRows] = await conn.execute(
+          `SELECT s.username, s.sentiment, s.expected_price, s.skipped, s.created_at,
+                  bid.bid_amount AS bid_amount
+           FROM purchase_price_survey s
+           ${surveyBidJoin}
+           WHERE ${surveyPfAliased.sql}
+           ORDER BY s.created_at DESC
+           LIMIT 30`,
+          surveyPfAliased.params
+        );
+        priceSurvey.recent = (recentRows || []).map(function (r) {
+          return {
+            username: r.username != null ? String(r.username) : '',
+            sentiment: r.sentiment != null ? String(r.sentiment) : '',
+            expected_price: purchasePriceSurvey.effectiveExpectedPrice(r, r.bid_amount),
+            skipped: Number(r.skipped) === 1,
+            created_at: r.created_at ? new Date(r.created_at).toISOString() : ''
+          };
+        });
+      } catch (eSurvey) {
+        console.error('[admin purchase-events] price_survey', eSurvey && eSurvey.message);
+      }
 
       var summary = PURCHASE_PAGE_TRACK_EVENT_KEYS.map(function (k) {
         return {
@@ -20320,14 +23652,71 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
       var paidSummary = {
         paid_orders: 0,
         paid_users: 0,
-        gmv: 0
+        gmv: 0,
+        activation_orders: 0,
+        activation_gmv: 0,
+        lizhi_orders: 0,
+        lizhi_users: 0,
+        lizhi_gmv: 0,
+        rename_orders: 0,
+        rename_gmv: 0,
+        tax_edit_orders: 0,
+        tax_edit_gmv: 0
       };
+      /* NULL sku/grant 的历史订单归开通；CASE WHEN NULL 视为否，勿用 NOT (a OR b) */
+      var lizhiSkuSql =
+        "(sku_id = '" +
+        LIZHI_CERT_SKU_ID +
+        "' OR grant_kind = 'lizhi_cert')";
+      var zaizhiSkuSql =
+        "(sku_id = '" +
+        ZAIZHI_CERT_SKU_ID +
+        "' OR grant_kind = 'zaizhi_cert')";
+      var renameSkuSql =
+        "(sku_id = '" +
+        RENAME_FEE_SKU_ID +
+        "' OR grant_kind = 'rename_credit')";
+      var taxEditSkuSql =
+        "(sku_id IN ('" +
+        taxEditFeePolicy.TAX_EDIT_SINGLE_SKU_ID +
+        "','" +
+        taxEditFeePolicy.TAX_EDIT_DAILY_SKU_ID +
+        "') OR grant_kind IN ('tax_edit_single','tax_edit_daily'))";
+      var activationOrderCase =
+        'CASE WHEN ' +
+        lizhiSkuSql +
+        ' THEN 0 WHEN ' +
+        zaizhiSkuSql +
+        ' THEN 0 WHEN ' +
+        renameSkuSql +
+        ' THEN 0 WHEN ' +
+        taxEditSkuSql +
+        ' THEN 0 ELSE 1 END';
+      var activationAmountCase =
+        'CASE WHEN ' +
+        lizhiSkuSql +
+        ' THEN 0 WHEN ' +
+        zaizhiSkuSql +
+        ' THEN 0 WHEN ' +
+        renameSkuSql +
+        ' THEN 0 WHEN ' +
+        taxEditSkuSql +
+        ' THEN 0 ELSE amount END';
       try {
         const [paidDaily] = await conn.execute(
           `SELECT ${cnPaidDay} AS d,
                   COUNT(*) AS paid_orders,
                   COUNT(DISTINCT username) AS paid_users,
-                  ROUND(SUM(amount), 2) AS gmv
+                  ROUND(COALESCE(SUM(amount), 0), 2) AS gmv,
+                  SUM(${activationOrderCase}) AS activation_orders,
+                  ROUND(COALESCE(SUM(${activationAmountCase}), 0), 2) AS activation_gmv,
+                  SUM(CASE WHEN ${lizhiSkuSql} THEN 1 ELSE 0 END) AS lizhi_orders,
+                  COUNT(DISTINCT CASE WHEN ${lizhiSkuSql} THEN username ELSE NULL END) AS lizhi_users,
+                  ROUND(COALESCE(SUM(CASE WHEN ${lizhiSkuSql} THEN amount ELSE 0 END), 0), 2) AS lizhi_gmv,
+                  SUM(CASE WHEN ${renameSkuSql} THEN 1 ELSE 0 END) AS rename_orders,
+                  ROUND(COALESCE(SUM(CASE WHEN ${renameSkuSql} THEN amount ELSE 0 END), 0), 2) AS rename_gmv,
+                  SUM(CASE WHEN ${taxEditSkuSql} THEN 1 ELSE 0 END) AS tax_edit_orders,
+                  ROUND(COALESCE(SUM(CASE WHEN ${taxEditSkuSql} THEN amount ELSE 0 END), 0), 2) AS tax_edit_gmv
            FROM payment_orders
            WHERE status = 'paid' AND ${paidPf.sql}
            GROUP BY ${cnPaidDay}
@@ -20340,27 +23729,70 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
           paidDailyMap[dk] = {
             paid_orders: Number(r.paid_orders) || 0,
             paid_users: Number(r.paid_users) || 0,
-            gmv: Number(r.gmv) || 0
+            gmv: Number(r.gmv) || 0,
+            activation_orders: Number(r.activation_orders) || 0,
+            activation_gmv: Number(r.activation_gmv) || 0,
+            lizhi_orders: Number(r.lizhi_orders) || 0,
+            lizhi_users: Number(r.lizhi_users) || 0,
+            lizhi_gmv: Number(r.lizhi_gmv) || 0,
+            rename_orders: Number(r.rename_orders) || 0,
+            rename_gmv: Number(r.rename_gmv) || 0,
+            tax_edit_orders: Number(r.tax_edit_orders) || 0,
+            tax_edit_gmv: Number(r.tax_edit_gmv) || 0
           };
           paidSummary.paid_orders += Number(r.paid_orders) || 0;
           paidSummary.gmv += Number(r.gmv) || 0;
+          paidSummary.activation_orders += Number(r.activation_orders) || 0;
+          paidSummary.activation_gmv += Number(r.activation_gmv) || 0;
+          paidSummary.lizhi_orders += Number(r.lizhi_orders) || 0;
+          paidSummary.lizhi_gmv += Number(r.lizhi_gmv) || 0;
+          paidSummary.rename_orders += Number(r.rename_orders) || 0;
+          paidSummary.rename_gmv += Number(r.rename_gmv) || 0;
+          paidSummary.tax_edit_orders += Number(r.tax_edit_orders) || 0;
+          paidSummary.tax_edit_gmv += Number(r.tax_edit_gmv) || 0;
         });
         const [paidUsersRow] = await conn.execute(
-          `SELECT COUNT(DISTINCT username) AS paid_users
+          `SELECT COUNT(DISTINCT username) AS paid_users,
+                  COUNT(DISTINCT CASE WHEN ${lizhiSkuSql} THEN username ELSE NULL END) AS lizhi_users
            FROM payment_orders
            WHERE status = 'paid' AND ${paidPf.sql}`,
           paidPf.params
         );
         paidSummary.paid_users = Number((paidUsersRow[0] || {}).paid_users) || 0;
+        paidSummary.lizhi_users = Number((paidUsersRow[0] || {}).lizhi_users) || 0;
         paidSummary.gmv = Math.round(paidSummary.gmv * 100) / 100;
+        paidSummary.activation_gmv = Math.round(paidSummary.activation_gmv * 100) / 100;
+        paidSummary.lizhi_gmv = Math.round(paidSummary.lizhi_gmv * 100) / 100;
+        paidSummary.rename_gmv = Math.round(paidSummary.rename_gmv * 100) / 100;
+        paidSummary.tax_edit_gmv = Math.round(paidSummary.tax_edit_gmv * 100) / 100;
       } catch (ePay) {
         console.error('[admin purchase-events] payment_orders', ePay && ePay.message);
       }
+
+      var adminActivationCredit = await queryPurchaseAnalyticsAdminActivationCredits(conn, period);
+      var adminActSummary = adminActivationCredit.summary || emptyPurchaseAnalyticsAdminActivationCredit();
+      var adminActDailyMap = adminActivationCredit.dailyMap || {};
+      paidSummary.admin_activation = adminActSummary;
+      paidSummary.admin_activation_orders = adminActSummary.total_orders || 0;
+      paidSummary.admin_activation_gmv = adminActSummary.total_gmv || 0;
+      paidSummary.combined_gmv =
+        Math.round(((paidSummary.gmv || 0) + (paidSummary.admin_activation_gmv || 0)) * 100) / 100;
+      paidSummary.combined_activation_orders =
+        (paidSummary.activation_orders || 0) + (paidSummary.admin_activation_orders || 0);
+      paidSummary.combined_activation_gmv =
+        Math.round(
+          ((paidSummary.activation_gmv || 0) + (paidSummary.admin_activation_gmv || 0)) * 100
+        ) / 100;
 
       var byDay = Object.keys(dayMap)
         .concat(
           Object.keys(paidDailyMap).filter(function (dk) {
             return !dayMap[dk];
+          })
+        )
+        .concat(
+          Object.keys(adminActDailyMap).filter(function (dk) {
+            return !dayMap[dk] && !paidDailyMap[dk];
           })
         )
         .filter(function (v, i, a) {
@@ -20380,9 +23812,13 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
               prompt_confirm: {},
               view: {},
               expose: {},
+              pay_cta: {},
               alipay_start: {},
+              order_create_ok: {},
+              order_create_fail: {},
               alipay_open: {},
               alipay_success: {},
+              faq_expand: {},
               activate_ok: {},
               activate_fail: {}
             }
@@ -20392,7 +23828,35 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
           });
           var f = o.funnel;
           var dayView = countSet(f.view);
-          var pay = paidDailyMap[d] || { paid_orders: 0, paid_users: 0, gmv: 0 };
+          var dayStart = countSet(f.alipay_start);
+          var dayCreateOk = countSet(f.order_create_ok);
+          var daySuccess = countSet(f.alipay_success);
+          var dayFaq = countSet(f.faq_expand);
+          var pay = paidDailyMap[d] || {
+            paid_orders: 0,
+            paid_users: 0,
+            gmv: 0,
+            activation_orders: 0,
+            activation_gmv: 0,
+            lizhi_orders: 0,
+            lizhi_users: 0,
+            lizhi_gmv: 0,
+            rename_orders: 0,
+            rename_gmv: 0,
+            tax_edit_orders: 0,
+            tax_edit_gmv: 0
+          };
+          var adminActDay = adminActDailyMap[d] || {
+            admin_activation_orders: 0,
+            admin_activation_gmv: 0,
+            by_admin: {}
+          };
+          var combinedGmv =
+            Math.round(((pay.gmv || 0) + (adminActDay.admin_activation_gmv || 0)) * 100) / 100;
+          var combinedActivationGmv =
+            Math.round(
+              ((pay.activation_gmv || 0) + (adminActDay.admin_activation_gmv || 0)) * 100
+            ) / 100;
           return {
             date: d,
             events: o.events,
@@ -20402,15 +23866,37 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
             prompt_confirm_uv: countSet(f.prompt_confirm),
             view_uv: dayView,
             expose_uv: countSet(f.expose),
-            alipay_start_uv: countSet(f.alipay_start),
+            pay_cta_uv: countSet(f.pay_cta),
+            alipay_start_uv: dayStart,
+            order_create_ok_uv: dayCreateOk,
+            order_create_fail_uv: countSet(f.order_create_fail),
             alipay_open_uv: countSet(f.alipay_open),
-            alipay_success_uv: countSet(f.alipay_success),
+            alipay_success_uv: daySuccess,
+            faq_expand_uv: dayFaq,
             activate_ok_uv: countSet(f.activate_ok),
             activate_fail_uv: countSet(f.activate_fail),
-            view_to_pay_pct: pctRate(countSet(f.alipay_success), dayView),
+            view_to_cta_pct: pctRate(countSet(f.pay_cta), dayView),
+            start_to_create_ok_pct: pctRate(dayCreateOk, dayStart),
+            create_ok_to_success_pct: pctRate(daySuccess, dayCreateOk),
+            view_to_faq_pct: pctRate(dayFaq, dayView),
+            view_to_pay_pct: pctRate(daySuccess, dayView),
             paid_orders: pay.paid_orders,
             paid_users: pay.paid_users,
-            gmv: pay.gmv
+            gmv: pay.gmv,
+            activation_orders: pay.activation_orders,
+            activation_gmv: pay.activation_gmv,
+            admin_activation_orders: adminActDay.admin_activation_orders || 0,
+            admin_activation_gmv: adminActDay.admin_activation_gmv || 0,
+            admin_activation_by_admin: adminActDay.by_admin || {},
+            combined_gmv: combinedGmv,
+            combined_activation_gmv: combinedActivationGmv,
+            lizhi_orders: pay.lizhi_orders,
+            lizhi_users: pay.lizhi_users,
+            lizhi_gmv: pay.lizhi_gmv,
+            rename_orders: pay.rename_orders,
+            rename_gmv: pay.rename_gmv,
+            tax_edit_orders: pay.tax_edit_orders,
+            tax_edit_gmv: pay.tax_edit_gmv
           };
         });
 
@@ -20425,6 +23911,7 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
           event_keys: PURCHASE_PAGE_TRACK_EVENT_KEYS.slice(),
           funnel: funnel,
           payments: paidSummary,
+          price_survey: priceSurvey,
           summary: summary,
           total_events: grandTotal,
           by_day: byDay
@@ -20446,75 +23933,80 @@ async function handleAdminAnalyticsPurchaseEventUsers(req, res) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
       return res.status(400).json({ code: 400, msg: 'date required (YYYY-MM-DD)' });
     }
-    var eventKey = req.query.event_key != null ? String(req.query.event_key).trim() : '';
-    if (eventKey && !isPurchasePageTrackEventKey(eventKey)) {
-      return res.status(400).json({ code: 400, msg: 'invalid event_key' });
-    }
     var page = parseInt(req.query.page, 10) || 1;
     var limit = parseInt(req.query.limit, 10) || 20;
     if (page < 1) page = 1;
     if (limit < 1) limit = 20;
     if (limit > 100) limit = 100;
-    var cnDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
+    var cnPaidDay = 'DATE(DATE_ADD(COALESCE(paid_at, created_at), INTERVAL 8 HOUR))';
+    var skuLabelFn = require('../admin/opsConversion').opsSkuGmvLabel;
     const conn = await pool.getConnection();
     try {
-      var eventFilterSql = PURCHASE_PAGE_TRACK_EVENT_SQL;
-      var params = [dateStr];
-      if (eventKey) {
-        eventFilterSql = 'route_key LIKE ?';
-        params = [dateStr, '%#' + eventKey];
-      }
-      const [aggRows] = await conn.execute(
-        `SELECT username,
-                SUBSTRING_INDEX(route_key, '#', -1) AS event_key,
-                COUNT(*) AS cnt,
-                MAX(created_at) AS last_at
-         FROM user_page_events
-         WHERE ${cnDay} = ?
-           AND ${eventFilterSql}
-         GROUP BY username, event_key`,
-        params
+      /* 展开行只展示当日已付订单明细（按用户聚合），不再列埋点次数 */
+      const [payRows] = await conn.execute(
+        `SELECT id, username, sku_id, subject, grant_kind, amount,
+                out_trade_no, paid_at, created_at
+         FROM payment_orders
+         WHERE status = 'paid' AND ${cnPaidDay} = ?
+         ORDER BY COALESCE(paid_at, created_at) DESC, id DESC`,
+        [dateStr]
       );
       var userMap = {};
-      aggRows.forEach(function (r) {
-        var ek = String(r.event_key || '').trim();
-        if (!isPurchasePageTrackEventKey(ek)) return;
+      var orderTotal = 0;
+      var gmvTotal = 0;
+      (payRows || []).forEach(function (r) {
         var uname = String(r.username || '').trim();
         if (!uname) return;
         if (!userMap[uname]) {
           userMap[uname] = {
             username: uname,
-            total: 0,
-            events: {},
+            order_count: 0,
+            total_amount: 0,
+            payments: [],
             last_at: null
           };
-          PURCHASE_PAGE_TRACK_EVENT_KEYS.forEach(function (k) {
-            userMap[uname].events[k] = 0;
-          });
         }
-        var c = Number(r.cnt) || 0;
-        userMap[uname].events[ek] = (userMap[uname].events[ek] || 0) + c;
-        userMap[uname].total += c;
-        var at = r.last_at ? new Date(r.last_at).getTime() : 0;
+        var amount = Math.round(Number(r.amount || 0) * 100) / 100;
+        var paidAt = r.paid_at || r.created_at || null;
+        var at = paidAt ? new Date(paidAt).getTime() : 0;
+        userMap[uname].payments.push({
+          id: Number(r.id) || 0,
+          sku_id: String(r.sku_id || ''),
+          label: skuLabelFn(r),
+          subject: String(r.subject || ''),
+          amount: amount,
+          out_trade_no: String(r.out_trade_no || ''),
+          paid_at: paidAt ? new Date(paidAt).toISOString() : null
+        });
+        userMap[uname].order_count += 1;
+        userMap[uname].total_amount =
+          Math.round((userMap[uname].total_amount + amount) * 100) / 100;
         if (!userMap[uname].last_at || at > userMap[uname].last_at) {
           userMap[uname].last_at = at;
         }
+        orderTotal += 1;
+        gmvTotal += amount;
       });
       var list = Object.keys(userMap)
         .map(function (k) {
           return userMap[k];
         })
         .sort(function (a, b) {
-          return b.total - a.total || String(a.username).localeCompare(String(b.username));
+          return (
+            b.total_amount - a.total_amount ||
+            b.order_count - a.order_count ||
+            String(a.username).localeCompare(String(b.username))
+          );
         });
       var total = list.length;
-      var totalPages = Math.max(1, Math.ceil(total / limit));
+      var totalPages = Math.max(1, Math.ceil(total / limit) || 1);
       if (page > totalPages) page = totalPages;
       var slice = list.slice((page - 1) * limit, page * limit).map(function (u) {
         return {
           username: u.username,
-          total: u.total,
-          events: u.events,
+          order_count: u.order_count,
+          total_amount: u.total_amount,
+          payments: u.payments,
           last_at: u.last_at ? new Date(u.last_at).toISOString() : null
         };
       });
@@ -20522,12 +24014,12 @@ async function handleAdminAnalyticsPurchaseEventUsers(req, res) {
         code: 200,
         data: {
           date: dateStr,
-          event_key: eventKey || '',
-          event_keys: PURCHASE_PAGE_TRACK_EVENT_KEYS.slice(),
           page: page,
           limit: limit,
           total: total,
           total_pages: totalPages,
+          order_count: orderTotal,
+          gmv: Math.round(gmvTotal * 100) / 100,
           users: slice
         }
       });
@@ -20536,7 +24028,7 @@ async function handleAdminAnalyticsPurchaseEventUsers(req, res) {
     }
   } catch (e) {
     console.error('[admin purchase-events/users]', e);
-    return res.status(500).json({ code: 500, msg: '加载支付页用户明细失败' });
+    return res.status(500).json({ code: 500, msg: '加载付款明细失败' });
   }
 }
 
@@ -20548,18 +24040,27 @@ var ACTIVATE_TRACK_EVENT_KEYS = [
   'track_activate_prompt_confirm',
   'track_purchase_activate_success',
   'track_purchase_activate_fail',
+  'track_purchase_pay_cta_click',
   'track_alipay_payment_start',
+  'track_alipay_order_create_ok',
+  'track_alipay_order_create_fail',
   'track_alipay_open_click',
   'track_alipay_payment_success',
+  'track_purchase_faq_expand',
+  'track_purchase_success_cases_view',
+  'track_purchase_fold_expand',
+  'track_purchase_share_teaser_click',
+  'track_purchase_price_survey_open',
+  'track_purchase_price_survey_submit',
+  'track_purchase_price_survey_skip',
+  'track_purchase_price_survey_soft_dismiss',
+  'track_purchase_price_survey_to_bid',
+  'track_price_bid_open',
+  'track_price_bid_submit',
   'track_kufaka_purchase_click',
-  'track_purchase_wechat_view',
-  'track_purchase_wechat_expand',
-  'track_xianyu_purchase_click',
   'track_purchase_sales_agent_view',
   'track_purchase_sales_agent_copy_wechat',
   'track_purchase_sales_agent_qr',
-  'track_online_chat_click',
-  'track_qq_group_click',
   'track_qq_add_click',
   'track_purchase_back_click',
   'track_activation_nudge_show',
@@ -20590,14 +24091,9 @@ function activateTrackEventLabel(eventKey) {
     track_activate_prompt_open: '激活弹窗打开',
     track_activate_prompt_cancel: '激活弹窗-取消',
     track_activate_prompt_confirm: '确认激活',
-    track_xianyu_purchase_click: '闲鱼购买',
     track_kufaka_purchase_click: '酷发卡购买',
-    track_online_chat_click: '在线客服',
     track_qq_add_click: '添加QQ号',
-    track_qq_group_click: '加入QQ群',
     track_purchase_page_view: '购买页浏览',
-    track_purchase_wechat_view: '微信购买入口展示',
-    track_purchase_wechat_expand: '展开微信收款码',
     track_purchase_sales_agent_view: 'C·销售代理入口',
     track_purchase_sales_agent_copy_wechat: 'C·复制销售微信',
     track_purchase_sales_agent_qr: 'C·销售微信二维码',
@@ -20607,9 +24103,23 @@ function activateTrackEventLabel(eventKey) {
     track_activation_nudge_show: '激活引导弹窗-展示',
     track_activation_nudge_dismiss: '激活引导弹窗-关闭',
     track_activation_nudge_cta: '激活引导弹窗-去激活',
+    track_purchase_pay_cta_click: '支付CTA点击',
     track_alipay_payment_start: '生成支付宝付款码',
+    track_alipay_order_create_ok: '下单创建成功',
+    track_alipay_order_create_fail: '下单创建失败',
     track_alipay_open_click: '打开支付宝付款',
-    track_alipay_payment_success: '支付宝付款开通成功'
+    track_alipay_payment_success: '支付宝付款开通成功',
+    track_purchase_faq_expand: '支付FAQ展开',
+    track_purchase_success_cases_view: '成功案例曝光',
+    track_purchase_fold_expand: '折叠区展开',
+    track_purchase_share_teaser_click: '分享优惠入口点击',
+    track_purchase_price_survey_open: '离开调研打开',
+    track_purchase_price_survey_submit: '离开调研提交',
+    track_purchase_price_survey_skip: '离开调研跳过',
+    track_purchase_price_survey_soft_dismiss: '离开调研软关闭',
+    track_purchase_price_survey_to_bid: '离开调研偏贵转出价',
+    track_price_bid_open: '心理价出价打开',
+    track_price_bid_submit: '心理价出价提交'
   };
   return labels[eventKey] || eventKey;
 }
@@ -21030,69 +24540,6 @@ async function handleAdminAnalyticsActivateEventUsers(req, res) {
   }
 }
 
-/** 设备列表 */
-async function handleAdminAnalyticsDevices(req, res) {
-  var username = req.query.username != null ? String(req.query.username).trim() : '';
-  if (!username) {
-    return res.status(400).json({ code: 400, msg: '请填写要查询的账号 username' });
-  }
-  try {
-    const conn = await pool.getConnection();
-    try {
-      const [rows] = await conn.execute(
-        `SELECT device_fp, user_agent_short, ip_last, city_last, first_seen, last_seen, login_count,
-                client_id, device_detail_json, api_sync_count
-         FROM user_devices WHERE username = ? ORDER BY last_seen DESC`,
-        [username.substring(0, 255)]
-      );
-      return res.json({
-        code: 200,
-        data: {
-          username: username,
-          devices: rows.map(function (r) {
-            var dj = r.device_detail_json != null ? String(r.device_detail_json) : '';
-            var summary = '';
-            if (dj) {
-              try {
-                var parsed = JSON.parse(dj);
-                if (parsed && typeof parsed === 'object') {
-                  var bits = [];
-                  if (parsed.source) bits.push(parsed.source);
-                  if (parsed.platform) bits.push(parsed.platform);
-                  if (parsed.model) bits.push(parsed.model);
-                  if (parsed.os_version) bits.push(parsed.os_version);
-                  if (parsed.app_version) bits.push('app:' + parsed.app_version);
-                  summary = bits.join(' · ');
-                }
-              } catch (e1) {
-                summary = '';
-              }
-            }
-            return {
-              device_fp: r.device_fp,
-              client_id: r.client_id != null ? String(r.client_id) : '',
-              summary: summary,
-              device_json: dj,
-              user_agent_short: r.user_agent_short != null ? String(r.user_agent_short) : '',
-              ip_last: r.ip_last != null ? String(r.ip_last) : '',
-              city_last: resolveDeviceCityLabel(r.ip_last, r.city_last),
-              first_seen: r.first_seen ? r.first_seen.toISOString() : null,
-              last_seen: r.last_seen ? r.last_seen.toISOString() : null,
-              login_count: r.login_count != null ? Number(r.login_count) : 0,
-              api_sync_count: r.api_sync_count != null ? Number(r.api_sync_count) : 0
-            };
-          })
-        }
-      });
-    } finally {
-      conn.release();
-    }
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
 /** 最近登录 */
 async function handleAdminAnalyticsLoginRecent(req, res) {
   try {
@@ -21121,11 +24568,15 @@ async function handleAdminAnalyticsLoginRecent(req, res) {
       params.push(qOk === '1' ? 1 : 0);
     }
     appendUserLoginReasonFilter(where, params, qReason);
+    /* 探活/自测假账号不出现在「用户登录」列表（与日活页登录统计口径一致） */
+    where.push(sqlExcludeInternalLoginProbeUsernames('username'));
     if (!req.admin || !req.admin.is_super) {
-      where.push(
-        'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = user_login_events.username AND ac.owner_admin_username = ?)'
+      appendSubAdminOwnedUsersScopeForAdmin(
+        where,
+        params,
+        req.admin,
+        'user_login_events.username'
       );
-      params.push(req.admin.username);
     }
     var whereSql = where.length ? ' WHERE ' + where.join(' AND ') : '';
     const conn = await pool.getConnection();
@@ -21258,9 +24709,12 @@ async function handleAdminLoginLogs(req, res) {
   }
 }
 
-/** 操作日志 */
+/** 操作日志（仅超管；不含 admin 自己） */
 async function handleAdminOperationLogs(req, res) {
   try {
+    if (!req.admin || !req.admin.is_super) {
+      return res.status(403).json({ code: 403, msg: '仅系统管理员可查看操作日志' });
+    }
     var page = parseInt(req.query.page, 10);
     if (!isFinite(page) || page < 1) page = 1;
     var limit = parseInt(req.query.limit, 10);
@@ -21270,12 +24724,12 @@ async function handleAdminOperationLogs(req, res) {
     var qOk = req.query.ok != null ? String(req.query.ok).trim() : '';
     var qPath = sanitizeAuditText(req.query.path || '', 255);
 
-    var where = [];
-    var params = [];
-    if (!req.admin || !req.admin.is_super) {
-      where.push('admin_username = ?');
-      params.push(req.admin.username);
-    } else if (qUsername) {
+    var where = [
+      'LOWER(admin_username) <> ?',
+      'admin_username NOT IN (SELECT username FROM admin_accounts WHERE is_super = 1)'
+    ];
+    var params = [rootAdminUsername(ADMIN_PANEL_USER)];
+    if (qUsername) {
       where.push('admin_username LIKE ?');
       params.push('%' + qUsername + '%');
     }
@@ -21342,429 +24796,38 @@ async function handleAdminOperationLogs(req, res) {
   }
 }
 
-/** 反馈列表 */
-async function handleAdminFeedbackList(req, res) {
-  try {
-    var page = parseInt(req.query.page, 10) || 1;
-    var limit = parseInt(req.query.limit, 10) || 20;
-    if (page < 1) page = 1;
-    if (limit < 1) limit = 20;
-    if (limit > 100) limit = 100;
-    var offset = (page - 1) * limit;
-    var typeFilter = req.query.type != null ? String(req.query.type).trim() : '';
-    var activeFilter = req.query.active != null ? String(req.query.active).trim() : '';
-    var conditions = [];
-    var params = [];
-    if (typeFilter === 'bug' || typeFilter === 'suggestion') {
-      conditions.push('f.feedback_type = ?');
-      params.push(typeFilter);
-    }
-    if (activeFilter === '1') {
-      conditions.push('u.account_active = 1');
-    } else if (activeFilter === '0') {
-      conditions.push('(u.account_active = 0 OR u.account_active IS NULL OR u.id IS NULL)');
-    }
-    var where = conditions.length ? ' WHERE ' + conditions.join(' AND ') : '';
-    var join = ' FROM user_feedback f LEFT JOIN users u ON u.username = f.user_id ';
-    const conn = await pool.getConnection();
-    try {
-      const [cntRows] = await conn.execute(
-        'SELECT COUNT(*) AS c' + join + where,
-        params
-      );
-      var total = cntRows.length ? Number(cntRows[0].c) : 0;
-      var totalPages = Math.ceil(total / limit);
-      if (total > 0 && totalPages < 1) {
-        totalPages = 1;
-      }
-      const [rows] = await conn.query(
-        `SELECT f.id, f.user_id, f.real_name_snapshot, f.feedback_type, f.content, f.admin_reply,
-                f.replied_at, f.replied_by, f.created_at, u.account_active
-         ${join} ${where} ORDER BY f.id DESC LIMIT ${limit} OFFSET ${offset}`,
-        params
-      );
-      return res.json({
-        code: 200,
-        data: {
-          items: rows.map(function (r) {
-            return {
-              id: r.id,
-              user_id: r.user_id,
-              real_name_snapshot: r.real_name_snapshot,
-              feedback_type: r.feedback_type,
-              content: r.content,
-              admin_reply: r.admin_reply,
-              replied_at: r.replied_at ? r.replied_at.toISOString() : null,
-              replied_by: r.replied_by,
-              created_at: r.created_at ? r.created_at.toISOString() : '',
-              account_active: r.account_active === 1 || r.account_active === true
-            };
-          }),
-          total: total,
-          page: page,
-          limit: limit,
-          total_pages: totalPages
-        }
-      });
-    } finally {
-      conn.release();
-    }
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
-/** 回复反馈 */
-async function handleAdminFeedbackReply(req, res) {
-  try {
-    var body = req.body || {};
-    var id = parseInt(body.id, 10);
-    var reply = body.reply != null ? String(body.reply).trim() : '';
-    if (!id || id < 1) {
-      return res.status(400).json({ code: 400, msg: 'id 无效' });
-    }
-    if (!reply || reply.length > 4000) {
-      return res.status(400).json({ code: 400, msg: '回复内容不能为空且不超过 4000 字' });
-    }
-    const conn = await pool.getConnection();
-    try {
-      const [result] = await conn.execute(
-        `UPDATE user_feedback SET admin_reply = ?, replied_at = NOW(), replied_by = ? WHERE id = ?`,
-        [reply, req.admin && req.admin.username ? String(req.admin.username) : String(ADMIN_PANEL_USER), id]
-      );
-      if (!result.affectedRows) {
-        return res.status(404).json({ code: 404, msg: '记录不存在' });
-      }
-      return res.json({ code: 200, data: { success: true } });
-    } finally {
-      conn.release();
-    }
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
-/** 客服会话列表 */
-async function handleAdminChatConversations(req, res) {
-  try {
-    var page = parseInt(req.query.page, 10) || 1;
-    var limit = parseInt(req.query.limit, 10) || 20;
-    if (page < 1) page = 1;
-    if (limit < 1) limit = 20;
-    if (limit > 100) limit = 100;
-    var offset = (page - 1) * limit;
-    var unreadOnly = String(req.query.unread || '').trim() === '1';
-    var q = req.query.q != null ? String(req.query.q).trim() : '';
-    var conditions = [];
-    var params = [];
-    if (unreadOnly) {
-      conditions.push('c.admin_unread > 0');
-    }
-    if (q) {
-      conditions.push('(c.user_id LIKE ? OR IFNULL(c.real_name_snapshot, \'\') LIKE ?)');
-      var like = '%' + q.replace(/[%_\\]/g, '') + '%';
-      params.push(like, like);
-    }
-    var where = conditions.length ? ' WHERE ' + conditions.join(' AND ') : '';
-    var join = ' FROM chat_conversations c LEFT JOIN users u ON u.username = c.user_id ';
-    const conn = await pool.getConnection();
-    try {
-      const [cntRows] = await conn.execute('SELECT COUNT(*) AS c' + join + where, params);
-      var total = cntRows.length ? Number(cntRows[0].c) : 0;
-      var totalPages = Math.ceil(total / limit) || 1;
-      const [rows] = await conn.query(
-        `SELECT c.*, u.account_active, u.real_name AS user_real_name
-         ${join} ${where}
-         ORDER BY (c.admin_unread > 0) DESC, IFNULL(c.last_message_at, c.created_at) DESC, c.id DESC
-         LIMIT ${limit} OFFSET ${offset}`,
-        params
-      );
-      return res.json({
-        code: 200,
-        data: {
-          items: rows.map(function (r) {
-            var mapped = mapChatConversationRow(r);
-            mapped.account_active = r.account_active === 1 || r.account_active === true;
-            if (!mapped.real_name_snapshot && r.user_real_name) {
-              mapped.real_name_snapshot = String(r.user_real_name);
-            }
-            return mapped;
-          }),
-          total: total,
-          page: page,
-          limit: limit,
-          total_pages: totalPages
-        }
-      });
-    } finally {
-      conn.release();
-    }
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
-/** 客服会话消息 */
-async function handleAdminChatMessages(req, res) {
-  try {
-    var conversationId = parseInt(req.query.conversation_id, 10) || 0;
-    if (!conversationId) {
-      return res.status(400).json({ code: 400, msg: 'conversation_id 无效' });
-    }
-    var afterId = parseInt(req.query.after_id, 10) || 0;
-    if (afterId < 0) afterId = 0;
-    const conn = await pool.getConnection();
-    try {
-      const [convRows] = await conn.execute(
-        `SELECT c.*, u.account_active, u.real_name AS user_real_name
-         FROM chat_conversations c LEFT JOIN users u ON u.username = c.user_id
-         WHERE c.id = ? LIMIT 1`,
-        [conversationId]
-      );
-      if (!convRows.length) {
-        return res.status(404).json({ code: 404, msg: '会话不存在' });
-      }
-      var conv = convRows[0];
-      var msgs;
-      if (afterId > 0) {
-        const [rows] = await conn.query(
-          `SELECT * FROM chat_messages WHERE conversation_id = ? AND id > ? ORDER BY id ASC LIMIT ${CHAT_THREAD_LIMIT}`,
-          [conversationId, afterId]
-        );
-        msgs = rows;
-      } else {
-        const [rows] = await conn.query(
-          `SELECT * FROM (
-             SELECT * FROM chat_messages WHERE conversation_id = ? ORDER BY id DESC LIMIT ${CHAT_THREAD_LIMIT}
-           ) t ORDER BY id ASC`,
-          [conversationId]
-        );
-        msgs = rows;
-      }
-      if (Number(conv.admin_unread) > 0) {
-        await conn.execute(
-          `UPDATE chat_conversations SET admin_unread = 0, updated_at = NOW() WHERE id = ? AND admin_unread > 0`,
-          [conversationId]
-        );
-        conv.admin_unread = 0;
-      }
-      var mapped = mapChatConversationRow(conv);
-      mapped.account_active = conv.account_active === 1 || conv.account_active === true;
-      if (!mapped.real_name_snapshot && conv.user_real_name) {
-        mapped.real_name_snapshot = String(conv.user_real_name);
-      }
-      return res.json({
-        code: 200,
-        data: {
-          conversation: mapped,
-          messages: msgs.map(mapChatMessageRow)
-        }
-      });
-    } finally {
-      conn.release();
-    }
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
-/** 管理员发客服消息 */
-async function handleAdminChatSend(req, res) {
-  try {
-    var body = req.body || {};
-    var conversationId = parseInt(body.conversation_id, 10) || 0;
-    var content = body.content != null ? String(body.content).trim() : '';
-    if (!conversationId) {
-      return res.status(400).json({ code: 400, msg: 'conversation_id 无效' });
-    }
-    if (!content || content.length > CHAT_MSG_MAX_LEN) {
-      return res.status(400).json({
-        code: 400,
-        msg: '内容不能为空且不超过 ' + CHAT_MSG_MAX_LEN + ' 字'
-      });
-    }
-    var adminName =
-      req.admin && req.admin.username ? String(req.admin.username) : String(ADMIN_PANEL_USER);
-    const conn = await pool.getConnection();
-    try {
-      const [convRows] = await conn.execute(
-        'SELECT * FROM chat_conversations WHERE id = ? LIMIT 1',
-        [conversationId]
-      );
-      if (!convRows.length) {
-        return res.status(404).json({ code: 404, msg: '会话不存在' });
-      }
-      var msg = await insertChatMessage(conn, conversationId, 'admin', adminName, content);
-      await conn.execute(
-        `UPDATE chat_conversations SET bot_paused = 1, updated_at = NOW() WHERE id = ?`,
-        [conversationId]
-      );
-      const [fresh] = await conn.execute(
-        'SELECT * FROM chat_conversations WHERE id = ? LIMIT 1',
-        [conversationId]
-      );
-      return res.json({
-        code: 200,
-        data: {
-          conversation: mapChatConversationRow(fresh[0] || convRows[0]),
-          message: mapChatMessageRow(msg)
-        }
-      });
-    } finally {
-      conn.release();
-    }
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
-/** 暂停/恢复机器人 */
-async function handleAdminChatBotPaused(req, res) {
-  try {
-    var body = req.body || {};
-    var conversationId = parseInt(body.conversation_id, 10) || 0;
-    if (!conversationId) {
-      return res.status(400).json({ code: 400, msg: 'conversation_id 无效' });
-    }
-    var paused =
-      body.bot_paused === true ||
-      body.bot_paused === 1 ||
-      body.bot_paused === '1' ||
-      String(body.bot_paused).toLowerCase() === 'true';
-    const conn = await pool.getConnection();
-    try {
-      const [convRows] = await conn.execute(
-        'SELECT * FROM chat_conversations WHERE id = ? LIMIT 1',
-        [conversationId]
-      );
-      if (!convRows.length) {
-        return res.status(404).json({ code: 404, msg: '会话不存在' });
-      }
-      await conn.execute(
-        `UPDATE chat_conversations SET bot_paused = ?, updated_at = NOW() WHERE id = ?`,
-        [paused ? 1 : 0, conversationId]
-      );
-      const [fresh] = await conn.execute(
-        'SELECT * FROM chat_conversations WHERE id = ? LIMIT 1',
-        [conversationId]
-      );
-      return res.json({
-        code: 200,
-        data: { conversation: mapChatConversationRow(fresh[0] || convRows[0]) }
-      });
-    } finally {
-      conn.release();
-    }
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
-/** 读自动回复配置 */
-async function handleAdminChatAutoReplyGet(req, res) {
-  try {
-    var cfg = await getChatAutoReplySettings();
-    var aiStatus = chatAi.getPublicStatus();
-    return res.json({
-      code: 200,
-      data: {
-        welcome: cfg.welcome,
-        reply: cfg.reply,
-        ai_enabled: !!cfg.ai_enabled,
-        ai_prompt: cfg.ai_prompt,
-        ai: aiStatus,
-        defaults: {
-          welcome: DEFAULT_CHAT_AUTO_REPLY_WELCOME,
-          reply: DEFAULT_CHAT_AUTO_REPLY_REPLY,
-          ai_prompt: DEFAULT_CHAT_AI_PROMPT
-        }
-      }
-    });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
-/** 存自动回复配置 */
-async function handleAdminChatAutoReplySave(req, res) {
-  try {
-    var body = req.body || {};
-    var hasWelcome = Object.prototype.hasOwnProperty.call(body, 'welcome');
-    var hasReply = Object.prototype.hasOwnProperty.call(body, 'reply');
-    var hasAiEnabled = Object.prototype.hasOwnProperty.call(body, 'ai_enabled');
-    var hasAiPrompt = Object.prototype.hasOwnProperty.call(body, 'ai_prompt');
-    if (!hasWelcome && !hasReply && !hasAiEnabled && !hasAiPrompt) {
-      return res.status(400).json({ code: 400, msg: '请提供要保存的字段' });
-    }
-    var welcome = hasWelcome ? sanitizeChatAutoReplyText(body.welcome) : null;
-    var reply = hasReply ? sanitizeChatAutoReplyText(body.reply) : null;
-    var aiEnabledVal = null;
-    if (hasAiEnabled) {
-      aiEnabledVal =
-        body.ai_enabled === true ||
-        body.ai_enabled === 1 ||
-        body.ai_enabled === '1' ||
-        String(body.ai_enabled).toLowerCase() === 'true'
-          ? '1'
-          : '0';
-    }
-    var aiPrompt = hasAiPrompt
-      ? sanitizeChatAutoReplyText(body.ai_prompt, CHAT_AI_PROMPT_MAX_LEN)
-      : null;
-    if (hasAiPrompt && !aiPrompt) {
-      aiPrompt = DEFAULT_CHAT_AI_PROMPT;
-    }
-    var secretLikeWarn = hasAiPrompt && settingsPolicy.looksLikeSecretBlob(aiPrompt);
-    if (secretLikeWarn) {
-      console.warn('[settings-policy] chat_ai_prompt 内容疑似含密钥片段，已保存但请勿粘贴真实 API Key');
-    }
-    const conn = await pool.getConnection();
-    try {
-      if (hasWelcome) {
-        await upsertAppSetting(conn, SETTING_KEY_CHAT_AUTO_REPLY_WELCOME, welcome);
-      }
-      if (hasReply) {
-        await upsertAppSetting(conn, SETTING_KEY_CHAT_AUTO_REPLY_REPLY, reply);
-      }
-      if (hasAiEnabled) {
-        await upsertAppSetting(conn, SETTING_KEY_CHAT_AI_ENABLED, aiEnabledVal);
-      }
-      if (hasAiPrompt) {
-        await upsertAppSetting(conn, SETTING_KEY_CHAT_AI_PROMPT, aiPrompt);
-      }
-    } finally {
-      conn.release();
-    }
-    invalidateChatAutoReplyCache();
-    var cfg = await getChatAutoReplySettings();
-    return res.json({
-      code: 200,
-      data: {
-        welcome: cfg.welcome,
-        reply: cfg.reply,
-        ai_enabled: !!cfg.ai_enabled,
-        ai_prompt: cfg.ai_prompt,
-        ai: chatAi.getPublicStatus(),
-        warnings: secretLikeWarn ? ['ai_prompt_looks_like_secret'] : []
-      }
-    });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
 /* routes: admin/growth/payments/platform → domain modules */
 
 async function handleAdminMonitorOverview(req, res) {
   try {
+    res.json({ code: 200, data: serverMonitor.getMonitorOverview() });
+  } catch (e) {
+    res.status(500).json({ code: 500, msg: String(e && e.message ? e.message : e) });
+  }
+}
+
+/** 开关 API 自动修复 */
+async function handleAdminMonitorAutoHeal(req, res) {
+  try {
+    var body = req.body && typeof req.body === 'object' ? req.body : {};
+    if (body.enabled == null) {
+      return res.json({
+        code: 200,
+        data: { enabled: serverMonitor.isAutoHealEnabled() }
+      });
+    }
+    var on = body.enabled === true || body.enabled === 1 || body.enabled === '1';
+    var enabled = serverMonitor.setAutoHealEnabled(on);
+    res.json({ code: 200, msg: enabled ? '已开启自动修复' : '已关闭自动修复', data: { enabled: enabled } });
+  } catch (e) {
+    res.status(500).json({ code: 500, msg: String(e && e.message ? e.message : e) });
+  }
+}
+
+/** 立即跑一轮监控 + 接口自测 */
+async function handleAdminMonitorRunTick(req, res) {
+  try {
+    await serverMonitor.runMonitorTick();
     res.json({ code: 200, data: serverMonitor.getMonitorOverview() });
   } catch (e) {
     res.status(500).json({ code: 500, msg: String(e && e.message ? e.message : e) });
@@ -21776,6 +24839,20 @@ async function handleAdminMonitorTestEmail(req, res) {
   try {
     var result = await serverMonitor.sendTestAlertEmail();
     res.json({ code: 200, msg: '测试邮件已发送', data: result });
+  } catch (e) {
+    res.status(400).json({ code: 400, msg: String(e && e.message ? e.message : e) });
+  }
+}
+
+/** 手动补发运营日报（昨日） */
+async function handleAdminOpsStatsSendEmail(req, res) {
+  try {
+    var result = await opsStatsReport.runOpsStatsReport(pool, { force: true, kinds: ['daily'] });
+    res.json({
+      code: 200,
+      msg: '运营日报已发送' + (result && result.to ? '（' + result.to + '）' : ''),
+      data: result
+    });
   } catch (e) {
     res.status(400).json({ code: 400, msg: String(e && e.message ? e.message : e) });
   }
@@ -21832,9 +24909,16 @@ function logSecurityBaselineWarnings() {
   if (String(ADMIN_PANEL_PASSWORD || '') === '640810') {
     warns.push('ADMIN_PANEL_PASSWORD 仍为代码默认口令，请立即修改');
   }
-  if (String(process.env.REGISTER_STORE_PLAIN_PASSWORD || '1') !== '0') {
-    warns.push('REGISTER_STORE_PLAIN_PASSWORD 开启：注册/改密会写入 users.plain_password（见阶段 0 下线计划）');
+  if (plainPasswordStore.isPlainPasswordStoreEnabled()) {
+    warns.push(
+      'REGISTER_STORE_PLAIN_PASSWORD=' +
+        plainPasswordStore.plainPasswordMode() +
+        '：注册/改密会写入 users.plain_password（生产建议 0）'
+    );
   }
+  try {
+    warns.push('rate_limit_backend=' + rateLimitBackendLabel());
+  } catch (eRl) {}
   for (var i = 0; i < warns.length; i++) {
     console.warn('[security-baseline] ' + warns[i]);
   }
@@ -21860,14 +24944,13 @@ function getMiddleware() {
     adminApiRateLimit,
     heavyAdminApiRateLimit,
     adminUpload,
-    userChatImageUpload,
     analyticsFinishMiddleware
   };
 }
 
 /**
  * 导出各域 HTTP 处理函数（用户/税务/支付/管理/公开配置等）。
- * 路由路径见 src/{auth,user,tax,payments,admin,growth,chat,platform}/routes.js。
+ * 路由路径见 src/{auth,user,tax,payments,admin,growth,platform}/routes.js。
  */
 function getHandlers() {
   return {
@@ -21880,65 +24963,89 @@ function getHandlers() {
     handleUserPost,
     handleMessageGet,
     handleMessagePost,
-    handleFeedbackGet,
-    handleFeedbackPost,
-    handleChatGet,
-    handleChatPost,
-    handleChatUploadImage,
     handleAuthGet,
     routeAuthPost,
     handleAlipayConfig,
     handleAlipayCreateOrder,
     handleAlipayLatestOrder,
     handleAlipayNotify,
+    handlePriceBidGet,
+    handlePriceBidSubmit,
+    handleBilibiliShareStatus,
+    handleBilibiliShareStart,
+    handleBilibiliShareComplete,
     handlePublicMineUi,
     handlePublicInstallPackages,
+    handlePublicAssetGet,
     handlePublicResolveSalesChannel,
     handlePublicSalesChannelAttribution,
     handlePublicConversionConfig,
     handlePublicLandingAbConfig,
     handlePublicGuestSession,
+    handlePublicEmailClick,
     handleAdminLogin,
+    handleAdminUiAssetAuth: adminUiCookie.handleAssetAuth,
+    handleAdminUiCookie: adminUiCookie.handleIssueCookie,
+    handleAdminLogout: adminUiCookie.handleLogout,
     handleAdminMe,
     handleAdminSettingsGet,
     handleAdminUploadAsset,
     handleAdminSettingsPost,
     handleAdminDeletedUsers,
-    handleAdminGuestUsers,
     handleAdminUsers,
+    handleAdminRenameTaxDaily,
     handleAdminUserDataList,
-    handleAdminUserDataAnalytics,
-    handleAdminUserDataSalaryHighCharts,
     handleAdminUserDataDetail,
     handleAdminUsersDailyConversion,
-    handleAdminRegistrationFunnel,
+    handleAdminD1ReturnCohort,
+    handleAdminHighIncomeInactive,
     handleAdminChannelRegistrationFunnel,
     handleAdminActivationChannelFunnel,
     handleAdminAnalyticsPurchaseEvents,
     handleAdminAnalyticsPurchaseEventUsers,
     handleAdminInstallGuideStats,
+    handleAdminAbcInstallStats,
     handleAdminInstallTrackStats,
-    handleAdminConversionKpis,
-    handleAdminUsersPendingActivate24h,
+    handleAdminPageLoadPerfStats,
+    handleAdminAnalyticsOverview,
+    handleAdminAnalyticsDauUsers,
     handleAdminMessagesBulk,
+    handleAdminEmailsBulk,
+    handleAdminEmailsUsers,
+    handleAdminEmailsSends,
+    handleAdminEmailsOverview,
+    handleAdminEmailsCampaignStats,
+    handleAdminEmailsSend,
+    handleAdminEmailsClear,
     handleAdminRegisterTimeDistribution,
-    handleAdminRegisterGenderStats,
     handleAdminRegisterChannelStats,
-    handleAdminFemaleAgeStats,
-    handleAdminUserDataNoTaxBehavior,
-    handleAdminUserDataNoTaxBehaviorPath,
-    handleAdminUserDataNoTaxBehaviorExport,
-    handleAdminActivatedUserAnalysisOverview,
-    handleAdminActivatedUserAnalysisUsers,
-    handleAdminActivatedUserAnalysisBehaviorPath,
     handleAdminUserTaxRecords,
+    handleAdminUserTaxRecordsWrite,
     handleAdminIssueCode,
-    handleAdminIssueCodeBatch,
-    handleAdminIssueWeeklyCode,
-    handleAdminIssueWeeklyCodeBatch,
+    handleAdminDeleteUnusedCodes,
     handleAdminActivationBatchChannels,
+    handleAdminAgentChannelsList,
+    handleAdminAgentChannelsUpsert,
+    handleAdminAgentChannelsDelete,
     handleAdminCodes,
     handleAdminUserActivate,
+    handleAdminUserActivationCredit,
+    handleAdminUserMakePermanent,
+    handleAdminUserDeactivate,
+    handleAdminUserPriceOfferGet,
+    handleAdminUserPriceOfferSet,
+    handleAdminUserPriceOfferClear,
+    handleAdminPriceBidsList,
+    handleAdminPriceBidsReview,
+    handleAdminPriceBidsConfigSet,
+    handleAdminPriceBidsFollowup,
+    handleAdminPriceBidsFollowupDetail,
+    handleAdminPriceBidsRemind,
+    handleAdminUserRenameFeeExempt,
+    handleAdminUserAgentFlag,
+    handleAdminUserLizhiCertUnlock,
+    handleAdminUserZaizhiCertUnlock,
+    handleAdminUserNajiluQrUnlock,
     handleAdminUserPassword,
     handleAdminBan,
     handleAdminBlockIp,
@@ -21947,35 +25054,26 @@ function getHandlers() {
     handleAdminDeleteUser,
     handleAdminUserRefund,
     handleAdminUserRestore,
+    handleAdminUserHardDelete,
     handleAdminPurgeBotUsers,
-    handleAdminAnalyticsOverview,
-    handleAdminAnalyticsDauUsers,
-    handleAdminAnalyticsApi,
     handleAdminAnalyticsEvents,
     handleAdminAnalyticsActivateEvents,
     handleAdminAnalyticsActivateEventUsers,
     handleAdminAnalyticsEventsClear,
-    handleAdminAnalyticsDevices,
-    handleAdminAnalyticsDeviceStats,
     handleAdminAnalyticsLoginRecent,
     handleAdminAnalyticsPricingAb,
     handleAdminLoginLogs,
     handleAdminOperationLogs,
-    handleAdminFeedbackList,
-    handleAdminFeedbackReply,
-    handleAdminChatConversations,
-    handleAdminChatMessages,
-    handleAdminChatSend,
-    handleAdminChatBotPaused,
-    handleAdminChatAutoReplyGet,
-    handleAdminChatAutoReplySave,
     handleAdminAccountsList,
     handleAdminAccountActivatedUsers,
     handleAdminAccountsCreate,
     handleAdminAccountsUpdate,
     handleAdminAccountsDelete,
     handleAdminMonitorOverview,
+    handleAdminMonitorAutoHeal,
+    handleAdminMonitorRunTick,
     handleAdminMonitorTestEmail,
+    handleAdminOpsStatsSendEmail,
     healthHandler
   };
 }
@@ -21993,6 +25091,14 @@ async function startServer() {
   if (PUBLIC_ASSET_BASE_URL) {
     console.log('[uploads] PUBLIC_ASSET_BASE_URL=' + PUBLIC_ASSET_BASE_URL);
   }
+  // 先监听再连库：主机重启后 MySQL 恢复期间 nginx 不再空等 10–15s
+  await new Promise(function (resolve, reject) {
+    var server = app.listen(PORT, '0.0.0.0', function () {
+      console.log('api listening on ' + PORT + ' (waiting for database)');
+      resolve();
+    });
+    server.on('error', reject);
+  });
   await initDatabase();
   try {
     await fs.promises.mkdir(UPLOAD_DIR, { recursive: true });
@@ -22000,11 +25106,20 @@ async function startServer() {
     console.error('UPLOAD_DIR mkdir', UPLOAD_DIR, e);
   }
   serverMonitor.initServerMonitor({ pool: pool, uploadDir: UPLOAD_DIR });
-  serverMonitor.startServerMonitor();
   scheduleDbLogRetention();
-  app.listen(PORT, '0.0.0.0', function () {
-    console.log('api listening on ' + PORT + ', database: ' + DB_DATABASE);
+  scheduleActivationInboxPromo();
+  scheduleRefundAdPromo();
+  opsStatsReport.scheduleOpsStatsReport(function () {
+    return pool;
   });
+  unusedActivationCodes.scheduleUnusedCodesPurge(function () {
+    return pool;
+  });
+  purchaseUxMonitor.schedulePurchaseUxMonitor(function () {
+    return pool;
+  });
+  console.log('api ready, database: ' + DB_DATABASE);
+  serverMonitor.startServerMonitor();
 }
 
 module.exports = {
@@ -22013,6 +25128,8 @@ module.exports = {
   getHandlers,
   getMiddleware,
   initDatabase,
+  adminCanAccessTargetUser,
+  appendAdminUserScope,
   getPool: function () {
     return pool;
   }

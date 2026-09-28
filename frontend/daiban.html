@@ -2,8 +2,86 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260723-nav-lower"></script>
+    <script>
+        (function () {
+            try {
+                var u = String(navigator.userAgent || '');
+                try { u += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (e0) {}
+                try { u += ' ' + String(localStorage.getItem('tax_device_ua_v1') || ''); } catch (e1) {}
+                var isMate70 = /Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(u);
+                if (!isMate70 && /Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-huawei-mate60');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                }
+                if (
+                    /V2203A|V2203T|PD2203\b/i.test(u) ||
+                    (/(?:vivo[\s_-]*)?S15\b/i.test(u) && !/S15\s*Pro|S15e|S15[\s_-]*e/i.test(u))
+                ) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-vivo-s15');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+                var ip14pm = /iPhone|iPad|iPod/i.test(u) && /iPhone\s*14\s*Pro\s*Max|iPhone15,3\b/i.test(u);
+                var ip15pm = /iPhone|iPad|iPod/i.test(u) && /iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone15,5\b/i.test(u);
+                if (!ip14pm && !ip15pm && /iPhone|iPad|iPod/i.test(u)) {
+                    try {
+                        var sw15 = Math.min(screen.width || 0, screen.height || 0);
+                        var sh15 = Math.max(screen.width || 0, screen.height || 0);
+                        var dpr15 = window.devicePixelRatio || 1;
+                        if (dpr15 >= 2 && sw15 >= 700) {
+                            sw15 = Math.round(sw15 / dpr15);
+                            sh15 = Math.round(sh15 / dpr15);
+                        }
+                        if (sw15 >= 428 && sw15 <= 432 && sh15 >= 928 && sh15 <= 936) {
+                            ip14pm = true;
+                        }
+                    } catch (e15) {}
+                }
+                if (ip14pm || ip15pm) {
+                    document.documentElement.classList.add('app-ios-client');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    if (ip14pm) {
+                        document.documentElement.classList.add('app-ios-iphone14promax');
+                        document.documentElement.style.setProperty('--app-shell-statusbar-top', '59px');
+                        document.documentElement.style.backgroundColor = '#2b81f2';
+                    }
+                    if (ip15pm) {
+                        document.documentElement.classList.add('app-ios-iphone15promax');
+                    }
+                }
+                var ip13pm = /iPhone|iPad|iPod/i.test(u) && /iPhone\s*13\s*Pro\s*Max|iPhone14,3\b/i.test(u);
+                if (!ip13pm && /iPhone|iPad|iPod/i.test(u) && !/iPhone\s*12\s*Pro\s*Max|iPhone13,4\b/i.test(u) && !ip15pm) {
+                    try {
+                        var sw13 = Math.min(screen.width || 0, screen.height || 0);
+                        var sh13 = Math.max(screen.width || 0, screen.height || 0);
+                        var dpr13 = window.devicePixelRatio || 1;
+                        if (dpr13 >= 2 && sw13 >= 700) {
+                            sw13 = Math.round(sw13 / dpr13);
+                            sh13 = Math.round(sh13 / dpr13);
+                        }
+                        ip13pm = sw13 >= 426 && sw13 <= 430 && sh13 >= 922 && sh13 <= 930;
+                    } catch (e13) {}
+                }
+                if (ip13pm) {
+                    document.documentElement.classList.add('app-ios-client');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.classList.add('app-ios-iphone13promax');
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <script src="/js/auth-boot.js?v=20260923-bs4s-restore"></script>
+    <script src="/js/auth.js?v=20260923-honor-x20" defer fetchpriority="low"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#2b81f2">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>待办</title>
     <style>
         * {
@@ -14,40 +92,264 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: #f6f7fb;
+            background: #f5f6fa;
             min-height: 100vh;
+        }
+
+        html.app-android-client,
+        html.app-android-client body {
+            overflow-x: hidden;
+            max-width: 100%;
         }
 
         .daiban-page {
             min-height: 100vh;
-            background: #f6f7fb;
-            padding-bottom: var(--bottom-nav-clearance, 72px);
+            min-height: 100dvh;
+            background: #f5f6fa;
+            display: flex;
+            flex-direction: column;
         }
 
         .daiban-header {
             position: relative;
             z-index: 1;
-            background: #2c80f4;
+            background: #2b81f2;
+            overflow: hidden;
+            flex-shrink: 0;
         }
 
-        @supports (padding-top: env(safe-area-inset-top)) {
-            .daiban-header {
-                padding-top: env(safe-area-inset-top, 0px);
-            }
+        /* 内置 HTML 头：安全区由 builtin 自己处理，避免与 .daiban-header 顶距叠加 */
+        .daiban-header[data-header-mode="builtin"] {
+            padding-top: 0 !important;
         }
 
-        .daiban-header img {
+        .daiban-header-builtin {
+            background: linear-gradient(180deg, #2b81f2 0%, #3a8ff5 55%, #4b9af7 100%);
+            padding: 10px 16px 18px;
+            padding-top: calc(10px + env(safe-area-inset-top, 0px));
+        }
+
+        html.app-top-safe-shell .daiban-header-builtin {
+            padding-top: calc(10px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
+        }
+
+        .daiban-header-custom-img[hidden] {
+            display: none !important;
+            margin: 0 !important;
+        }
+
+        .daiban-title-row {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-wrap: nowrap;
+        }
+
+        .daiban-title-row h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1.15;
+            letter-spacing: 0.5px;
+            flex-shrink: 0;
+        }
+
+        .daiban-subtitle {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.88);
+            line-height: 1.35;
+            flex: 1;
+            min-width: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .daiban-tip {
+            background: #fdf6e3;
+            border-radius: 8px;
+            padding: 9px 12px;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #d0890c;
+        }
+
+        .daiban-tip-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 14px;
+            height: 14px;
+            margin-right: 4px;
+            border: 1.2px solid currentColor;
+            border-radius: 50%;
+            font-size: 10px;
+            font-weight: 700;
+            font-style: normal;
+            line-height: 1;
+            vertical-align: -1px;
+        }
+
+        .daiban-header-custom-img {
             width: 100%;
             display: block;
         }
+
+        @supports (padding-top: env(safe-area-inset-top)) {
+            .daiban-header:not([data-header-mode="builtin"]) {
+                padding-top: env(safe-area-inset-top, 0px);
+            }
+            .daiban-header:not([data-header-mode="builtin"]) > .daiban-header-custom-img {
+                margin-top: calc(-1 * env(safe-area-inset-top, 0px));
+            }
+        }
+
+        html.app-top-safe-shell .daiban-header:not([data-header-mode="builtin"]) {
+            padding-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
+            background: #2b81f2;
+            overflow: hidden;
+        }
+
+        html.app-top-safe-shell .daiban-header:not([data-header-mode="builtin"]) > .daiban-header-custom-img {
+            margin-top: calc(-1 * var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
+            display: block;
+            width: 100%;
+        }
+
+        .daiban-content {
+            background: #fff;
+            border-radius: 16px 16px 0 0;
+            margin-top: -12px;
+            position: relative;
+            z-index: 2;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            padding-bottom: var(--bottom-nav-clearance, 86px);
+        }
+
+        .daiban-tabs {
+            display: flex;
+            flex-shrink: 0;
+            border-bottom: 1px solid #eef0f3;
+            background: #fff;
+            border-radius: 16px 16px 0 0;
+        }
+
+        .daiban-tab {
+            flex: 1;
+            padding: 14px 0 12px;
+            border: none;
+            background: none;
+            font-size: 16px;
+            color: #999;
+            position: relative;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        .daiban-tab.active {
+            color: #222;
+            font-weight: 600;
+        }
+
+        .daiban-tab.active::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            bottom: 0;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 4px;
+            background: #2b81f2;
+            border-radius: 2px;
+        }
+
+        .daiban-panels {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            background: #f5f6fa;
+        }
+
+        .daiban-panel {
+            display: none;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .daiban-panel.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .daiban-empty {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 24px 32px;
+            text-align: center;
+            /* 略偏上，对齐原版空态；勿再叠过大 clearance 导致底栏「悬空过高」 */
+            padding-bottom: 32px;
+        }
+
+        .daiban-empty img {
+            width: 210px;
+            max-width: 56vw;
+            height: auto;
+            display: block;
+        }
+
+        .daiban-empty p {
+            margin-top: 18px;
+            font-size: 15px;
+            color: #999;
+            line-height: 1.5;
+        }
     </style>
-    <link rel="stylesheet" href="css/nav.css?v=20260723-nav-lower">
-    <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
+    <link rel="stylesheet" href="css/nav.css?v=20260910-ios-14pm-fb1">
+    <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
 </head>
 <body class="page-daiban">
     <div class="daiban-page">
-        <div class="daiban-header">
-            <img id="assetDaibanHeader" src="daiban.jpg?v=2" alt="待办">
+        <div class="daiban-header" data-header-mode="builtin">
+            <div id="daibanHeaderBuiltin" class="daiban-header-builtin">
+                <div class="daiban-title-row">
+                    <h1>待办</h1>
+                    <p class="daiban-subtitle">请及时办理相关业务并确认办结情况</p>
+                </div>
+                <div class="daiban-tip">
+                    <span class="daiban-tip-icon" aria-hidden="true">!</span>温馨提示：目前待办功能仅提供部分待办事项的服务，我们将持续升级，为您提供更全面的待办提醒。
+                </div>
+            </div>
+            <img id="assetDaibanHeader" class="daiban-header-custom-img" alt="" hidden>
+        </div>
+
+        <div class="daiban-content" id="daibanContentBuiltin">
+            <div class="daiban-tabs" role="tablist" aria-label="待办分类">
+                <button type="button" class="daiban-tab active" data-tab="pending" role="tab" aria-selected="true">未办结</button>
+                <button type="button" class="daiban-tab" data-tab="done" role="tab" aria-selected="false">已办结</button>
+            </div>
+            <div class="daiban-panels">
+                <div class="daiban-panel active" data-panel="pending" role="tabpanel">
+                    <div class="daiban-empty">
+                        <img src="daiban-empty.png?v=20260810-list-empty" width="210" height="145" alt="" decoding="async">
+                        <p>暂无未办结事项</p>
+                    </div>
+                </div>
+                <div class="daiban-panel" data-panel="done" role="tabpanel">
+                    <div class="daiban-empty">
+                        <img src="daiban-empty.png?v=20260810-list-empty" width="210" height="145" alt="" decoding="async">
+                        <p>暂无已办结事项</p>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -112,6 +414,6 @@
             }
         })();
     </script>
-    <script src="/js/watermark.js?v=20260722-wm-redder"></script>
+    <script src="/js/daiban.js?v=20260810-daiban-align" defer></script>
 </body>
 </html>

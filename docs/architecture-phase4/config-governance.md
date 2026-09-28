@@ -7,20 +7,22 @@
 
 | 层 | 存放 | 示例 |
 |----|------|------|
-| 运营 / 内容 | `app_settings` | `mine_ui_json`、安装包 URL、A/B JSON、客服话术 |
-| 密钥 / 凭据 | 环境变量 / 部署 Secret | `JWT_SECRET`、`ALIPAY_*`、`CHAT_AI_API_KEY`、`SMTP_PASS` |
+| 运营 / 内容 | `app_settings` | `mine_ui_json`、安装包 URL、A/B JSON |
+| 密钥 / 凭据 | 环境变量 / 部署 Secret | `JWT_SECRET`、`ALIPAY_*`、`SMTP_PASS` |
 
 ## 允许写入 app_settings 的键（运营）
 
-见 `OPS_SETTING_KEYS`：含 UI、安装包、闲鱼/QQ、转化/落地 AB、客服自动回复与 AI **开关/提示词**（提示词不是 API Key）。
+见 `OPS_SETTING_KEYS`：含 UI、安装包、闲鱼/QQ、转化/落地 AB 等运营配置。
 
 ## 禁止写入（env-only）
 
-`JWT_SECRET`、`ADMIN_PANEL_PASSWORD`、`ADMIN_ACTIVATION_KEY`、`DB_PASSWORD`、`SMTP_PASS`、`ALIPAY_*`、`CHAT_AI_API_KEY`、`REGISTER_APP_SIGN_SECRET` 等。
+`JWT_SECRET`、`ADMIN_PANEL_PASSWORD`、`ADMIN_ACTIVATION_KEY`、`DB_PASSWORD`、`SMTP_PASS`、`ALIPAY_*`、`REGISTER_APP_SIGN_SECRET` 等。
 
 `upsertAppSetting` / `classifySettingKey` 会拒绝密钥类键名（含 `password`/`token`/`private_key`/`api_key` 等模式）。
 
-客服 `ai_prompt`：若内容疑似 PEM/`sk-`/Bearer，接口返回 `warnings: ['ai_prompt_looks_like_secret']` 并打日志（仍保存文案，避免误伤示例）。
+## 封机后密钥不可取回
+
+生产 `.env` 禁止进 git。源站被封时本机文件一起没。用 `scripts/backup-env.sh` 把 **AES-256 密文**寄到告警邮箱（可选再上 COS `…/env/`）；解密口令只放在 `/root/.env-backup-passphrase` 和你自己的密码管理器。恢复步骤见 [`docs/env-recovery.md`](../env-recovery.md)。
 
 ## 明文密码（用户表）
 

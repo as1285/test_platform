@@ -47,6 +47,13 @@
             height: 100%;
             display: block;
         }
+        /* iOS 26/27：不要放 fixed 顶垫（会维持系统毛玻璃透明）。原生靠 topEdgeEffect.isHidden */
+        #iosStatusPlate {
+            display: none !important;
+            height: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+        }
         html.app-huawei-pura70-shell #app-frame {
             width: 100vw;
             max-width: 100%;
@@ -57,13 +64,26 @@
     <div id="startPage" aria-hidden="false">
         <img src="start.png" alt="启动图" fetchpriority="high" decoding="sync">
     </div>
+    <div id="iosStatusPlate" aria-hidden="true"></div>
     <div id="main"></div>
     <script src="distribution-config.js"></script>
     <script>
         (function () {
             var START_PAGE_MS = 2000;
-            // 壳内加载的 H5 源；按本机对外域名打包（见仓库根目录 .env 的 PUBLIC_SITE_URL）
+            // 壳内只加载线上 H5；打包前由 .env 的 PUBLIC_SITE_URL 同步（见 build-agent-apk.sh）
             var APP_ORIGIN = 'https://lkj.qiyun888.top/';
+            var ALLOWED_ORIGIN_HOST = 'lkj.qiyun888.top';
+
+            try {
+                if (/iPhone|iPad|iPod/i.test(navigator.userAgent || '')) {
+                    var earlyPlate = document.getElementById('iosStatusPlate');
+                    if (earlyPlate) {
+                        earlyPlate.style.display = 'none';
+                        earlyPlate.style.height = '0';
+                        earlyPlate.style.visibility = 'hidden';
+                    }
+                }
+            } catch (eEarlyPlate) {}
 
             function isCordovaXiaomi23127() {
                 var ua = navigator.userAgent || '';
@@ -82,6 +102,20 @@
             if (!APP_ORIGIN || !/^https?:\/\//i.test(APP_ORIGIN)) {
                 document.body.innerHTML =
                     '<p style="padding:24px;font-family:system-ui,sans-serif;color:#666;text-align:center">请编辑 cordova-app/www/index.html 中的 APP_ORIGIN 后重新打包 APK。</p>';
+                return;
+            }
+            try {
+                var originHost = new URL(APP_ORIGIN).hostname.toLowerCase();
+                if (originHost !== ALLOWED_ORIGIN_HOST) {
+                    document.body.innerHTML =
+                        '<p style="padding:24px;font-family:system-ui,sans-serif;color:#666;text-align:center">壳仅允许加载 ' +
+                        ALLOWED_ORIGIN_HOST +
+                        '，当前 APP_ORIGIN 无效。</p>';
+                    return;
+                }
+            } catch (eHost) {
+                document.body.innerHTML =
+                    '<p style="padding:24px;font-family:system-ui,sans-serif;color:#666;text-align:center">APP_ORIGIN 解析失败。</p>';
                 return;
             }
             if (isHuaweiPura70Shell()) {
@@ -111,15 +145,34 @@
                 var base = APP_ORIGIN.replace(/\/?$/, '/');
                 var cfg = window.__TAX_DISTRIBUTION__ || {};
                 var ch = cfg.agentSalesChannel != null ? String(cfg.agentSalesChannel).trim() : '';
+                /* 主线「我的」页；Mate60 由 mine.html 内再跳冻结页 mine_mate60_aug12.html */
+                var q = 'mine.html?in_app=1&_v=20260909-android-statusbar-sep1';
                 if (ch && /^[a-z0-9_-]{1,64}$/i.test(ch)) {
-                    return (
-                        base +
-                        'index.html?ch=' +
-                        encodeURIComponent(ch.toLowerCase()) +
-                        '&distributor_app=1'
-                    );
+                    q =
+                        'mine.html?in_app=1&_v=20260909-android-statusbar-sep1&ch=' +
+                        encodeURIComponent(ch.toLowerCase());
+                    /* 不再打 distributor_app=1：代理/渠道包允许 App 内自助注册 */
                 }
-                return APP_ORIGIN;
+                return base + q;
+            }
+
+            /** 壳内恢复/重载 iframe 时保留渠道 ch，避免丢参后变成直客价 */
+            function ensureChannelOnAppUrl(href) {
+                var u = href != null ? String(href).trim() : '';
+                if (!u || !isOurAppUrl(u)) return u;
+                var cfg = window.__TAX_DISTRIBUTION__ || {};
+                var ch = cfg.agentSalesChannel != null ? String(cfg.agentSalesChannel).trim().toLowerCase() : '';
+                if (!ch || !/^[a-z0-9_-]{1,64}$/.test(ch)) return u;
+                try {
+                    var parsed = new URL(u, appOriginPrefix());
+                    if (!parsed.searchParams.get('ch') && !parsed.searchParams.get('channel')) {
+                        parsed.searchParams.set('ch', ch);
+                    }
+                    return parsed.href;
+                } catch (eEns) {
+                    if (u.indexOf('ch=') >= 0 || u.indexOf('channel=') >= 0) return u;
+                    return u + (u.indexOf('?') >= 0 ? '&' : '?') + 'ch=' + encodeURIComponent(ch);
+                }
             }
 
             var lastGoodAppUrl = buildAppStartUrl();
@@ -154,15 +207,32 @@
                 f.setAttribute('title', '应用');
                 f.setAttribute('importance', 'high');
                 f.setAttribute('referrerpolicy', 'no-referrer-when-downgrade');
-                f.src = startUrl || buildAppStartUrl();
+                /* 跨域 iframe 默认可能禁剪贴板；显式放开供 H5「一键复制微信号」 */
+                f.setAttribute('allow', 'clipboard-read; clipboard-write');
+                try {
+                    f.allow = 'clipboard-read; clipboard-write';
+                } catch (eAllow) {}
+                f.src = ensureChannelOnAppUrl(startUrl || buildAppStartUrl());
                 f.addEventListener('load', function () {
                     try {
                         var href =
                             f.contentWindow && f.contentWindow.location && f.contentWindow.location.href;
                         if (isOurAppUrl(href)) {
-                            lastGoodAppUrl = href;
+                            lastGoodAppUrl = ensureChannelOnAppUrl(href);
                         }
                     } catch (eLoad) {}
+                    try {
+                        var hint = {
+                            source: 'tax-shell',
+                            type: 'device-hint',
+                            ua: String(navigator.userAgent || ''),
+                            model:
+                                window.device && window.device.model
+                                    ? String(window.device.model)
+                                    : ''
+                        };
+                        f.contentWindow.postMessage(hint, '*');
+                    } catch (eHint) {}
                 });
                 main.appendChild(f);
             }
@@ -211,20 +281,182 @@
             }
             window.openTaxPlatformExternal = openTaxPlatformExternal;
 
+            function replySaveLocal(id, ok, detail) {
+                var f = document.getElementById('app-frame');
+                try {
+                    if (f && f.contentWindow) {
+                        f.contentWindow.postMessage(
+                            {
+                                source: 'tax-shell',
+                                type: 'save-local-file-result',
+                                id: id,
+                                ok: !!ok,
+                                detail: detail || ''
+                            },
+                            '*'
+                        );
+                    }
+                } catch (eReply) {}
+            }
+
+            function replyClipboardCopy(id, ok, detail) {
+                var f = document.getElementById('app-frame');
+                try {
+                    if (f && f.contentWindow) {
+                        f.contentWindow.postMessage(
+                            {
+                                source: 'tax-shell',
+                                type: 'clipboard-copy-result',
+                                id: id,
+                                ok: !!ok,
+                                detail: detail || ''
+                            },
+                            '*'
+                        );
+                    }
+                } catch (eClipReply) {}
+            }
+
+            /** 壳层代写剪贴板：优先 Cordova 插件，再 execCommand（绕过 iframe 权限限制） */
+            function copyTextInShell(text, id) {
+                var t = text != null ? String(text) : '';
+                if (!t) {
+                    replyClipboardCopy(id, false, 'empty');
+                    return;
+                }
+                function viaExecCommand() {
+                    try {
+                        var ta = document.createElement('textarea');
+                        ta.value = t;
+                        ta.setAttribute('readonly', '');
+                        ta.style.cssText =
+                            'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;border:none;';
+                        document.body.appendChild(ta);
+                        ta.focus();
+                        ta.select();
+                        if (typeof ta.setSelectionRange === 'function') {
+                            ta.setSelectionRange(0, t.length);
+                        }
+                        var ok = !!(document.execCommand && document.execCommand('copy'));
+                        document.body.removeChild(ta);
+                        return ok;
+                    } catch (eExec) {
+                        return false;
+                    }
+                }
+                try {
+                    var clip =
+                        (window.cordova &&
+                            window.cordova.plugins &&
+                            window.cordova.plugins.clipboard) ||
+                        (window.plugins && window.plugins.clipboard) ||
+                        null;
+                    if (clip && typeof clip.copy === 'function') {
+                        clip.copy(
+                            t,
+                            function () {
+                                replyClipboardCopy(id, true, 'cordova');
+                            },
+                            function () {
+                                replyClipboardCopy(id, viaExecCommand(), 'cordova_fail_exec');
+                            }
+                        );
+                        return;
+                    }
+                } catch (eCordova) {}
+                replyClipboardCopy(id, viaExecCommand(), 'exec');
+            }
+
+            function saveLocalFileFromH5(data) {
+                var id = data && data.id;
+                try {
+                    if (window.TaxNativeSave && typeof window.TaxNativeSave.saveBase64 === 'function') {
+                        var r = String(
+                            window.TaxNativeSave.saveBase64(
+                                (data && data.filename) || 'file.bin',
+                                (data && data.mime) || 'application/octet-stream',
+                                (data && data.base64) || ''
+                            ) || ''
+                        );
+                        replySaveLocal(id, r.indexOf('ok') === 0, r);
+                        return;
+                    }
+                } catch (eSave) {
+                    replySaveLocal(id, false, String((eSave && eSave.message) || eSave));
+                    return;
+                }
+                replySaveLocal(id, false, 'no_native');
+            }
+
+            function downloadUrlFromH5(data) {
+                var id = data && data.id;
+                var url = data && data.url != null ? String(data.url).trim() : '';
+                var filename = (data && data.filename) || 'file.bin';
+                var mime = (data && data.mime) || 'application/octet-stream';
+                function reply(ok, detail) {
+                    var f = document.getElementById('app-frame');
+                    try {
+                        if (f && f.contentWindow) {
+                            f.contentWindow.postMessage(
+                                {
+                                    source: 'tax-shell',
+                                    type: 'download-url-result',
+                                    id: id,
+                                    ok: !!ok,
+                                    detail: detail || ''
+                                },
+                                '*'
+                            );
+                        }
+                    } catch (eReply) {}
+                }
+                if (!url) {
+                    reply(false, 'empty_url');
+                    return;
+                }
+                try {
+                    if (window.TaxNativeSave && typeof window.TaxNativeSave.downloadUrl === 'function') {
+                        var r = String(window.TaxNativeSave.downloadUrl(url, filename, mime) || '');
+                        reply(r.indexOf('ok') === 0, r);
+                        return;
+                    }
+                } catch (eDl) {
+                    reply(false, String((eDl && eDl.message) || eDl));
+                    return;
+                }
+                /* 旧包无 downloadUrl：丢给系统浏览器，由浏览器落盘 */
+                reply(openTaxPlatformExternal(url), 'external');
+            }
+
             window.addEventListener('message', function (ev) {
                 var data = ev && ev.data;
-                if (!data || data.type !== 'open-external') return;
+                if (!data) return;
                 if (data.source && data.source !== 'tax-platform-h5') return;
-                openTaxPlatformExternal(data.url);
+                if (data.type === 'open-external') {
+                    openTaxPlatformExternal(data.url);
+                    return;
+                }
+                if (data.type === 'save-local-file') {
+                    saveLocalFileFromH5(data);
+                    return;
+                }
+                if (data.type === 'download-url') {
+                    downloadUrlFromH5(data);
+                    return;
+                }
+                if (data.type === 'clipboard-copy') {
+                    copyTextInShell(data.text, data.id);
+                }
             });
 
             /** 支付等外链若误把 iframe 跳走，从支付宝回到 App 时恢复，避免白屏 */
             function recoverAppFrameIfHijacked() {
                 var f = document.getElementById('app-frame');
-                var fallback =
+                var fallback = ensureChannelOnAppUrl(
                     lastGoodAppUrl && isOurAppUrl(lastGoodAppUrl)
                         ? lastGoodAppUrl
-                        : appOriginPrefix() + 'purchase.html';
+                        : appOriginPrefix() + 'purchase.html'
+                );
                 if (!f) {
                     mountApp(fallback);
                     return;
@@ -239,7 +471,7 @@
                     } else if (!isOurAppUrl(href)) {
                         hijacked = true;
                     } else {
-                        lastGoodAppUrl = href;
+                        lastGoodAppUrl = ensureChannelOnAppUrl(href);
                     }
                 } catch (crossOriginErr) {
                     hijacked = true;
@@ -271,7 +503,7 @@
                             f.contentWindow &&
                             f.contentWindow.location &&
                             f.contentWindow.location.href;
-                        if (isOurAppUrl(href)) lastGoodAppUrl = href;
+                        if (isOurAppUrl(href)) lastGoodAppUrl = ensureChannelOnAppUrl(href);
                     } catch (ePause) {}
                 },
                 false
@@ -284,9 +516,44 @@
                 hideNativeSplash();
             }, START_PAGE_MS);
 
+            var pendingStatusBar = null;
+
+            function paintParentStatusPlate(d) {
+                var plate = document.getElementById('iosStatusPlate');
+                if (!plate) {
+                    return;
+                }
+                var isIos = /iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+                if (!isIos) {
+                    plate.style.display = 'none';
+                    return;
+                }
+                var styleDefault = d && (d.style === 'default' || d.style === 'dark');
+                var barColor = String((d && d.color) || '').trim();
+                /* iOS 外置栏会落成黑框：父文档按页色铺实底，盖住 WKWebView 默认黑底 */
+                if (styleDefault) {
+                    plate.style.background = '#ffffff';
+                } else if (
+                    barColor &&
+                    barColor !== '#00000000' &&
+                    barColor.toLowerCase() !== 'transparent'
+                ) {
+                    plate.style.background = barColor;
+                } else {
+                    plate.style.background = '#4f90f3';
+                }
+                /* 不再显示父文档 fixed 顶垫：iOS 26/27 会采样它并保持毛玻璃 */
+                plate.style.display = 'none';
+                plate.style.height = '0';
+                plate.style.visibility = 'hidden';
+            }
+
             document.addEventListener('deviceready', function () {
                 hideNativeSplash();
                 if (!window.StatusBar) {
+                    if (pendingStatusBar) {
+                        paintParentStatusPlate(pendingStatusBar);
+                    }
                     return;
                 }
                 if (isHuaweiPura70Shell()) {
@@ -301,9 +568,113 @@
                     StatusBar.styleLightContent();
                     return;
                 }
+                if (pendingStatusBar) {
+                    applyStatusBarFromH5(pendingStatusBar);
+                    return;
+                }
+                /* iOS 默认沉浸实底白，避免 #00000000 落成顶部黑框；H5 再染页色 */
                 StatusBar.overlaysWebView(true);
-                StatusBar.backgroundColorByHexString('#00000000');
+                StatusBar.backgroundColorByHexString('#ffffff');
                 StatusBar.styleDefault();
+            });
+
+            function applyStatusBarFromH5(d) {
+                if (!d || d.source !== 'tax-h5' || d.type !== 'status-bar') {
+                    return;
+                }
+                paintParentStatusPlate(d);
+                if (!window.StatusBar) {
+                    pendingStatusBar = d;
+                    return;
+                }
+                pendingStatusBar = null;
+                try {
+                    var styleDefault =
+                        d.style === 'default' || d.style === 'dark';
+                    var isIos = /iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+                    var wantOverlay = d.overlays !== false;
+                    /* iOS 外置栏会落成黑框，一律沉浸 overlays=true */
+                    if (isIos) {
+                        wantOverlay = true;
+                    }
+                    if (wantOverlay) {
+                        StatusBar.overlaysWebView(true);
+                    } else {
+                        StatusBar.overlaysWebView(false);
+                    }
+                    var barColor = String(d.color || '').trim();
+                    /* 白顶栏：透明色在刘海外系统栏会落成黑条，强制实底白 */
+                    if (
+                        styleDefault &&
+                        (!barColor ||
+                            barColor === '#00000000' ||
+                            barColor.toLowerCase() === 'transparent')
+                    ) {
+                        barColor = '#ffffff';
+                    }
+                    if (barColor) {
+                        StatusBar.backgroundColorByHexString(barColor);
+                    }
+                    /* 必须在 overlays/颜色之后设图标：OriginOS 改底色会把电量/信号刷成白字 */
+                    if (styleDefault) {
+                        StatusBar.styleDefault();
+                    } else {
+                        StatusBar.styleLightContent();
+                    }
+                    /*
+                     * iPhone 11 / 14 Pro Max：从白顶 styleDefault 切回蓝顶 light 后，
+                     * 必须再钉 overlays + 颜色，否则顶栏黑、WebView 下移（软件变短）。
+                     */
+                    if (wantOverlay && !styleDefault) {
+                        StatusBar.overlaysWebView(true);
+                        if (barColor) {
+                            StatusBar.backgroundColorByHexString(barColor);
+                        }
+                        StatusBar.styleLightContent();
+                    }
+                    if (d.paint_shell !== false) {
+                        var PAGE_BG = '#f5f6fa';
+                        var rawShell = String(d.shell_bg != null ? d.shell_bg : '').trim();
+                        var statusColor = String(barColor || '').trim().toLowerCase();
+                        var shellBg = rawShell;
+                        /* 未单独传 shell_bg 时：勿回退到顶栏蓝，避免底栏下整条蓝带 */
+                        if (!shellBg) {
+                            shellBg = styleDefault ? '#ffffff' : PAGE_BG;
+                        } else if (
+                            shellBg !== '#00000000' &&
+                            shellBg !== 'transparent' &&
+                            statusColor &&
+                            shellBg.toLowerCase() === statusColor &&
+                            /^(#1677ff|#1e6fff|#2b81f2|#2286ee|#1e8fff)$/i.test(shellBg)
+                        ) {
+                            shellBg = PAGE_BG;
+                        }
+                        if (shellBg && shellBg !== '#00000000' && shellBg !== 'transparent') {
+                            document.documentElement.style.background = shellBg;
+                            document.body.style.background = shellBg;
+                            var frame = document.getElementById('app-frame');
+                            if (frame) frame.style.background = shellBg;
+                            try {
+                                var meta = document.querySelector('meta[name="theme-color"]');
+                                if (meta) meta.setAttribute('content', String(barColor || shellBg));
+                            } catch (eMeta) {}
+                        } else if (styleDefault) {
+                            document.documentElement.style.background = '#ffffff';
+                            document.body.style.background = '#ffffff';
+                        }
+                    }
+                } catch (eSbMsg) {}
+            }
+
+            /* H5 iframe（跨域）通过 postMessage 请求改状态栏：蓝顶栏页 light，白顶栏页 default。
+             * StatusBar 可用顶栏蓝；壳层 html/body/iframe 底色用 shell_bg（默认浅灰），
+             * 切勿用顶栏蓝整页铺色，否则 iOS Home Indicator 区域露蓝。 */
+            window.addEventListener('message', function (ev) {
+                var d = ev && ev.data;
+                if (!d || d.source !== 'tax-h5' || d.type !== 'status-bar') {
+                    return;
+                }
+                applyStatusBarFromH5(d);
             });
         })();
     </script>

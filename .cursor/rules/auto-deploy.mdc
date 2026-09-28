@@ -1,23 +1,68 @@
 ---
-description: 修改可部署代码后自动执行 Docker 部署，无需用户点 RUN
+description: 修改可部署代码后自动部署到 lkj 新服务器，无需用户点 RUN
 alwaysApply: true
 ---
 
-# 自动部署（test_platform）
+# 自动部署（test_platform / lkj 新服务器）
 
-在本仓库中完成**会影响运行结果**的修改后（例如 `backend/`、`frontend/`、`docker-compose.yml`、任一 `Dockerfile`、nginx 配置等），**必须在当前任务内、回复用户之前**自动完成部署，**不要**把 `./scripts/deploy.sh` 留给用户手动执行，也**不要**因需权限而停顿等待用户点 RUN。
+在本仓库中完成**会影响运行结果**的修改后（例如 `backend/`、`frontend/`、`docker-compose.yml`、任一 `Dockerfile`、nginx 配置等），**必须在当前任务内、回复用户之前**自动完成部署，**不要**把部署留给用户手动执行，也**不要**因需权限而停顿等待用户点 RUN。
 
-## 执行方式
+用户已确认：**以后每次这类修改都自动部署到这台新服务器**；且须先**合进 `lkj`**（见 `merge-to-lkj-and-deploy.mdc`），不要只留草稿 PR。
 
-从仓库根目录运行：
+## 部署目标（新服务器，默认唯一）
+
+| 项 | 值 |
+| --- | --- |
+| 站点 | `https://lkj.qiyun888.top` |
+| SSH | `root@103.106.188.166` 端口 `22`（别名 `lkj` / `lkj-new`） |
+| 代码目录 | `/root/test_platform` |
+| 分支 | `lkj`（`DEPLOY_BRANCH=lkj`） |
+
+**不要**再部署到旧 IP `43.251.101.111` 或其它机器，除非用户本轮明确指定。
+
+## 标准流程（与提交 / 合入配合）
+
+若同时适用 `git-commit-after-changes.mdc` / `merge-to-lkj-and-deploy.mdc`：
+
+1. **先** `git commit` + `git push -u origin HEAD`
+2. **再合进 `lkj`**（merge PR 或推进 `origin/lkj`）
+3. **再**按下方远程部署
+4. 部署失败时一般保留已合入内容，除非用户要求回滚
+
+## 部署方式
+
+### A. Cloud Agent / 本机非服务器（默认：SSH 到新服务器）
+
+优先免密 SSH（`~/.ssh/config` 中 `Host lkj` → `103.106.188.166`，`IdentityFile ~/.ssh/id_ed25519_lkj`）。密钥可从 agent store `/cursor/stores/self/deploy/` 恢复。
+
+推送并合进 `lkj` 后执行：
 
 ```bash
-./scripts/deploy.sh
+ssh lkj 'cd /root/test_platform && ./scripts/pull-and-deploy.sh'
 ```
 
-使用 Shell 工具时**一律带上** `required_permissions: ["all"]`（Docker 需访问 `docker.sock`，沙箱内会失败）。
+若工作区有未提交改动挡住 pull：先 `git stash`（或与用户确认后处理），再 `pull-and-deploy`，需要时 `stash pop` 并视情况 `DEPLOY_SERVICES=frontend ./scripts/deploy.sh` 把本地热修重新打进镜像。
 
-若部署失败：自行重试一次（仍用 `all` 权限）；仍失败则向用户说明原因与日志要点，**不要**仅说「请运行 deploy.sh」。
+等价写法：
+
+```bash
+ssh root@103.106.188.166 'cd /root/test_platform && git fetch origin lkj && git checkout lkj && git pull --ff-only origin lkj && ./scripts/deploy.sh'
+```
+
+勿把 root 密码写入仓库或规则文件。
+
+### B. 已在新服务器本机
+
+```bash
+cd /root/test_platform && ./scripts/pull-and-deploy.sh
+# 或仅重建：./scripts/deploy.sh
+```
+
+Shell 访问 Docker 时需能用 `docker.sock`（Cloud 里对远程 SSH 命令一般已足够）。
+
+### 失败处理
+
+自行重试一次；仍失败则向用户说明原因与日志要点，**不要**仅说「请运行 deploy.sh」。
 
 ## 跳过条件
 
@@ -26,6 +71,6 @@ alwaysApply: true
 - 用户明确表示本次不要部署
 - 仅改文档、注释、`.cursor/` 规则等不影响运行产物的内容
 
-## 与提交的关系
+## 发版自检
 
-若同时适用 `git-commit-after-changes.mdc`：先提交再部署（部署失败时一般保留已提交内容，除非用户要求回滚）。
+若部署后做发码/注册/激活冒烟，必须用 `./scripts/redeploy-selftest.sh`（结束自动清理），或手动后跑 `./scripts/cleanup-redeploy-selftest.sh`。详见 `redeploy-selftest-cleanup.mdc`。可选：`DEPLOY_SELFTEST=1 ./scripts/deploy.sh`。

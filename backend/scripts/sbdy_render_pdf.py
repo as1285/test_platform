@@ -9,12 +9,16 @@
 """
 from __future__ import print_function
 
+import hashlib
 import json
 import os
 import sys
 import tempfile
 
-import fitz
+try:
+    import pymupdf as fitz
+except ImportError:
+    import fitz  # noqa: F401
 import qrcode
 from fontTools.ttLib import TTCollection, TTFont
 from fontTools import subset as ft_subset
@@ -31,8 +35,8 @@ NOTO_BOLD_CACHE = os.path.join(tempfile.gettempdir(), 'sbdy_NotoSerifCJKsc-Bold.
 PAGE_W, PAGE_H = 595.0, 842.0
 X0, X1 = 34.3, 560.2
 
-# 明细表列宽（对齐参考 PDF 竖线）
-COL_X = [34.5, 62.4, 79.5, 167.8, 234.6, 274.2, 318.1, 371.6, 416.5, 454.5, 511.2, 542.3, 560.5]
+# 明细表列宽（对齐参考图：养老/失业两组近等宽，单位编号适当加宽）
+COL_X = [34.5, 62.4, 79.2, 180.7, 234.4, 274.4, 317.5, 361.2, 414.8, 454.3, 493.2, 536.8, 560.5]
 
 _FULL_FONT_PATH = None
 _BOLD_FONT_PATH = None
@@ -78,31 +82,68 @@ def ensure_bold_cjk_font():
 
 
 def make_subset_font(src_path, text_blob, prefix='sbdy_sub_'):
-    """裁切 CJK CFF 字库；retain_gids 避免 MuPDF 缺字/乱码。"""
+    """裁切 CJK CFF 字库；retain_gids 避免 MuPDF 缺字/乱码。按字形内容缓存，避免每次 show.pdf 重裁 7s+。
+
+    返回值仍是临时文件路径（调用方可安全 os.remove）；缓存文件留在 /tmp 供下次复用。
+    """
+    import shutil
+
     text_blob = (text_blob or '') + (
         ' 0123456789.-/():（）%，第页共年月授权码验证平台：、'
         'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
     )
-    opts = ft_subset.Options()
-    opts.layout_closure = False
-    opts.layout_features = []  # 去掉替换特征，减少竖排/异体干扰
-    opts.name_IDs = ['*']
-    opts.name_languages = ['*']
-    opts.notdef_outline = True
-    opts.recalc_bounds = True
-    opts.retain_gids = True
-    opts.ignore_missing_unicodes = True
-    font = TTFont(src_path)
-    subsetter = ft_subset.Subsetter(options=opts)
-    subsetter.populate(text=text_blob)
-    subsetter.subset(font)
-    for tag in ('VORG', 'vhea', 'vmtx'):
-        if tag in font:
-            del font[tag]
-    fd, path = tempfile.mkstemp(suffix='.otf', prefix=prefix)
-    os.close(fd)
-    font.save(path)
-    return path
+    # 稳定排序字符，相同字形集合命中同一缓存文件
+    uniq = ''.join(sorted(set(text_blob)))
+    try:
+        src_stat = os.stat(src_path)
+        src_tag = '%s:%s:%s' % (src_path, int(src_stat.st_mtime), int(src_stat.st_size))
+    except OSError:
+        src_tag = src_path
+    digest = hashlib.sha1((src_tag + '\0' + uniq).encode('utf-8')).hexdigest()[:28]
+    safe_prefix = ''.join(ch if ch.isalnum() or ch in '_-' else '_' for ch in (prefix or 'sbdy_sub_'))
+    cache_path = os.path.join(tempfile.gettempdir(), 'sbdy_fontcache_%s%s.otf' % (safe_prefix, digest))
+    if not (os.path.isfile(cache_path) and os.path.getsize(cache_path) > 1000):
+        opts = ft_subset.Options()
+        opts.layout_closure = False
+        opts.layout_features = []  # 去掉替换特征，减少竖排/异体干扰
+        opts.name_IDs = ['*']
+        opts.name_languages = ['*']
+        opts.notdef_outline = True
+        opts.recalc_bounds = True
+        opts.retain_gids = True
+        opts.ignore_missing_unicodes = True
+        font = TTFont(src_path)
+        subsetter = ft_subset.Subsetter(options=opts)
+        subsetter.populate(text=text_blob)
+        subsetter.subset(font)
+        for tag in ('VORG', 'vhea', 'vmtx'):
+            if tag in font:
+                del font[tag]
+        tmp_fd, tmp_path = tempfile.mkstemp(suffix='.otf', prefix=safe_prefix + 'build_')
+        os.close(tmp_fd)
+        try:
+            font.save(tmp_path)
+            try:
+                os.replace(tmp_path, cache_path)
+            except OSError:
+                if not (os.path.isfile(cache_path) and os.path.getsize(cache_path) > 1000):
+                    cache_path = tmp_path
+                else:
+                    try:
+                        os.unlink(tmp_path)
+                    except OSError:
+                        pass
+        except Exception:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
+    # 每次返回独立临时副本，兼容各区域脚本 finally 里 os.remove
+    out_fd, out_path = tempfile.mkstemp(suffix='.otf', prefix=safe_prefix)
+    os.close(out_fd)
+    shutil.copy2(cache_path, out_path)
+    return out_path
 
 
 def money(n):
@@ -297,13 +338,33 @@ BOLD_LABEL_CHARS = (
 )
 
 
+def period_span_months(p, fallback=12):
+    def ym_num(value):
+        parts = str(value or '').strip().split('-')
+        if len(parts) != 2:
+            return None
+        try:
+            year, month = int(parts[0]), int(parts[1])
+        except (TypeError, ValueError):
+            return None
+        if year < 1 or month < 1 or month > 12:
+            return None
+        return year * 12 + month
+
+    start = ym_num((p or {}).get('period_start'))
+    end = ym_num((p or {}).get('period_end'))
+    count = abs(end - start) + 1 if start is not None and end is not None else int(fallback or 12)
+    return max(1, min(48, count))
+
+
 def collect_text_blob(p, months, auth_code):
     n = len([m for m in (months or []) if m])
+    display_count = period_span_months(p, n or 12)
     page_n = max(1, (n + ROWS_PER_PAGE - 1) // ROWS_PER_PAGE) if n else 1
     parts = [
         '浙江省社会保险参保证明（个人专用）',
         '共%d页，第1页' % page_n,
-        '出具证明前%d个月缴费情况' % (n or 12),
+        '出具证明前%d个月缴费情况' % display_count,
         BOLD_LABEL_CHARS,
         '（盖章）',
         '打印时间：',
@@ -393,8 +454,10 @@ def draw_payment_table(
     draw_hline(page, y3_h2)
     for i in range(1, n_body):
         draw_hline(page, y3_h2 + row_h * i)
-    for x in COL_X:
-        draw_vline(page, x, y3_0, y3_end)
+    # 分组标题行只保留组边界；各险种内部子列从第二层表头开始，不能穿过组名。
+    full_height_cols = {0, 1, 2, 3, 7, 11, 12}
+    for ci, x in enumerate(COL_X):
+        draw_vline(page, x, y3_0 if ci in full_height_cols else y3_h1, y3_end)
 
     # 区段标题压在表上方外：由调用方画；此处画表头
     cell_center(page, font_title, title_name, '年', COL_X[0], COL_X[1], y3_0, y3_h2, 9.6)
@@ -508,12 +571,40 @@ def draw_cert_footer(page, font_body, body_name, auth_code, verify_url, print_da
 
 def render(payload, auth_code, qr_url, out_path):
     p = payload or {}
+    cert_type = str(p.get('cert_type') or p.get('certType') or '').strip().lower()
+    layout = str(p.get('layout') or '').strip().lower()
+    region = str(p.get('region') or '').strip().lower()
+    if (
+        cert_type in ('sichuan', 'sc', '四川', '四川社保')
+        or layout in ('sc_official_v1', 'sichuan')
+        or region in ('sc', 'sichuan')
+    ):
+        from sbdy_render_sichuan import render_sichuan
+
+        return render_sichuan(
+            p,
+            auth_code,
+            qr_url,
+            out_path,
+            {
+                'make_subset_font': make_subset_font,
+                'ensure_full_cjk_font': ensure_full_cjk_font,
+                'ensure_bold_cjk_font': ensure_bold_cjk_font,
+                'make_qr_png': make_qr_png,
+                'register_fonts': register_fonts,
+                'text_width': text_width,
+                'cell_box': cell_box,
+                '_FONT_CACHE': _FONT_CACHE,
+            },
+        )
+
     months = ensure_months(p)
     month_chunks = chunk_months(months, ROWS_PER_PAGE)
     total_pages = len(month_chunks)
     real_count = len([m for m in months if m])
+    display_count = period_span_months(p, real_count or 12)
     period = p.get('period_label') or ''
-    section_title = '出具证明前%d个月缴费情况（%s）' % (real_count or 12, period)
+    section_title = '出具证明前%d个月缴费情况（%s）' % (display_count, period)
 
     blob = collect_text_blob(p, months, auth_code)
     full_body = ensure_full_cjk_font()

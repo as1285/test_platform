@@ -1,6 +1,16 @@
 /**
- * 组装生产静态站点：content-hash 核心壳 + 压缩/混淆以提高复制成本。
- * 用法：node scripts/assemble-site.mjs（由 npm run build 调用）
+ * 组装生产静态站点（无 Vite）：content-hash 核心壳 + minify/混淆以提高复制成本。
+ * 用法：node scripts/assemble-site.mjs（npm run build / assemble）
+ *
+ * 流程概要：
+ * 1. 清空并重建 site/（部署产物；源码在 frontend 根 HTML、public/js、css）
+ * 2. 拷贝 HTML/资源；public/js → site/js
+ * 3. minify 全站 JS/CSS；OBFUSCATE_REL 内脚本再混淆（auth / conversion-guide 仅 minify）
+ * 4. app/{ui,nav,core}.js + app-shell.css → content-hash + manifest.json
+ * 5. 注入 site-config.js、forensic-mark.js；优先页注入哈希壳
+ * 6. 压缩内联脚本、剥离 HTML 注释
+ *
+ * 切勿手改 site/：下次 build 会覆盖。
  */
 import crypto from 'crypto';
 import fs from 'fs';
@@ -16,6 +26,7 @@ const DIST = path.join(ROOT, 'dist');
 
 const PRIORITY_PAGES = ['mine.html', 'shouye.html', 'consult.html', 'install_guide.html'];
 
+/** content-hash 的壳资源；注入到 PRIORITY_PAGES 的 TAX_APP_SHELL_* 占位 */
 const APP_ASSETS = [
   { siteSrc: 'js/app/ui.js', outDir: 'js/app', base: 'ui' },
   { siteSrc: 'js/app/nav.js', outDir: 'js/app', base: 'nav' },
@@ -23,17 +34,20 @@ const APP_ASSETS = [
   { siteSrc: 'css/app-shell.css', outDir: 'css', base: 'app-shell', ext: '.css' }
 ];
 
-/** 轻度混淆（不改 window 全局名）；体积大的管理端只做 minify */
+/** 混淆关键业务脚本（不改 window 全局名）；体积大的管理端只做 minify。
+ * auth.js / auth-boot.js / conversion-guide.js 为登录后关键路径，强混淆易在部分环境运行期崩溃，仅 minify。
+ * page-loading.js 同理：支付返回靠 visibilitychange 摘转圈，强混淆+字符串切割易在 WebView 出问题。
+ */
 const OBFUSCATE_REL = new Set([
-  'js/auth.js',
   'js/app/ui.js',
   'js/app/nav.js',
   'js/app/core.js',
   'js/theme-loader.js',
-  'js/page-loading.js',
   'js/fast-nav.js',
-  'js/conversion-guide.js',
+  'js/tab-shell.js',
+  'js/tab-shell-escape.js',
   'js/watermark.js',
+  'js/forensic-mark.js',
   'js/browser-install-prompt.js',
   'js/toast-duration.js',
   'js/back-arrow.js'
@@ -41,7 +55,8 @@ const OBFUSCATE_REL = new Set([
 
 const OBFUSCATOR_OPTS = {
   compact: true,
-  controlFlowFlattening: false,
+  controlFlowFlattening: true,
+  controlFlowFlatteningThreshold: 0.35,
   deadCodeInjection: false,
   debugProtection: false,
   disableConsoleOutput: false,
@@ -50,8 +65,9 @@ const OBFUSCATOR_OPTS = {
   selfDefending: false,
   stringArray: true,
   stringArrayEncoding: ['base64'],
-  stringArrayThreshold: 0.6,
-  splitStrings: false,
+  stringArrayThreshold: 0.85,
+  splitStrings: true,
+  splitStringsChunkLength: 6,
   transformObjectKeys: false,
   unicodeEscapeSequence: false,
   target: 'browser'
@@ -170,6 +186,8 @@ async function protectCssFile(abs) {
 }
 
 async function protectAssets() {
+  // === minify + 可选混淆 site/ 下 JS/CSS ===
+
   const jsFiles = walkFiles(path.join(SITE, 'js'), (full, name) => name.endsWith('.js'));
   for (const abs of jsFiles) {
     await protectJsFile(abs);
@@ -179,6 +197,29 @@ async function protectAssets() {
     await protectCssFile(abs);
   }
   console.log('[protect] js', jsFiles.length, 'css', cssFiles.length);
+  assertCoreJsProtected();
+}
+
+/** 核心业务脚本必须带压缩戳；避免镜像里再漏出 auth.js / admin_panel.js 原文 */
+const CORE_PROTECT_REL = [
+  'js/auth.js',
+  'js/auth-boot.js',
+  'js/admin_panel.js',
+  'js/admin_auth.js',
+  'js/consult-core.js'
+];
+
+function assertCoreJsProtected() {
+  for (const rel of CORE_PROTECT_REL) {
+    const abs = path.join(SITE, rel);
+    if (!fs.existsSync(abs)) {
+      throw new Error('[protect] missing ' + rel);
+    }
+    const head = fs.readFileSync(abs, 'utf8').slice(0, 32);
+    if (head.indexOf('/*! geshui ') !== 0) {
+      throw new Error('[protect] expected minify stamp on ' + rel);
+    }
+  }
 }
 
 /** 压缩页内无 src 的 script（跳过 JSON-LD / 已 type=module 且过长失败则保留） */
@@ -230,14 +271,36 @@ function shellSnippet(manifest) {
   ].join('\n    ');
 }
 
+/** 插到最后一个真实闭合标签前。内联 JS 字符串里的同名标签不能当锚点（开通页 document.write 曾因此把脚本插坏）。 */
+function insertBeforeLastCloseTag(html, tag, insert) {
+  const lower = html.toLowerCase();
+  const idx = lower.lastIndexOf(tag.toLowerCase());
+  if (idx < 0) return html + insert;
+  return html.slice(0, idx) + insert + html.slice(idx);
+}
+
 function injectSiteConfig(html) {
   if (/\/js\/site-config\.js/i.test(html)) return html;
   const tag = '<script src="/js/site-config.js"></script>';
+  const bootRe = /(<script[^>]*\/js\/auth-boot\.js[^>]*><\/script>)/i;
+  if (bootRe.test(html)) {
+    return html.replace(bootRe, `${tag}\n    $1`);
+  }
   const authRe = /(<script[^>]*\/js\/auth\.js[^>]*><\/script>)/i;
   if (authRe.test(html)) {
     return html.replace(authRe, `${tag}\n    $1`);
   }
-  return html.replace(/<\/head>/i, `    ${tag}\n</head>`);
+  return insertBeforeLastCloseTag(html, '</head>', `    ${tag}\n`);
+}
+
+function injectForensicMark(html) {
+  if (/\/js\/forensic-mark\.js/i.test(html)) return html;
+  const tag = '<script src="/js/forensic-mark.js" defer></script>';
+  const lower = html.toLowerCase();
+  if (lower.lastIndexOf('</body>') >= 0) {
+    return insertBeforeLastCloseTag(html, '</body>', `    ${tag}\n`);
+  }
+  return html + '\n' + tag + '\n';
 }
 
 function injectShell(html, snippet) {
@@ -254,9 +317,10 @@ function injectShell(html, snippet) {
       `$1\n    ${markerStart}\n    ${snippet}\n    ${markerEnd}`
     );
   }
-  return html.replace(
-    /<\/head>/i,
-    `    ${markerStart}\n    ${snippet}\n    ${markerEnd}\n</head>`
+  return insertBeforeLastCloseTag(
+    html,
+    '</head>',
+    `    ${markerStart}\n    ${snippet}\n    ${markerEnd}\n`
   );
 }
 
@@ -298,13 +362,11 @@ async function main() {
   copyDir(path.join(ROOT, 'css'), path.join(SITE, 'css'));
   copyDir(path.join(ROOT, 'public', 'js'), path.join(SITE, 'js'));
   copyDir(path.join(ROOT, 'public', 'img'), path.join(SITE, 'img'));
+  copyDir(path.join(ROOT, 'public', 'cmb-releases'), path.join(SITE, 'cmb-releases'));
   copyDir(path.join(ROOT, 'caidan'), path.join(SITE, 'caidan'));
   copyDir(path.join(ROOT, 'bank_icons'), path.join(SITE, 'bank_icons'));
-
-  const indexHtml = path.join(SITE, 'index.html');
-  if (fs.existsSync(indexHtml)) {
-    copyFile(indexHtml, path.join(SITE, 'login.html'));
-  }
+  /* iOS 主屏 / 描述文件 WebClip 启动图（apple-touch-startup-image） */
+  copyDir(path.join(ROOT, 'splash'), path.join(SITE, 'splash'));
 
   // 先压缩/混淆，再打 content-hash（hash 对已保护内容）
   await protectAssets();
@@ -343,6 +405,7 @@ async function main() {
     const page = path.basename(abs);
     let html = fs.readFileSync(abs, 'utf8');
     html = injectSiteConfig(html);
+    html = injectForensicMark(html);
     if (PRIORITY_PAGES.includes(page)) {
       html = addShellBodyClass(html);
       html = injectShell(html, snippet);
@@ -359,7 +422,20 @@ async function main() {
   console.log('[assemble-site] manifest', manifest);
 }
 
-main().catch((err) => {
-  console.error('[assemble-site] FAILED', err);
-  process.exit(1);
-});
+const invokedAsScript =
+  process.argv[1] &&
+  fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+
+if (invokedAsScript) {
+  main().catch((err) => {
+    console.error('[assemble-site] FAILED', err);
+    process.exit(1);
+  });
+}
+
+export {
+  insertBeforeLastCloseTag,
+  injectSiteConfig,
+  injectForensicMark,
+  injectShell
+};

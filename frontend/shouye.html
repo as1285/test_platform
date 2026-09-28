@@ -2,420 +2,1464 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260723-nav-lower"></script>
+    <script>
+        (function () {
+            try {
+                var u = String(navigator.userAgent || '');
+                try { u += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (eM) {}
+                var isMate70 = /Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(u);
+                var isMate60 = /Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-|HUAWEIALN/i.test(u) && !isMate70;
+                if (/Android|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(u) || isMate60) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                }
+                if (
+                    /23113RKC6[CG]|2311DRK48[CGI]/i.test(u) ||
+                    (/(?:Redmi|Xiaomi|REDMI)[\s_-]*K70(?![\s_-]*(?:至尊|Ultra|Pro))/i.test(u) &&
+                        !/2407FPN8E[GR]|2407FRK8EC|XIG06|A402XM/i.test(u))
+                ) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-redmi-k70');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.classList.remove('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.backgroundColor = '#000000';
+                }
+                if (isMate60) {
+                    document.documentElement.classList.add('app-android-huawei-mate60');
+                }
+                if (/iPhone|iPad|iPod/.test(u) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+                    document.documentElement.classList.add('app-ios-client');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    /* 14 Pro Max：悬浮胶囊 + 蓝顶 59；15 Pro Max 才贴底。430×932 无型号按 14PM */
+                    var ip14pm = /iPhone\s*14\s*Pro\s*Max|iPhone15,3\b/i.test(u);
+                    var ip15pm = /iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone15,5\b/i.test(u);
+                    if (!ip14pm && !ip15pm) {
+                        try {
+                            var sw15 = Math.min(screen.width || 0, screen.height || 0);
+                            var sh15 = Math.max(screen.width || 0, screen.height || 0);
+                            var dpr15 = window.devicePixelRatio || 1;
+                            if (dpr15 >= 2 && sw15 >= 700) {
+                                sw15 = Math.round(sw15 / dpr15);
+                                sh15 = Math.round(sh15 / dpr15);
+                            }
+                            if (sw15 >= 428 && sw15 <= 432 && sh15 >= 928 && sh15 <= 936) {
+                                ip14pm = true;
+                            }
+                        } catch (e15) {}
+                    }
+                    if (ip14pm) {
+                        document.documentElement.classList.add('app-ios-iphone14promax');
+                        document.documentElement.style.setProperty('--app-shell-statusbar-top', '59px');
+                        document.documentElement.style.setProperty('--bottom-nav-side', '16px');
+                        document.documentElement.style.setProperty('--bottom-nav-bottom', 'calc(env(safe-area-inset-bottom, 34px) + 8px)');
+                        document.documentElement.style.setProperty('--bottom-nav-gap', 'calc(env(safe-area-inset-bottom, 34px) + 8px)');
+                        document.documentElement.style.setProperty('--bottom-nav-height', '54px');
+                        document.documentElement.style.setProperty('--bottom-nav-radius', '32px');
+                        document.documentElement.style.setProperty('--bottom-nav-clearance', 'calc(54px + env(safe-area-inset-bottom, 34px) + 20px)');
+                        document.documentElement.style.backgroundColor = '#4f90f3';
+                        if (!document.getElementById('sy14pmHomeLock')) {
+                            var lock = document.createElement('style');
+                            lock.id = 'sy14pmHomeLock';
+                            lock.textContent =
+                                'html.app-ios-iphone14promax body > .bottom-nav,html.app-ios-iphone14promax body > .bottom-nav.ios-device{' +
+                                'left:16px!important;right:16px!important;width:auto!important;' +
+                                'bottom:calc(env(safe-area-inset-bottom, 34px) + 8px)!important;' +
+                                'height:54px!important;min-height:54px!important;max-height:54px!important;' +
+                                'border-radius:32px!important;padding-top:8px!important;padding-bottom:8px!important;}';
+                            document.head.appendChild(lock);
+                        }
+                    }
+                    if (ip15pm) {
+                        document.documentElement.classList.add('app-ios-iphone15promax');
+                    }
+                    var ip15 =
+                        /iPhone16,1\b|iPhone15,4\b|iPhone15Pro\b(?!Max)|iPhone\s*15\b(?!\s*(?:Plus|Pro\s*Max))/i.test(
+                            u
+                        );
+                    if (ip15 && !ip15pm && !ip14pm) {
+                        document.documentElement.classList.add('app-ios-iphone15');
+                        document.documentElement.style.setProperty('--app-shell-statusbar-top', '59px');
+                        document.documentElement.style.backgroundColor = '#4f90f3';
+                        if (!document.getElementById('sy15HomeLock')) {
+                            var lock15 = document.createElement('style');
+                            lock15.id = 'sy15HomeLock';
+                            lock15.setAttribute('data-iphone15pro-home-blue', '1');
+                            lock15.textContent =
+                                'html.app-ios-iphone15{background-color:#4f90f3!important;background-image:none!important;}' +
+                                'html.app-ios-iphone15.app-ios-client.app-top-safe-shell body.page-shouye{' +
+                                'background-color:#f6f7fb!important;' +
+                                'background-image:linear-gradient(#4f90f3,#4f90f3)!important;' +
+                                'background-size:100% 59px!important;background-repeat:no-repeat!important;}' +
+                                'html.app-ios-iphone15.app-ios-client.app-top-safe-shell body.page-shouye::before{' +
+                                'height:59px!important;background-color:#4f90f3!important;background-image:none!important;}' +
+                                'html.app-ios-iphone15.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper{' +
+                                'padding-top:59px!important;background-color:#4f90f3!important;}';
+                            document.head.appendChild(lock15);
+                        }
+                    }
+                    /* 14 Pro（393×852 灵动岛）：首屏把刘海垫成搜索蓝，避免 Cordova 黑条露在头图上 */
+                    var ip14pro =
+                        /iPhone\s*14\s*Pro\b(?!\s*Max)|iPhone15,2\b/i.test(u) && !ip14pm;
+                    if (!ip14pro && !ip14pm && !ip15pm) {
+                        try {
+                            var sw14p = Math.min(screen.width || 0, screen.height || 0);
+                            var sh14p = Math.max(screen.width || 0, screen.height || 0);
+                            var dpr14p = window.devicePixelRatio || 1;
+                            if (dpr14p >= 2 && sw14p >= 700) {
+                                sw14p = Math.round(sw14p / dpr14p);
+                                sh14p = Math.round(sh14p / dpr14p);
+                            }
+                            if (
+                                sw14p >= 390 &&
+                                sw14p <= 396 &&
+                                sh14p >= 848 &&
+                                sh14p <= 856 &&
+                                !/iPhone\s*15\b|iPhone15,4\b|iPhone16,|iPhone17,|iPhone18,/i.test(u)
+                            ) {
+                                ip14pro = true;
+                            }
+                        } catch (e14p) {}
+                    }
+                    /* iOS 26 的 393×852（iPhone 16 等）：系统栏已占位，首页勿再叠 59px */
+                    var iosMajorHome = 0;
+                    try {
+                        var umHome = String(navigator.userAgent || '').match(/OS (\d+)[_.]/i);
+                        iosMajorHome = umHome ? parseInt(umHome[1], 10) : 0;
+                    } catch (eIosHome) {}
+                    if (iosMajorHome === 26 && !ip14pm && !ip15pm) {
+                        try {
+                            var sw26 = Math.min(screen.width || 0, screen.height || 0);
+                            var sh26 = Math.max(screen.width || 0, screen.height || 0);
+                            var dpr26 = window.devicePixelRatio || 1;
+                            if (dpr26 >= 2 && sw26 >= 700) {
+                                sw26 = Math.round(sw26 / dpr26);
+                                sh26 = Math.round(sh26 / dpr26);
+                            }
+                            if (sw26 >= 390 && sw26 <= 396 && sh26 >= 848 && sh26 <= 856) {
+                                document.documentElement.classList.add('app-ios26-island-home');
+                            }
+                        } catch (e26) {}
+                    }
+                    if (ip14pro) {
+                        document.documentElement.classList.add('app-ios-iphone14pro');
+                        document.documentElement.style.setProperty('--app-shell-statusbar-top', '59px');
+                        document.documentElement.style.backgroundColor = '#4f90f3';
+                        if (!document.getElementById('sy14proHomeLock')) {
+                            var lock14p = document.createElement('style');
+                            lock14p.id = 'sy14proHomeLock';
+                            lock14p.setAttribute('data-iphone14pro-home-blue', '1');
+                            lock14p.textContent =
+                                'html.app-ios-iphone14pro{background-color:#4f90f3!important;background-image:none!important;}' +
+                                'html.app-ios-iphone14pro.app-ios-client.app-top-safe-shell body.page-shouye{' +
+                                'background-color:#f6f7fb!important;' +
+                                'background-image:linear-gradient(#4f90f3,#4f90f3)!important;' +
+                                'background-size:100% 59px!important;background-repeat:no-repeat!important;}' +
+                                'html.app-ios-iphone14pro.app-ios-client.app-top-safe-shell body.page-shouye::before{' +
+                                'height:59px!important;background-color:#4f90f3!important;background-image:none!important;}' +
+                                'html.app-ios-iphone14pro.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper{' +
+                                'padding-top:59px!important;background-color:#4f90f3!important;}';
+                            document.head.appendChild(lock14p);
+                        }
+                    }
+                    /* 20260826-iphone13pm：13 Pro Max 底栏须首绘铺满，避免被拽出屏 */
+                    var ip13pm = /iPhone\s*13\s*Pro\s*Max|iPhone14,3\b/i.test(u);
+                    if (!ip13pm && !ip14pm && !ip15pm && !/iPhone\s*12\s*Pro\s*Max|iPhone13,4\b/i.test(u)) {
+                        try {
+                            var sw13 = Math.min(screen.width || 0, screen.height || 0);
+                            var sh13 = Math.max(screen.width || 0, screen.height || 0);
+                            var dpr13 = window.devicePixelRatio || 1;
+                            if (dpr13 >= 2 && sw13 >= 700) {
+                                sw13 = Math.round(sw13 / dpr13);
+                                sh13 = Math.round(sh13 / dpr13);
+                            }
+                            ip13pm = sw13 >= 426 && sw13 <= 430 && sh13 >= 922 && sh13 <= 930;
+                        } catch (e13) {}
+                    }
+                    if (ip13pm) {
+                        document.documentElement.classList.add('app-ios-iphone13promax');
+                    }
+                }
+                /* 一加 Ace 6 须先于 Magic5 屏参启发式：364×801@3.5 会误中 1312×2848 */
+                var isAce6 = /PLQ110|(?:OnePlus|一加)[\s_-]*Ace[\s_-]*6(?![\s_-]*Pro)(?!\d)/i.test(u);
+                if (isAce6) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-oneplus-ace6');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.setProperty('--safe-top', '40px');
+                }
+                var magic5pro = /PGT[\s_-]?AN20|HONORPGT-AN20|(?:Honor|HONOR|荣耀)?[\s_-]*Magic[\s_-]*5[\s_-]*Pro/i.test(u);
+                if (!magic5pro && !isAce6) {
+                    try {
+                        var dprM5 = window.devicePixelRatio || 1;
+                        var shortM5 = Math.min(screen.width, screen.height) * dprM5;
+                        var longM5 = Math.max(screen.width, screen.height) * dprM5;
+                        var rawShort = Math.min(screen.width, screen.height);
+                        var rawLong = Math.max(screen.width, screen.height);
+                        magic5pro = /Android/i.test(u) && (
+                            (Math.abs(shortM5 - 1312) <= 48 && Math.abs(longM5 - 2848) <= 80) ||
+                            (rawShort >= 1264 && rawShort <= 1360 && rawLong >= 2768 && rawLong <= 2928)
+                        );
+                    } catch (eM5) {}
+                }
+                if (magic5pro && !isAce6) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-honor-pgt-an20');
+                    document.documentElement.classList.add('app-android-honor-magic');
+                }
+                if (/BVL-AN16|BVL-AN20|BVL-N49|HONORBVL-AN16|(?:Honor|HONOR|荣耀)?[\s_-]*Magic[\s_-]*6[\s_-]*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-honor-magic6pro');
+                }
+                /* 小米 13 / 13 Pro：Android 通用 2.55 分栏会把 a6 入口卡撑大，提前打标供 CSS 压回 */
+                if (/2210132[CGEI]|(?:Xiaomi|Mi|小米)[\s_-]*13[\s_-]*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-xiaomi-13pro');
+                } else if (/2211133[CGI]|(?:Xiaomi|Mi|小米)[\s_-]*13\b/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-xiaomi-13');
+                }
+                if (/PHW110|CPH2531|CPH2525|PFGM00|A93s/i.test(u) || (/(?:OPPO\s*)?Reno\s*10\s*5G/i.test(u) && !/Reno\s*10\s*Pro/i.test(u))) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-oppo-reno10');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.setProperty('--safe-top', '40px');
+                }
+                if (/V2408A|I2401\b|PD2408\b|iQOO\s*13(?![a-zA-Z0-9])/i.test(u)) {
+                    document.documentElement.classList.add('app-android-iqoo-13');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+                if (/V2505A|I2501\b|PD2505\b|iQOO\s*15(?![a-zA-Z0-9])/i.test(u)) {
+                    document.documentElement.classList.add('app-android-iqoo-15');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+                if (
+                    /V2203A|V2203T|PD2203\b/i.test(u) ||
+                    (/(?:vivo[\s_-]*)?S15\b/i.test(u) && !/S15\s*Pro|S15e|S15[\s_-]*e/i.test(u))
+                ) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-vivo-s15');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.setProperty('--shouye-status-inset', '40px');
+                    if (!document.getElementById('vivoS15BlackBarFirstPaint')) {
+                        var s15Fp = document.createElement('style');
+                        s15Fp.id = 'vivoS15BlackBarFirstPaint';
+                        s15Fp.setAttribute('data-vivos15-black-firstpaint', '1');
+                        s15Fp.textContent =
+                            'html.app-android-vivo-s15.app-top-safe-shell{--app-shell-statusbar-top:40px!important;--android-status-inset:40px!important;--shouye-status-inset:40px!important;}' +
+                            'html.app-android-vivo-s15.app-top-safe-shell::before{content:""!important;position:fixed!important;left:0!important;right:0!important;top:0!important;height:40px!important;background:#000!important;z-index:2147483000!important;pointer-events:none!important;}' +
+                            'html.app-android-vivo-s15.app-top-safe-shell body.page-shouye::before{background-color:#000!important;background-image:none!important;}';
+                        document.head.appendChild(s15Fp);
+                    }
+                }
+            } catch (e0) {}
+            /* ColorOS / ArkWeb 的 100vw 常宽于画布，首页 rpx 按实测 clientWidth 锁，避免撑宽卡顿 */
+            try {
+                var uaSy = String(navigator.userAgent || '');
+                if (/Android|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(uaSy)) {
+                    var wSy = document.documentElement.clientWidth || window.innerWidth || 0;
+                    var innerSy = window.innerWidth || wSy;
+                    if (innerSy > 0 && innerSy < wSy) wSy = innerSy;
+                    if (wSy >= 240 && wSy <= 720) {
+                        document.documentElement.style.setProperty('--sy-rpx', wSy / 750 + 'px');
+                    }
+                }
+            } catch (eRpx) {}
+        })();
+    </script>
+    <script src="/js/auth-boot.js?v=20260923-bs4s-restore"></script>
+    <script src="/js/auth.js?v=20260923-honor-x20" defer fetchpriority="low"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
-    <script src="/js/app/ui.js"></script>
-    <script src="/js/app/nav.js"></script>
-    <script src="/js/app/core.js"></script>
+    <script src="/js/app/ui.js" defer></script>
+    <script src="/js/app/nav.js" defer></script>
+    <script src="/js/app/core.js" defer></script>
     <!-- TAX_APP_SHELL_END -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>首页</title>
+    <meta name="theme-color" content="#4f90f3">
+    <script>
+        (function () {
+            try {
+                var u = String(navigator.userAgent || '');
+                try { u += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (e0) {}
+                try { u += ' ' + String(localStorage.getItem('tax_device_ua_v1') || ''); } catch (e1) {}
+                var x20 = /NTN-AN20/i.test(u) || (/(?:荣耀|HONOR|Honor)[\s_-]*X20\b/i.test(u) && !/X20[\s_-]*(?:SE|Plus|Pro)/i.test(u));
+                if (!x20) return;
+                var root = document.documentElement;
+                root.classList.add('app-android-client');
+                root.classList.add('app-android-honor-x20');
+                root.classList.add('app-top-safe-shell');
+                root.style.setProperty('--app-shell-statusbar-top', '32px');
+                root.style.setProperty('--android-status-inset', '32px');
+                root.style.setProperty('--shouye-status-inset', '32px');
+                var meta = document.querySelector('meta[name="theme-color"]');
+                if (meta) meta.setAttribute('content', '#000000');
+                if (!document.getElementById('honorX20BlackBarFirstPaint')) {
+                    var st = document.createElement('style');
+                    st.id = 'honorX20BlackBarFirstPaint';
+                    st.textContent =
+                        'html.app-android-honor-x20.app-top-safe-shell{--app-shell-statusbar-top:32px!important;--android-status-inset:32px!important;--shouye-status-inset:32px!important;}' +
+                        'html.app-android-honor-x20.app-top-safe-shell::before{content:""!important;position:fixed!important;left:0!important;right:0!important;top:0!important;height:32px!important;background:#000!important;z-index:2147483000!important;pointer-events:none!important;}' +
+                        'html.app-android-honor-x20.app-top-safe-shell body.page-shouye{--shouye-status-inset:32px!important;--app-shell-statusbar-top:32px!important;}' +
+                        'html.app-android-honor-x20.app-top-safe-shell body.page-shouye::before{height:32px!important;background:#000!important;background-image:none!important;}' +
+                        'html.app-android-honor-x20.app-top-safe-shell body.page-shouye .search-bar-wrapper{padding-top:32px!important;}';
+                    (document.head || root).appendChild(st);
+                }
+            } catch (eX20) {}
+        })();
+    </script>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>个人所得税</title>
+    <!-- 首屏关键图预加载：顶栏背景 + 通知条 + 未登录汇算卡，避免被 580KB auth.js 挤到进度条后 -->
+    <link rel="preload" as="image" href="/img/home/apk-home-header-bg.png?v=20260916-shouye-jank" fetchpriority="high">
+    <link rel="preload" as="image" href="/img/home/ahead.png?v=20260916-shouye-jank" fetchpriority="high">
+    <link rel="preload" as="image" href="/img/home/a1.png?v=20260811-header-blue" fetchpriority="high">
+    <link rel="preload" as="image" href="/img/home/a32.png?v=20260901-home-compress" fetchpriority="high">
+    <meta name="description" content="模拟器APP，打开即可体验首页服务。">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="模拟器APP">
+    <meta property="og:description" content="模拟器APP，打开即可体验首页服务。">
+    <meta property="og:image" content="/grdb.jpg">
+    <meta property="og:url" content="/shouye.html?guest=1&from=share&landing_ab=c">
+    <meta name="twitter:card" content="summary">
+    <meta itemprop="name" content="模拟器APP">
+    <meta itemprop="description" content="模拟器APP，打开即可体验首页服务。">
+    <meta itemprop="image" content="/grdb.jpg">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'WenQuanYi Micro Hei', sans-serif;
-            background: #f6f7fb;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #f4f6f9;
             min-height: 100vh;
         }
-        
-        .shouye-page {
-            min-height: 100vh;
-            background: #f6f7fb;
+
+        body.page-shouye {
+            /* 100% 随画布，勿用 100vw：安卓 WebView 常把 vw 算得比可见区宽，首页会横滑卡顿 */
+            --sy-rpx: calc(100% / 750);
+            /* 官方 zdj-home 头图 pending-tasks-bg 顶缘 #4f90f3；垫色/theme-color/StatusBar 同色 */
+            --shouye-top-bar-rgb: 79, 144, 243;
+            --shouye-header-bg: url('/img/home/apk-home-header-bg.png');
+            background: #f4f6f9;
+            overflow-x: hidden;
+            max-width: 100%;
         }
-        
-        /* 为固定搜索条留白；顶栏区用蓝色铺满，避免 padding 露出 #f6f7fb 白条 */
-        body.page-shouye .shouye-header {
-            margin-top: calc(-1 * var(--shouye-fixed-top-h, 52px));
-            padding-top: var(--shouye-fixed-top-h, 52px);
-            background: rgb(var(--shouye-top-bar-rgb, 44, 128, 244));
+
+        html.app-android-client,
+        html.app-android-client body.page-shouye,
+        html.app-android-client .shouye-page {
+            overflow-x: hidden;
+            max-width: 100%;
         }
-        
-        /* 搜索框容器：横幅在搜索条下方（非叠层），顶栏须始终铺蓝，避免首屏透明露灰底 */
+
+        /* 固定顶栏：官方头图铺底（含柔光）+ ahead 搜索条，安全区同色无缝 */
         .search-bar-wrapper {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             z-index: 999;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 4px 12px 4px 14px;
-            background: rgb(var(--shouye-top-bar-rgb, 44, 128, 244));
-            box-shadow: none;
+            padding: 0;
+            background-color: rgb(var(--shouye-top-bar-rgb, 79, 144, 243));
+            background-image: var(--shouye-header-bg);
+            background-size: 100% auto;
+            background-position: top center;
+            background-repeat: no-repeat;
+            box-shadow: none !important;
+            border: 0 !important;
+            outline: none;
+            display: block;
+            line-height: 0;
+            /* 裁掉顶缘亚像素白缝；热区仍可用 absolute */
+            overflow: hidden;
         }
 
-        /* iPhone 16 Pro：状态栏安全区与顶栏同色（auth.js 亦注入，此处兜底） */
-        html.app-ios-iphone16pro.app-top-safe-shell body.page-shouye .search-bar-wrapper {
-            background: rgb(var(--shouye-top-bar-rgb, 44, 128, 244));
+        html.app-ios-client.app-top-safe-shell:has(body.page-shouye) {
+            background-color: #4f90f3 !important;
+            background-image: none !important;
         }
-
-        /* iPhone 15/16 Pro Max：状态栏区与搜索顶栏同蓝 */
-        html.app-ios-iphone15promax.app-top-safe-shell body.page-shouye::before,
-        html.app-ios-iphone16promax.app-top-safe-shell body.page-shouye::before {
+        html.app-ios-client.app-top-safe-shell body.page-shouye {
+            background-color: #f6f7fb !important;
+            background-image: linear-gradient(
+                rgb(var(--shouye-top-bar-rgb, 79, 144, 243)),
+                rgb(var(--shouye-top-bar-rgb, 79, 144, 243))
+            ) !important;
+            background-size: 100% var(--app-shell-statusbar-top, env(safe-area-inset-top, 59px)) !important;
+            background-repeat: no-repeat !important;
+            background-position: top center !important;
+        }
+        html.app-ios-client.app-top-safe-shell body.page-shouye::before {
             content: "";
             position: fixed;
             left: 0;
             right: 0;
             top: 0;
             height: var(--app-shell-statusbar-top, env(safe-area-inset-top, 48px));
-            background: rgb(var(--shouye-top-bar-rgb, 44, 128, 244));
+            background-color: rgb(var(--shouye-top-bar-rgb, 79, 144, 243));
+            background-image: none;
             z-index: 998;
             pointer-events: none;
         }
 
-        html.app-ios-iphone15promax.app-top-safe-shell body.page-shouye .search-bar-wrapper,
-        html.app-ios-iphone16promax.app-top-safe-shell body.page-shouye .search-bar-wrapper {
-            padding-top: calc(6px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 48px)));
-            background: rgb(var(--shouye-top-bar-rgb, 44, 128, 244));
-            box-shadow: none;
+        html.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper,
+        html.app-top-safe-shell body.page-shouye .search-bar-wrapper {
+            padding-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
         }
 
-        /* 荣耀等 Android 顶栏安全区（auth.js 亦注入，此处兜底） */
-        html.app-android-honor-magic.app-top-safe-shell body.page-shouye .search-bar-wrapper,
-        html.app-android-honor-pgt-an20.app-top-safe-shell body.page-shouye .search-bar-wrapper,
-        html.app-android-honor-ptp-an00.app-top-safe-shell body.page-shouye .search-bar-wrapper {
-            background: rgb(var(--shouye-top-bar-rgb, 44, 128, 244));
+        /*
+         * Android 首页统一顶距：Cordova/沉浸 WebView 普遍画到状态栏下，
+         * 勿再按厂商清零（否则搜索条吃进系统时间栏）。
+         * 华为 Pura70 Cordova 壳已避开状态栏，仍走贴顶。
+         */
+        html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye {
+            --shouye-status-inset: 40px;
         }
 
-        /* 华为 Pura 70 Cordova：壳已留状态栏，搜索条贴顶；内容区顶距由 JS 同步 */
+        html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye::before {
+            content: "";
+            position: fixed;
+            left: 0;
+            right: 0;
+            top: 0;
+            height: var(--shouye-status-inset, 40px);
+            background-color: rgb(var(--shouye-top-bar-rgb, 79, 144, 243));
+            background-image: var(--shouye-header-bg);
+            background-size: 100% auto;
+            background-position: top center;
+            background-repeat: no-repeat;
+            z-index: 998;
+            pointer-events: none;
+        }
+
+        html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .search-bar-wrapper {
+            padding-top: var(--shouye-status-inset, 40px) !important;
+            background-color: rgb(var(--shouye-top-bar-rgb, 79, 144, 243)) !important;
+            background-image: var(--shouye-header-bg) !important;
+            background-size: 100% auto !important;
+            background-position: top center !important;
+            background-repeat: no-repeat !important;
+        }
+
+        /* OPPO/ColorOS 外置状态栏（含 A58 PHJ110）：WebView 已在系统栏下，首页顶距压到 6px */
+        html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-13):not(.app-android-oppo-find-x8s):not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oneplus-ace6):not(.app-android-oneplus-12):not(.app-android-oppo-reno10) body.page-shouye,
+        html.app-android-oppo-a58.app-top-safe-shell body.page-shouye {
+            --shouye-status-inset: 6px;
+        }
+
+        html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-13):not(.app-android-oppo-find-x8s):not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oneplus-ace6):not(.app-android-oneplus-12):not(.app-android-oppo-reno10) body.page-shouye::before,
+        html.app-android-oppo-a58.app-top-safe-shell body.page-shouye::before {
+            height: 6px;
+        }
+
+        html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-13):not(.app-android-oppo-find-x8s):not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oneplus-ace6):not(.app-android-oneplus-12):not(.app-android-oppo-reno10) body.page-shouye .search-bar-wrapper,
+        html.app-android-oppo-a58.app-top-safe-shell body.page-shouye .search-bar-wrapper {
+            padding-top: 6px !important;
+        }
+
         html.app-cordova-huawei-pura70.app-top-safe-shell body.page-shouye .search-bar-wrapper {
-            padding-top: 6px;
-            padding-bottom: 6px;
-            background: rgb(var(--shouye-top-bar-rgb, 44, 128, 244));
-            box-shadow: none;
+            padding-top: 6px !important;
         }
 
-        html.app-huawei-pura70.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .search-bar-wrapper {
-            padding-top: calc(6px + var(--app-shell-statusbar-top, 32px));
-            background: rgb(var(--shouye-top-bar-rgb, 44, 128, 244));
-            box-shadow: none;
+        /*
+         * 荣耀 Magic5 Pro：系统状态栏已在 WebView 外，再套 Android 40px / honor-magic 8+36
+         * 会在搜索条上方空出一截蓝。首页只留 8px。
+         */
+        html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-android-oneplus-ace6) body.page-shouye {
+            --shouye-status-inset: 8px;
+            --app-shell-statusbar-top: 8px !important;
+        }
+        html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-android-oneplus-ace6) body.page-shouye::before {
+            height: 8px !important;
+        }
+        html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-cordova-huawei-pura70):not(.app-android-oneplus-ace6) body.page-shouye .search-bar-wrapper,
+        html.app-android-honor-pgt-an20.app-android-honor-magic.app-top-safe-shell:not(.app-android-oneplus-ace6) body.page-shouye .search-bar-wrapper {
+            padding-top: 8px !important;
         }
 
-        /* Android 壳/客户端：首屏顶距与实测搜索条高度对齐（约 78px），避免 JS 未跑完前错位 */
-        html.app-top-safe-shell.app-android-client {
-            --shouye-fixed-top-h: 78px;
+        html.app-android-oneplus-ace6.app-top-safe-shell body.page-shouye {
+            --shouye-status-inset: 40px;
+            --app-shell-statusbar-top: 40px !important;
         }
 
-        /* 内容区顶距由 JS 写入 --shouye-fixed-top-h，与固定搜索条等高 */
-        html.app-top-safe-shell body.page-shouye .shouye-page,
-        body.page-shouye .shouye-page {
-            padding-top: var(--shouye-fixed-top-h, 52px);
+        /* vivo S15：正版个税顶部黑框，勿把搜索蓝铺进状态栏 */
+        html.app-android-vivo-s15.app-top-safe-shell body.page-shouye {
+            --shouye-status-inset: 40px;
+            --app-shell-statusbar-top: 40px !important;
+        }
+        html.app-android-vivo-s15.app-top-safe-shell body.page-shouye::before {
+            background-color: #000 !important;
+            background-image: none !important;
         }
 
-        
-        .search-bar {
-            flex: 1;
-            background: rgba(255, 255, 255, 0.35);
-            border-radius: 8px;
-            padding: 9px 14px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+        /*
+         * Mate 60 / Pro：ahead 图顶上已有约 16px 空蓝，再套 Android 统一 40px
+         * 会在搜索条上方空一截。系统栏已在蓝头外时只留 12px，并略微上移 ahead。
+         */
+        html.app-android-huawei-mate60.app-top-safe-shell body.page-shouye {
+            --shouye-status-inset: 12px;
+            --app-shell-statusbar-top: 12px !important;
         }
-        
-        .search-bar .search-icon {
-            width: 18px;
-            height: 18px;
-            flex-shrink: 0;
+        html.app-android-huawei-mate60.app-top-safe-shell body.page-shouye::before {
+            height: 12px !important;
         }
-        
-        .search-bar .search-icon svg {
-            width: 18px;
-            height: 18px;
+        html.app-android-huawei-mate60.app-top-safe-shell body.page-shouye .search-bar-wrapper {
+            padding-top: 12px !important;
         }
-        
-        .search-bar .search-text {
-            font-size: 13px;
-            color: rgba(255, 255, 255, 0.9);
-            letter-spacing: 0.5px;
+        html.app-android-huawei-mate60.app-top-safe-shell body.page-shouye .sy-apk-ahead {
+            margin-top: -8px !important;
         }
-        
-        .scan-btn {
-            width: 28px;
-            height: 28px;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .scan-btn svg {
-            width: 26px;
-            height: 26px;
-        }
-        
-        .shouye-header img {
-            width: 100%;
+
+        .sy-apk-ahead {
             display: block;
+            width: 100%;
+            height: auto;
+            margin-top: -1px; /* 盖住顶栏与 WebView 交界的 1px 白线 */
+            vertical-align: top;
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-drag: none;
         }
-        
-        .shouye-content {
-            background: #f6f7fb;
-            position: relative;
-            z-index: 5;
-            min-height: calc(100vh - 120px);
-            padding-bottom: var(--bottom-nav-clearance);
+
+        /* Android：根底勿露灰白，否则顶栏上沿会闪一条白影 */
+        html.app-android-client.app-top-safe-shell:has(body.page-shouye),
+        html.app-android-client.app-top-safe-shell body.page-shouye {
+            background-color: #f4f6f9;
+            background-image: var(--shouye-header-bg);
+            background-size: 100% auto;
+            background-repeat: no-repeat;
+            background-position: top center;
         }
-        
-        /* 通知条独立占位 + 下边距；横幅图裁掉顶部蓝条，避免与通知条叠层重合 */
-        .shouye-banner-wrap {
+
+        /* iOS：html 实底搜索蓝，避免 Cordova 黑框从系统栏透出；body 浅灰 + 顶蓝带 */
+        html.app-ios-client.app-top-safe-shell:has(body.page-shouye) {
+            background-color: #4f90f3 !important;
+            background-image: none !important;
+        }
+        html.app-ios-client.app-top-safe-shell body.page-shouye {
+            background-color: #f6f7fb;
+            background-image: linear-gradient(
+                rgb(var(--shouye-top-bar-rgb, 79, 144, 243)),
+                rgb(var(--shouye-top-bar-rgb, 79, 144, 243))
+            );
+            background-size: 100% var(--app-shell-statusbar-top, env(safe-area-inset-top, 48px));
+            background-repeat: no-repeat;
+            background-position: top center;
+        }
+
+        /*
+         * iPhone 14 Pro Max 首页：可下滑停住；只关顶部回弹。
+         * 勿给 body overflow:hidden，否则 iOS fixed 底栏会错位。
+         */
+        html.app-ios-iphone14promax,
+        html.app-ios-iphone14promax body.page-shouye,
+        html.app-ios-iphone14promax body.page-shouye .shouye-page {
+            overscroll-behavior: none;
+            overscroll-behavior-y: none;
+        }
+        /* html 必须是搜索蓝，不能用 #f6f7fb，否则刘海/状态栏会透出白顶 */
+        html.app-ios-iphone14promax.app-ios-client.app-top-safe-shell:has(body.page-shouye) {
+            background-color: #4f90f3 !important;
+            background-image: none !important;
+        }
+        html.app-ios-iphone14promax.app-ios-client.app-top-safe-shell body.page-shouye {
+            background-color: #f6f7fb !important;
+            background-image: linear-gradient(
+                rgb(var(--shouye-top-bar-rgb, 79, 144, 243)),
+                rgb(var(--shouye-top-bar-rgb, 79, 144, 243))
+            ) !important;
+            background-size: 100% 59px !important;
+            background-repeat: no-repeat !important;
+            background-position: top center !important;
+        }
+        html.app-ios-iphone14promax.app-ios-client.app-top-safe-shell body.page-shouye::before {
+            height: 59px !important;
+            background-color: #4f90f3 !important;
+            background-image: none !important;
+        }
+        html.app-ios-iphone14promax.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper {
+            padding-top: 59px !important;
+            background-color: #4f90f3 !important;
+        }
+
+        /* iPhone 14 Pro（393×852）：刘海跟搜索蓝，去掉 Cordova 顶黑框 */
+        html.app-ios-iphone14pro.app-ios-client.app-top-safe-shell:has(body.page-shouye) {
+            background-color: #4f90f3 !important;
+            background-image: none !important;
+        }
+        html.app-ios-iphone14pro.app-ios-client.app-top-safe-shell body.page-shouye {
+            background-color: #f6f7fb !important;
+            background-image: linear-gradient(
+                rgb(var(--shouye-top-bar-rgb, 79, 144, 243)),
+                rgb(var(--shouye-top-bar-rgb, 79, 144, 243))
+            ) !important;
+            background-size: 100% 59px !important;
+            background-repeat: no-repeat !important;
+            background-position: top center !important;
+        }
+        html.app-ios-iphone14pro.app-ios-client.app-top-safe-shell body.page-shouye::before {
+            height: 59px !important;
+            background-color: #4f90f3 !important;
+            background-image: none !important;
+        }
+        html.app-ios-iphone14pro.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper {
+            padding-top: 59px !important;
+            background-color: #4f90f3 !important;
+        }
+        /* iOS 26 + 393×852：系统已把网页放在灵动岛下，再垫 59px 会多出一整条蓝。ahead 自带约 15px 蓝，上移裁掉。 */
+        html.app-ios26-island-home.app-ios-liquid-glass.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper,
+        html.app-ios26-island-home.app-ios-iphone15.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper,
+        html.app-ios26-island-home.app-ios-iphone14pro.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper {
+            padding-top: 0 !important;
+        }
+        html.app-ios26-island-home.app-ios-liquid-glass body.page-shouye .sy-apk-ahead,
+        html.app-ios26-island-home.app-ios-iphone15 body.page-shouye .sy-apk-ahead,
+        html.app-ios26-island-home.app-ios-iphone14pro body.page-shouye .sy-apk-ahead {
+            margin-top: -14px !important;
+        }
+
+        .sy-ahead-hit {
+            position: absolute;
+            z-index: 2;
+            display: block;
+            background: transparent;
+            -webkit-tap-highlight-color: transparent;
+            border: none;
+            padding: 0;
+            margin: 0;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .search-bar-wrapper { position: fixed; }
+
+        .sy-hit-search {
+            top: calc(12 * var(--sy-rpx));
+            left: 0;
+            right: 40px;
+            bottom: 0;
+        }
+
+        .sy-hit-scan {
+            top: 13px;
+            right: 10px;
+            width: 30px;
+            height: 30px;
+        }
+
+        .shouye-page {
+            background: #ebf0f8;
+            padding-top: var(--shouye-fixed-top-h, 52px);
+            padding-bottom: var(--bottom-nav-clearance, 70px);
+        }
+
+        /* Android：状态栏多在 WebView 外，首页顶高按搜索条实高（约 52），勿预留 78 */
+        html.app-top-safe-shell.app-android-client {
+            --shouye-fixed-top-h: 52px;
+        }
+
+        /* 原版：整页 widthFix 切片 + 绝对热区 */
+        .sy-apk-stack {
             position: relative;
+            width: 100%;
+            /* 与切片底缘接近的浅灰蓝，避免块间露 #fff/#f4f6f9 白缝 */
+            background: #ebf0f8;
+            line-height: 0;
+            font-size: 0;
+        }
+
+        .sy-apk-slice {
+            display: block;
+            width: 100%;
+            height: auto;
+            margin: 0;
+            padding: 0;
+            border: 0;
+            vertical-align: top;
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        .sy-apk-block {
+            position: relative;
+            width: 100%;
+            line-height: 0;
+            margin: 0;
+            padding: 0;
+            border: 0;
+            /* 相邻切片叠 1px，消除 WebView 亚像素白线 / 色彩断层 */
+            margin-top: -1px;
+        }
+
+        .sy-apk-stack > .sy-apk-block:first-child {
             margin-top: 0;
         }
 
-        .shouye-banner-wrap .notice-bar {
+        .sy-apk-hit {
+            position: absolute;
+            z-index: 10;
+            display: block;
+            background: transparent;
+            -webkit-tap-highlight-color: transparent;
+            text-decoration: none;
+            border: none;
+            padding: 0;
+            margin: 0;
+            cursor: pointer;
+        }
+
+        /* 未填报：原 a3.png 热区 */
+        .sy-hit-policy {
+            top: calc(120 * var(--sy-rpx));
+            left: calc(500 * var(--sy-rpx));
+            width: calc(200 * var(--sy-rpx));
+            height: calc(70 * var(--sy-rpx));
+        }
+
+        .sy-hit-fill {
+            top: calc(320 * var(--sy-rpx));
+            left: calc(100 * var(--sy-rpx));
+            width: calc(550 * var(--sy-rpx));
+            height: calc(90 * var(--sy-rpx));
+        }
+
+        /* a1 通知条叠字；上移 2px 盖住与固定顶栏交界的亚像素白缝 */
+        .sy-apk-a1 {
             position: relative;
-            margin: 2px 12px 14px;
-            background: linear-gradient(135deg, #fff9e6 0%, #fff5d6 100%);
-            border-radius: 10px;
-            padding: 7px 12px 7px 10px;
+            background: #2c80f4;
+            margin-top: -2px;
+            z-index: 1;
+        }
+
+        .sy-apk-marquee {
+            position: absolute;
+            top: 25px;
+            left: 50px;
+            width: calc(100% - 80px);
+            margin-right: 30px;
+            color: #b27a39;
+            font-size: 16px;
+            line-height: 1.2;
+            overflow: hidden;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .sy-apk-marquee span {
+            display: inline-block;
+            padding-left: 100%;
+            animation: sy-marquee 18s linear infinite;
+        }
+        html.app-ios-iphone14promax .sy-apk-marquee {
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        /* Android / 鸿蒙：跑马灯改为静态，避免持续合成层占用 */
+        html.app-android-client .sy-apk-marquee span,
+        html.app-harmony-client .sy-apk-marquee span {
+            padding-left: 0;
+            animation: none;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        @keyframes sy-marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-100%); }
+        }
+
+        /* a32/a33 热区（相对卡片容器，rpx） */
+        .sy-hit-zonghe-tab {
+            top: 0;
+            right: calc(23 * var(--sy-rpx));
+            width: calc(250 * var(--sy-rpx));
+            height: calc(70 * var(--sy-rpx));
+        }
+
+        .sy-hit-record {
+            top: calc(266 * var(--sy-rpx));
+            right: calc(363 * var(--sy-rpx));
+            width: calc(330 * var(--sy-rpx));
+            height: calc(90 * var(--sy-rpx));
+        }
+
+        /* a3 专项附加扣除：真实 DOM + 动态条数（对齐官方 zdj-home-important） */
+        .sy-zxk-block {
+            background: #ebf0f8;
+            padding: 0 0 2px;
+            line-height: normal;
+            font-size: 14px;
+        }
+
+        #syZxkEmptyWrap[hidden],
+        .sy-zxk-block[hidden] {
+            display: none !important;
+        }
+
+        .sy-zxk-title {
+            padding: 8px 16px 4px;
+            font-size: 16px;
+            font-weight: 700;
+            color: #191e26;
+            letter-spacing: 0;
+            line-height: 1.3;
+        }
+
+        .sy-zxk-card {
+            position: relative;
+            width: 100%;
+            /* 有数据：白底卡 */
+            aspect-ratio: 1125 / 560;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        /* 无数据：官方蓝底空态 */
+        .sy-zxk-card.is-empty {
+            aspect-ratio: 1125 / 520;
+        }
+
+        .sy-zxk-card-bg {
+            position: absolute;
+            left: -1.5%;
+            top: -4%;
+            width: 103%;
+            height: 108%;
+            object-fit: fill;
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        .sy-zxk-card.is-empty .sy-zxk-card-bg {
+            left: -1%;
+            top: -2%;
+            width: 102%;
+            height: 104%;
+        }
+
+        .sy-zxk-card-head {
+            position: absolute;
+            z-index: 2;
+            top: 0;
+            left: 8%;
+            right: 5.5%;
+            height: 19.5%;
             display: flex;
             align-items: center;
-            z-index: 12;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-            overflow: hidden;
+            gap: 5px;
+            pointer-events: none;
         }
 
-        html.app-top-safe-shell body.page-shouye .shouye-banner-wrap .notice-bar {
-            position: relative !important;
-            top: auto !important;
-            left: auto !important;
-            right: auto !important;
-            margin: 2px 12px 14px !important;
+        .sy-zxk-card.is-empty .sy-zxk-card-head {
+            top: 0;
+            left: 9%;
+            right: 7%;
+            height: 20%;
         }
 
-        .shouye-banner-viewport {
-            position: relative;
-            overflow: hidden;
-            line-height: 0;
-            aspect-ratio: 1024 / 610;
-        }
-
-        .shouye-banner-viewport img {
-            width: 100%;
+        .sy-zxk-flame {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
             display: block;
-            vertical-align: top;
-            transform: translateY(var(--shouye-banner-shift, 0));
-            will-change: transform;
+            border-radius: 50%;
         }
-        
-        .notice-icon {
-            width: 21px;
-            height: 21px;
+
+        .sy-zxk-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #191e26;
+            line-height: 1.2;
+        }
+
+        .sy-zxk-card.is-empty .sy-zxk-name {
+            color: #fff;
+            font-weight: 700;
+        }
+
+        /* 叠在右上角蓝条正中，字号对齐官方浅色政策条 */
+        .sy-zxk-policy {
+            position: static;
+            z-index: 3;
+            margin-left: auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            align-self: stretch;
+            min-width: 78px;
+            height: auto;
+            padding: 0 12px;
+            color: #5a6573;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            line-height: 1;
+            pointer-events: auto;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .sy-zxk-card.is-empty .sy-zxk-policy {
+            margin-left: auto;
+        }
+
+        .sy-zxk-msg {
+            position: absolute;
+            z-index: 2;
+            left: 7%;
+            right: 7%;
+            top: 36%;
+            text-align: center;
+            color: #191919;
+            font-size: 17px;
+            line-height: 1.3;
+            font-weight: 700;
+            pointer-events: none;
+        }
+
+        .sy-zxk-card.is-empty .sy-zxk-msg {
+            color: #fff;
+            font-weight: 700;
+            font-size: 17px;
+            top: 40%;
+        }
+
+        .sy-zxk-num {
+            display: inline-block;
+            margin: 0 3px;
+            color: #ffb300;
+            font-size: 32px;
+            font-weight: 700;
+            line-height: 1;
+            vertical-align: -4px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /*
+         * 有数据：填报 / 我要查询。
+         * 斜切 PNG 原图 390×150 + 513×150，斜切重叠约 70px，合成比 833/150。
+         * 按这个比缩放并居中，盒子贴原图，圆头不会被拉成椭圆。
+         * 旧写法 left/right 4.5% + height 16%/36px + object-fit:fill 会把两瓣拉成长条。
+         */
+        .sy-zxk-btns {
+            --sy-zxk-btn-h: clamp(42px, calc(100vw * 150 / 1157), 52px);
+            position: absolute;
+            z-index: 3;
+            left: 50%;
+            right: auto;
+            bottom: 17%;
+            display: flex;
+            align-items: stretch;
+            justify-content: center;
+            width: calc(var(--sy-zxk-btn-h) * 833 / 150);
+            height: var(--sy-zxk-btn-h);
+            max-height: 52px;
+            transform: translateX(-50%);
+        }
+
+        .sy-zxk-card.is-empty .sy-zxk-btns {
+            display: none;
+        }
+
+        .sy-zxk-btn {
+            position: relative;
+            flex: 0 0 auto;
             display: flex;
             align-items: center;
             justify-content: center;
-            flex-shrink: 0;
-            margin-right: 8px;
-        }
-        
-        .notice-icon svg {
-            width: 16px;
-            height: 16px;
-        }
-        
-        .notice-content {
-            flex: 1;
-            overflow: hidden;
-            position: relative;
-            height: 20px;
-        }
-        
-        .notice-text {
-            white-space: nowrap;
-            font-size: 14px;
-            color: #d48806;
-            font-weight: 500;
-            display: inline-block;
-        }
-        
-        
-        .notice-slider {
-            flex: 1;
-            overflow: hidden;
-            position: relative;
-            height: 20px;
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+            min-width: 0;
+            height: 100%;
         }
 
-        .notice-row {
-            display: flex;
-            align-items: center;
+        .sy-zxk-btn img {
             position: absolute;
+            inset: 0;
             width: 100%;
             height: 100%;
-            top: 0;
-            left: 0;
-            transition: transform 0.4s ease;
+            object-fit: fill;
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-drag: none;
         }
 
-        .notice-row.current {
-            transform: translateY(0);
-        }
-
-        .notice-row.next-below {
-            transform: translateY(100%);
-        }
-
-        .notice-row.exit-up {
-            transform: translateY(-100%);
-        }
-
-        /* 重点服务推荐：整图 zdfwdb（含专项附加扣除 + 下方三卡，无横滑） */
-        .svc-cards-wrap {
+        .sy-zxk-btn span {
             position: relative;
-            display: block;
-            background: #f6f7fb;
+            z-index: 1;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
         }
-        .svc-cards-wrap > img {
+
+        .sy-zxk-btn-fill {
+            flex: 0 0 auto;
+            width: calc(390 / 833 * 100%);
+        }
+
+        .sy-zxk-btn-query {
+            flex: 0 0 auto;
+            width: calc(513 / 833 * 100%);
+            margin-left: calc(-70 / 833 * 100%);
+        }
+
+        /* 无数据：底部「超1亿人参与 | 我要填报」 */
+        .sy-zxk-empty-bar {
+            display: none;
+            position: absolute;
+            z-index: 3;
+            left: 8%;
+            right: 8%;
+            bottom: 14%;
+            height: 22%;
+            max-height: 46px;
+            min-height: 38px;
+            box-sizing: border-box;
+            align-items: center;
+            padding: 0 14px 0 10px;
+            border-radius: 999px;
+            background: linear-gradient(180deg, #ffffff 0%, #f3f7ff 100%);
+            box-shadow: 0 4px 12px rgba(40, 90, 180, 0.18);
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .sy-zxk-card.is-empty .sy-zxk-empty-bar {
+            display: flex;
+        }
+
+        .sy-zxk-avatars {
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+            margin-right: 6px;
+        }
+
+        .sy-zxk-avatars img {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #e8f0ff;
+            border: 1.5px solid #fff;
+            display: block;
+        }
+
+        .sy-zxk-avatars img + img {
+            margin-left: -8px;
+        }
+
+        .sy-zxk-social {
+            flex: 1 1 auto;
+            min-width: 0;
+            color: #5a6573;
+            font-size: 13px;
+            font-weight: 500;
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+
+        .sy-zxk-empty-divider {
+            flex-shrink: 0;
+            width: 1px;
+            height: 16px;
+            margin: 0 12px;
+            background: #d5deeb;
+            transform: skewX(-12deg);
+        }
+
+        .sy-zxk-empty-cta {
+            flex-shrink: 0;
+            color: #303640;
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+
+        /*
+         * 横向 a6：对齐正版「约 3 张 + 第四张露出」。
+         * 2.75 / 2.55 分栏会把整块撑得又高又占首屏，这里统一压矮。
+         */
+        .sy-apk-hscroll {
             width: 100%;
+            display: flex;
+            flex-wrap: nowrap;
+            align-items: stretch;
+            gap: 8px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            /* 与 a3 底 / 轮播顶同色，去掉「厚重白边」感 */
+            background: #ebf0f8;
+            padding: 2px 12px 4px;
+            margin-top: -1px;
+            box-sizing: border-box;
+            line-height: 0;
+        }
+
+        .sy-apk-hscroll::-webkit-scrollbar { display: none; }
+
+        .sy-apk-hitem {
+            flex: 0 0 max(100px, calc((100% - 16px) / 3.2));
+            width: max(100px, calc((100% - 16px) / 3.2));
+            aspect-ratio: 374 / 491;
+            display: flex;
+            align-items: stretch;
+            margin: 0;
+            padding: 0;
+            text-decoration: none;
+            background: transparent;
+            border: 0;
+            box-shadow: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html.app-android-client .sy-apk-hitem {
+            flex: 0 0 max(102px, calc((100% - 16px) / 3.15));
+            width: max(102px, calc((100% - 16px) / 3.15));
+        }
+
+        /*
+         * 荣耀 Magic5 Pro（PGT-AN20）：图标在 JPG 卡面上，必须把卡宽上限压住。
+         * 勿用 max(108px) 保底（显示放大时仍会很大）；勿套 Android 2.55。
+         */
+        html.app-android-honor-pgt-an20 .sy-apk-hitem,
+        html.app-android-honor-pgt-an20.app-android-client .sy-apk-hitem {
+            flex: 0 0 min(104px, calc((100% - 16px) / 3.2)) !important;
+            width: min(104px, calc((100% - 16px) / 3.2)) !important;
+            max-width: 104px !important;
+        }
+
+        html.app-android-honor-magic6pro .sy-apk-hitem,
+        html.app-android-honor-magic6pro.app-android-client .sy-apk-hitem {
+            flex: 0 0 max(108px, calc((100% - 16px) / 3.05)) !important;
+            width: max(108px, calc((100% - 16px) / 3.05)) !important;
+        }
+
+        /*
+         * 小米 13 / 13 Pro：同上，Android 2.55 分栏比正版大一圈；
+         * 压到约 3.1 分栏（首屏约 3 张 + 第四张露出），对齐正版比例。
+         */
+        html.app-android-xiaomi-13 .sy-apk-hitem,
+        html.app-android-xiaomi-13.app-android-client .sy-apk-hitem,
+        html.app-android-xiaomi-13pro .sy-apk-hitem,
+        html.app-android-xiaomi-13pro.app-android-client .sy-apk-hitem {
+            flex: 0 0 max(108px, calc((100% - 16px) / 3.1)) !important;
+            width: max(108px, calc((100% - 16px) / 3.1)) !important;
+            max-width: 118px !important;
+        }
+
+        /*
+         * 一加 Ace 6（PLQ110，364×801@3.5）：
+         * Android 通用 max(102px)/3.15 在窄屏上会把 a6 卡撑到约 110 宽，
+         * 首屏只剩两张半；压到约 3.25 分栏（3 张 + 第四张露出）。
+         * ColorOS 字体放大也会把专项附加文案撑爆，钉死 text-size-adjust。
+         */
+        html.app-android-oneplus-ace6 {
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+        }
+        html.app-android-oneplus-ace6 .sy-apk-hitem,
+        html.app-android-oneplus-ace6.app-android-client .sy-apk-hitem {
+            flex: 0 0 min(100px, calc((100% - 16px) / 3.25)) !important;
+            width: min(100px, calc((100% - 16px) / 3.25)) !important;
+            max-width: 100px !important;
+        }
+        html.app-android-oneplus-ace6 .sy-apk-marquee {
+            font-size: 14px !important;
+        }
+        html.app-android-oneplus-ace6 .sy-zxk-title {
+            font-size: 15px !important;
+        }
+        html.app-android-oneplus-ace6 .sy-zxk-name {
+            font-size: 15px !important;
+        }
+        html.app-android-oneplus-ace6 .sy-zxk-msg,
+        html.app-android-oneplus-ace6 .sy-zxk-card.is-empty .sy-zxk-msg {
+            font-size: 16px !important;
+        }
+        html.app-android-oneplus-ace6 .sy-zxk-num {
+            font-size: 28px !important;
+        }
+        html.app-android-oneplus-ace6 .sy-zxk-btn span,
+        html.app-android-oneplus-ace6 .sy-zxk-empty-cta {
+            font-size: 13px !important;
+        }
+
+        html.app-android-honor-pgt-an20 .sy-zxk-empty-bar,
+        html.app-android-honor-magic6pro .sy-zxk-empty-bar {
+            height: 18% !important;
+            max-height: 36px !important;
+            min-height: 32px !important;
+            padding: 0 10px 0 8px !important;
+        }
+        html.app-android-honor-pgt-an20 .sy-zxk-avatars img,
+        html.app-android-honor-magic6pro .sy-zxk-avatars img {
+            width: 22px !important;
+            height: 22px !important;
+        }
+        html.app-android-honor-pgt-an20 .sy-zxk-empty-cta,
+        html.app-android-honor-magic6pro .sy-zxk-empty-cta {
+            font-size: 13px !important;
+        }
+        html.app-android-honor-pgt-an20 .sy-zxk-btn span,
+        html.app-android-honor-magic6pro .sy-zxk-btn span {
+            font-size: 13px !important;
+        }
+
+        /*
+         * iPhone 14 Pro Max（430×932）：PingFang 字重偏轻、中文视觉中线偏上。
+         * 专项附加扣除白卡单独钉死，避免通用样式在这台机上看起来没改。
+         */
+        html.app-ios-iphone14promax .sy-zxk-card-head {
+            top: 0 !important;
+            left: 8% !important;
+            right: 0 !important;
+            height: 17% !important;
+            align-items: center !important;
+        }
+        html.app-ios-iphone14promax .sy-zxk-name {
+            font-size: 16px !important;
+            font-weight: 600 !important;
+            line-height: 1 !important;
+        }
+        /* 右上角蓝标签：白色加粗，垂直居中 */
+        html.app-ios-iphone14promax .sy-zxk-policy {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            align-self: stretch !important;
+            margin-left: auto !important;
+            width: 27% !important;
+            min-width: 0 !important;
+            height: auto !important;
+            padding: 0 !important;
+            color: #ffffff !important;
+            -webkit-text-fill-color: #ffffff !important;
+            font-size: 14px !important;
+            font-weight: 700 !important;
+            line-height: 1 !important;
+            letter-spacing: 0 !important;
+            -webkit-text-size-adjust: 100% !important;
+            transform: none !important;
+        }
+        html.app-ios-iphone14promax .sy-zxk-msg {
+            top: 35% !important;
+            color: #111111 !important;
+            font-size: 17px !important;
+            font-weight: 600 !important;
+            font-family: "PingFangSC-Semibold", "PingFang SC", -apple-system, sans-serif !important;
+            -webkit-text-size-adjust: 100% !important;
+        }
+        html.app-ios-iphone14promax .sy-zxk-num {
+            font-size: 34px !important;
+            font-family: "PingFangSC-Semibold", "PingFang SC", -apple-system, sans-serif !important;
+        }
+        /* 14 Pro Max：走通用原比例，勿再加宽压扁 */
+        html.app-ios-iphone14promax .sy-zxk-btns {
+            left: 50% !important;
+            right: auto !important;
+            transform: translateX(-50%) !important;
+        }
+        html.app-ios-iphone14promax .sy-zxk-btn {
+            background: none !important;
+        }
+        html.app-ios-iphone14promax .sy-zxk-btn img {
+            display: block !important;
+            object-fit: fill !important;
+        }
+        html.app-ios-iphone14promax .sy-zxk-btn-fill,
+        html.app-ios-iphone14promax .sy-zxk-btn-query {
+            background: none !important;
+            border-radius: 0 !important;
+        }
+        html.app-ios-iphone14promax .sy-zxk-btn span {
+            font-size: 15px !important;
+            font-weight: 600 !important;
+        }
+
+        @media (min-width: 520px) {
+            .sy-apk-hitem,
+            html.app-android-client .sy-apk-hitem {
+                flex: 0 0 calc((min(100%, 430px) - 16px) / 3.2);
+                width: calc((min(100%, 430px) - 16px) / 3.2);
+            }
+            html.app-android-honor-pgt-an20 .sy-apk-hitem,
+            html.app-android-honor-pgt-an20.app-android-client .sy-apk-hitem {
+                flex: 0 0 min(104px, calc((100% - 16px) / 3.2)) !important;
+                width: min(104px, calc((100% - 16px) / 3.2)) !important;
+                max-width: 104px !important;
+            }
+            html.app-android-honor-magic6pro .sy-apk-hitem,
+            html.app-android-honor-magic6pro.app-android-client .sy-apk-hitem {
+                flex: 0 0 max(108px, calc((min(100%, 430px) - 16px) / 3.05)) !important;
+                width: max(108px, calc((min(100%, 430px) - 16px) / 3.05)) !important;
+            }
+            html.app-android-xiaomi-13 .sy-apk-hitem,
+            html.app-android-xiaomi-13.app-android-client .sy-apk-hitem,
+            html.app-android-xiaomi-13pro .sy-apk-hitem,
+            html.app-android-xiaomi-13pro.app-android-client .sy-apk-hitem {
+                flex: 0 0 max(108px, calc((min(100%, 430px) - 16px) / 3.1)) !important;
+                width: max(108px, calc((min(100%, 430px) - 16px) / 3.1)) !important;
+                max-width: 118px !important;
+            }
+            html.app-android-oneplus-ace6 .sy-apk-hitem,
+            html.app-android-oneplus-ace6.app-android-client .sy-apk-hitem {
+                flex: 0 0 min(100px, calc((100% - 16px) / 3.25)) !important;
+                width: min(100px, calc((100% - 16px) / 3.25)) !important;
+                max-width: 100px !important;
+            }
+        }
+
+        .sy-apk-hitem img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            /* 四张 a6 原图同高不同宽，contain 会在底部留空导致卡底不齐 */
+            object-fit: fill;
+            object-position: center center;
+            /* 原版卡图自带圆角，勿再叠一层圆角+底色造成厚白边 */
+            border-radius: 0;
+            border: 0;
+            box-shadow: none;
+            background: transparent;
+        }
+
+        /* 自定义重点服务：无 a6 切片时用同比例白卡，尺寸仍走 .sy-apk-hitem */
+        .sy-hcard-link {
+            background: transparent;
+        }
+        .sy-hcard {
+            width: 100%;
+            height: 100%;
+            background: #fff;
+            border-radius: 10px;
+            padding: 10px 8px 0;
+            box-sizing: border-box;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 1px 4px rgba(25, 30, 38, 0.06);
+            line-height: normal;
+        }
+        .sy-hcard-icon {
+            width: 28px;
+            height: 28px;
+            flex-shrink: 0;
+            display: block;
+        }
+        .sy-hcard-icon img.hs-icon,
+        .sy-hcard-icon svg { display: block; width: 28px; height: 28px; }
+        .sy-hcard-title {
+            margin-top: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #191e26;
+            line-height: 1.25;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .sy-hcard-desc {
+            margin-top: 4px;
+            font-size: 10px;
+            color: #8b93a0;
+            font-style: normal;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .sy-hcard-btn {
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 5px 10px;
+            border-radius: 10px 0 10px 0;
+        }
+
+        /* 轮播 */
+        .sy-apk-swiper-wrap {
+            width: 93%;
+            margin: 2px auto 8px;
+            position: relative;
+            border-radius: 15px;
+            overflow: hidden;
+            background: #ebf0f8;
+            line-height: 0;
+            border: 0;
+            box-shadow: none;
+        }
+
+        .sy-apk-swiper-track {
+            display: flex;
+            transition: transform 0.35s ease;
+            will-change: transform;
+        }
+
+        .sy-apk-swiper-track img {
+            flex: 0 0 100%;
+            width: 100%;
+            height: auto;
             display: block;
             vertical-align: top;
         }
-        .svc-hot {
-            position: absolute;
-            z-index: 4;
-            -webkit-tap-highlight-color: transparent;
-            outline: none;
-            touch-action: manipulation;
-            background: transparent;
-            top: 52%;
-            bottom: 2%;
-        }
-        .svc-hot-left { left: 0; width: 33.33%; }
-        .svc-hot-mid { left: 33.33%; width: 33.33%; }
-        .svc-hot-right { left: 66.66%; width: 33.34%; }
-        /* 重点服务推荐 · 专项附加扣除卡片中部文案：拦截点击 */
-        .svc-zxk-banner-noop {
-            position: absolute;
-            z-index: 5;
-            left: 12%;
-            width: 76%;
-            top: 21%;
-            height: 14%;
-            -webkit-tap-highlight-color: transparent;
-            outline: none;
-            touch-action: manipulation;
-            background: transparent;
-            cursor: default;
-        }
-        /* 专项附加扣除横幅 ·「相关政策」→ 政策介绍页 */
-        .svc-zxk-banner-policy {
-            position: absolute;
-            z-index: 6;
-            right: 0;
-            width: 38%;
-            top: 12%;
-            height: 9%;
-            -webkit-tap-highlight-color: transparent;
-            outline: none;
-            touch-action: manipulation;
-            background: transparent;
-        }
-        /* 专项附加扣除横幅 ·「填报」→ 专项附加扣除页 */
-        .svc-zxk-banner-fill {
-            position: absolute;
-            z-index: 6;
-            left: 5%;
-            width: 43%;
-            top: 40%;
-            height: 12%;
-            -webkit-tap-highlight-color: transparent;
-            outline: none;
-            touch-action: manipulation;
-            background: transparent;
-        }
-        /* 专项附加扣除横幅 ·「我要查询」→ 专项附加扣除页 */
-        .svc-zxk-banner-query {
-            position: absolute;
-            z-index: 6;
-            left: 52%;
-            width: 43%;
-            top: 40%;
-            height: 12%;
-            -webkit-tap-highlight-color: transparent;
-            outline: none;
-            touch-action: manipulation;
-            background: transparent;
-        }
 
-        /* 轮播图内「重点服务推荐」三卡热区（相对 lb 图比例，与常见稿式对齐；若与设计稿有偏差可微调 top/height） */
-        .shouye-lb-wrap {
-            position: relative;
-            display: block;
-            line-height: 0;
-            background: #fff;
-        }
-        .shouye-lb-wrap > img {
-            width: 100%;
-            display: block;
-        }
-        .shouye-news-more {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 2px;
-            padding: 10px 16px 14px;
-            font-size: 14px;
-            color: #999;
-            text-decoration: none;
-            background: #fff;
-            line-height: 1.4;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .shouye-news-more:active {
-            opacity: 0.72;
-        }
-        .shouye-news-more-chevron {
-            font-size: 13px;
-            color: #bbb;
-            transform: translateY(-0.5px);
-        }
-        .lb-svc-hot {
+        .sy-apk-swiper-dots {
             position: absolute;
-            z-index: 6;
             left: 0;
-            width: 33.33%;
-            top: 8%;
-            height: 42%;
-            -webkit-tap-highlight-color: transparent;
-            outline: none;
-            touch-action: manipulation;
-            background: transparent;
+            right: 0;
+            bottom: 8px;
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            pointer-events: none;
+            z-index: 2;
+            line-height: normal;
         }
-        .lb-svc-hot-mid { left: 33.33%; }
-        .lb-svc-hot-right { left: 66.66%; width: 33.34%; }
 
-        /* 首页横幅：「查看记录」「进入专题页」点击热区 */
-        .sy-banner-record-hit {
-            position: absolute;
-            left: 10%;
-            width: 38%;
-            top: 54%;
-            height: 18%;
-            z-index: 10;
-            -webkit-tap-highlight-color: transparent;
-            outline: none;
-            touch-action: manipulation;
-            background: transparent;
+        .sy-apk-swiper-dots i {
+            width: 6px;
+            height: 6px;
+            border-radius: 1px;
+            background: rgba(0, 0, 0, 0.2);
         }
-        .sy-banner-zonghe-hit {
-            position: absolute;
-            left: 72%;
-            width: 26%;
-            top: 6%;
-            height: 14%;
-            z-index: 10;
-            -webkit-tap-highlight-color: transparent;
-            outline: none;
-            touch-action: manipulation;
-            background: transparent;
+
+        .sy-apk-swiper-dots i.is-on {
+            width: 12px;
+            background: #2c80f4;
+        }
+
+        .sy-hit-more {
+            left: 0;
+            right: 0;
+            top: 0;
+            height: calc(80 * var(--sy-rpx));
         }
 
         .guest-experience-bar {
@@ -429,10 +1473,17 @@
             align-items: center;
             justify-content: space-between;
             gap: 12px;
+            line-height: normal;
         }
         body.is-landing-guest .guest-experience-bar { display: flex; }
         .guest-experience-copy strong { display: block; font-size: 15px; margin-bottom: 3px; }
         .guest-experience-copy span { display: block; font-size: 12px; line-height: 1.45; color: #52749f; }
+        .guest-experience-actions {
+            display: flex;
+            flex-shrink: 0;
+            gap: 8px;
+            align-items: center;
+        }
         .guest-experience-action {
             flex-shrink: 0;
             border: 0;
@@ -442,6 +1493,14 @@
             color: #fff;
             font-size: 13px;
             font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            line-height: 1.2;
+        }
+        .guest-experience-action.is-secondary {
+            background: #fff;
+            color: #1e6fff;
+            border: 1px solid #9ec0f5;
         }
         .guest-gate-mask {
             display: none;
@@ -452,6 +1511,7 @@
             align-items: center;
             justify-content: center;
             background: rgba(15, 23, 42, .5);
+            line-height: normal;
         }
         .guest-gate-mask.is-open { display: flex; }
         .guest-gate-panel {
@@ -480,156 +1540,134 @@
         .guest-gate-download { color: #fff; background: #1e6fff; }
         .guest-gate-register { color: #1e6fff; background: #edf4ff; }
         .guest-gate-cancel { color: #7b8798; background: #f5f6f8; }
-
-        </style>
-    <link rel="stylesheet" href="css/nav.css?v=20260723-nav-lower">
-    <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
+    </style>
+    <link rel="stylesheet" href="css/nav.css?v=20260910-ios-14pm-fb1">
+    <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
+    <script src="/js/home-services.js?v=20260908-apk-icons" defer></script>
 </head>
 <body class="page-shouye tax-app-shell has-bottom-nav">
-    <!-- 固定搜索框 -->
-    <div class="search-bar-wrapper">
-        <div class="search-bar">
-            <div class="search-icon">
-                <svg viewBox="0 0 24 24" fill="none">
-                    <circle cx="11" cy="11" r="7" stroke="rgba(255,255,255,0.9)" stroke-width="2"/>
-                    <path d="M21 21l-4.35-4.35" stroke="rgba(255,255,255,0.9)" stroke-width="2" stroke-linecap="round"/>
-                </svg>
-            </div>
-            <span class="search-text">请输入想搜索的功能/服务</span>
-        </div>
-        <div class="scan-btn">
-            <svg viewBox="0 0 24 24" fill="none">
-                <path d="M3 7V5a2 2 0 012-2h2" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M17 3h2a2 2 0 012 2v2" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M21 17v2a2 2 0 01-2 2h-2" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M7 21H5a2 2 0 01-2-2v-2" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <line x1="9" y1="12" x2="15" y2="12" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-        </div>
+    <!-- 原版 ahead：搜索条 + 扫码（固定顶栏） -->
+    <div class="search-bar-wrapper" id="syAheadWrap">
+        <img class="sy-apk-ahead" src="/img/home/ahead.png?v=20260916-shouye-jank" alt="搜索" width="1284" height="167" decoding="async" fetchpriority="high">
+        <a href="sousuo.html" class="sy-ahead-hit sy-hit-search" aria-label="搜索功能与服务"></a>
+        <button type="button" class="sy-ahead-hit sy-hit-scan" id="syScanBtn" aria-label="扫一扫"></button>
     </div>
-    
+
     <div class="shouye-page">
-        <div class="shouye-header">
-            <div class="shouye-banner-wrap">
-                <div class="notice-bar">
-                    <div class="notice-icon" style="flex-shrink:0;"><img src="ld.png" style="width:21px;object-fit:contain;"></div>
-                    <div class="notice-slider">
-                        <div id="noticeRow0" class="notice-row current">
-                            <span class="notice-text" id="noticeText0">国家税务总局令第57号：《个人所得税综合所得汇算清缴管理办法》</span>
-                        </div>
-                        <div id="noticeRow1" class="notice-row next-below">
-                            <span class="notice-text" id="noticeText1">关于近期虚假退税宣传的温馨提示</span>
-                        </div>
+        <div class="sy-apk-stack" id="syApkStack">
+            <!-- a1 通知条 -->
+            <div class="sy-apk-block sy-apk-a1">
+                <img class="sy-apk-slice" src="/img/home/a1.png?v=20260811-header-blue" alt="" width="1284" height="223" decoding="async" fetchpriority="high">
+                <div class="sy-apk-marquee" aria-hidden="true">
+                    <span>国家税务总局令第57号:《个人所得税综合所得汇算清缴管理办法》</span>
+                </div>
+            </div>
+
+            <!-- 汇算卡片：未登录 a32 / 已登录 a33（解析时按 token 定唯一 src，避免双载） -->
+            <div class="sy-apk-block" id="syDeclareBlock">
+                <a href="zonghe.html" id="syDeclareImgLink" aria-label="综合所得年度汇算">
+                    <img
+                        id="syDeclareImg"
+                        class="sy-apk-slice"
+                        src="/img/home/a32.png?v=20260901-home-compress"
+                        alt="综合所得年度汇算"
+                        width="1179"
+                        height="610"
+                        decoding="async"
+                        fetchpriority="high"
+                        style="pointer-events:auto"
+                    >
+                    <script>
+                    (function () {
+                      var img = document.getElementById('syDeclareImg');
+                      if (!img) return;
+                      var logged = false;
+                      try { logged = !!String(localStorage.getItem('token') || '').trim(); } catch (e0) {}
+                      img.src = '/img/home/' + (logged ? 'a33' : 'a32') + '.png?v=20260901-home-compress';
+                      img.height = logged ? 613 : 610;
+                    })();
+                    </script>
+                </a>
+                <a href="zonghe.html" class="sy-apk-hit sy-hit-zonghe-tab" aria-label="进入专题页"></a>
+                <a href="shenbao_jilu.html" class="sy-apk-hit sy-hit-record" id="syRecordHit" aria-label="查看记录"></a>
+            </div>
+
+            <!-- 未填报：原 a3 切片；已填报：动态白卡（a3 常在首屏下，lazy） -->
+            <div class="sy-apk-block" id="syZxkEmptyWrap">
+                <img class="sy-apk-slice" src="/img/home/a3.png?v=20260901-home-compress" alt="重点服务推荐" width="1284" height="805" loading="lazy" decoding="async">
+                <a href="zxk_zhengce.html" class="sy-apk-hit sy-hit-policy" aria-label="相关政策"></a>
+                <a href="zxkouchu.html" class="sy-apk-hit sy-hit-fill" aria-label="我要填报"></a>
+            </div>
+            <div class="sy-apk-block sy-zxk-block" id="syZxkBlock" hidden>
+                <div class="sy-zxk-title">重点服务推荐</div>
+                <div class="sy-zxk-card" id="syZxkCard">
+                    <img
+                        class="sy-zxk-card-bg"
+                        id="syZxkCardBg"
+                        src="/img/home/apk-important-has.png?v=20260812-zxk3"
+                        alt=""
+                        width="1125"
+                        height="600"
+                    >
+                    <div class="sy-zxk-card-head">
+                        <img class="sy-zxk-flame" src="/img/home/apk-zxk-flame.png?v=20260812-zxk3" alt="" width="96" height="96">
+                        <span class="sy-zxk-name">专项附加扣除</span>
+                        <a href="zxk_zhengce.html" class="sy-zxk-policy" aria-label="相关政策">相关政策 &gt;</a>
+                    </div>
+                    <div class="sy-zxk-msg" id="syZxkMsg">您已填报 <span class="sy-zxk-num">0</span> 项专项附加扣除</div>
+                    <div class="sy-zxk-btns" id="syZxkBtns">
+                        <a href="zxkouchu.html" class="sy-zxk-btn sy-zxk-btn-fill" aria-label="填报">
+                            <img src="/img/home/apk-btn-left.png?v=20260812-zxk3" alt="" width="390" height="150">
+                            <span>填报</span>
+                        </a>
+                        <a href="zxkouchu.html#records" class="sy-zxk-btn sy-zxk-btn-query" aria-label="我要查询">
+                            <img src="/img/home/apk-btn-right.png?v=20260812-zxk3" alt="" width="513" height="150">
+                            <span>我要查询</span>
+                        </a>
                     </div>
                 </div>
-                <script>
-                (function() {
-                    var row0 = document.getElementById('noticeRow0');
-                    var row1 = document.getElementById('noticeRow1');
-                    var text0 = document.getElementById('noticeText0');
-                    var rafId = null;
+            </div>
 
-                    function startScroll() {
-                        row0.style.transition = 'none';
-                        row1.style.transition = 'none';
-                        row0.className = 'notice-row current';
-                        row1.className = 'notice-row next-below';
-                        text0.style.transform = 'translateX(0)';
-
-                        requestAnimationFrame(function() {
-                            // notice-slider是text0的祖父元素（text0 -> notice-row -> notice-slider）
-                            var slider = text0.parentElement.parentElement;
-                            slider.style.overflow = 'visible';
-                            var containerLeft = slider.getBoundingClientRect().left;
-                            var initialRight = text0.getBoundingClientRect().right;
-                            slider.style.overflow = '';
-                            // 文字右边缘到容器左边缘的距离 = 文字真实宽度
-                            var total = initialRight - containerLeft;
-                            var speed = 80; // px/s
-                            var pos = 0;
-                            var last = null;
-
-                            function step(ts) {
-                                if (!last) last = ts;
-                                var delta = (ts - last) / 1000;
-                                last = ts;
-                                pos += speed * delta;
-                                text0.style.transform = 'translateX(-' + pos + 'px)';
-                                if (pos < total) {
-                                    rafId = requestAnimationFrame(step);
-                                } else {
-                                    slideUp();
-                                }
-                            }
-                            rafId = requestAnimationFrame(step);
-                        });
-                    }
-
-                    function slideUp() {
-                        // 两行同时向上滑动
-                        row0.style.transition = 'transform 0.4s ease';
-                        row1.style.transition = 'transform 0.4s ease';
-                        row0.className = 'notice-row exit-up';
-                        row1.className = 'notice-row current';
-                        // 第二条静止1秒后滑回
-                        setTimeout(function() {
-                            slideDown();
-                        }, 1000);
-                    }
-
-                    function slideDown() {
-                        // 第一条从下方进入，第二条滑出上方
-                        row0.style.transition = 'none';
-                        row0.className = 'notice-row next-below';
-                        requestAnimationFrame(function() {
-                            requestAnimationFrame(function() {
-                                row0.style.transition = 'transform 0.4s ease';
-                                row1.style.transition = 'transform 0.4s ease';
-                                row0.className = 'notice-row current';
-                                row1.className = 'notice-row exit-up';
-                                setTimeout(function() {
-                                    // 回到第一条，暂停500ms后滚动
-                                    setTimeout(startScroll, 500);
-                                }, 400);
-                            });
-                        });
-                    }
-
-                    // 初始暂停500ms后开始滚动
-                    setTimeout(startScroll, 500);
-                })();
-                </script>
-                <div class="shouye-banner-viewport" id="shouyeBannerViewport">
-                    <img id="assetShouyeBanner" src="sydb-v2.jpg?v=11" alt="首页">
-                    <a href="shenbao_jilu.html" class="sy-banner-record-hit" aria-label="查看记录"></a>
-                    <a href="zonghe.html" class="sy-banner-zonghe-hit" aria-label="进入专题页"></a>
+            <!-- 游客条插在切片流外，避免撑开 a3/a6 之间出现白带断层 -->
+            <div class="guest-experience-bar" id="guestExperienceBar">
+                <div class="guest-experience-copy">
+                    <strong id="guestExperienceTitle">游客体验模式</strong>
+                    <span id="guestExperienceDesc">先浏览产品首页，完整明细与证明需下载或注册</span>
+                </div>
+                <div class="guest-experience-actions">
+                    <a class="guest-experience-action is-secondary" href="register.html?from=install_guide&landing_ab=c" id="guestExperienceRegister">立即注册</a>
+                    <button type="button" class="guest-experience-action" id="guestExperienceDownload">下载 App</button>
                 </div>
             </div>
-            <div class="svc-cards-wrap">
-                <img id="assetShouyeZdfwdb" src="zdfwdb.jpg?v=8" alt="重点服务推荐" loading="lazy" decoding="async">
-                <span class="svc-zxk-banner-noop" role="presentation" aria-hidden="true"></span>
-                <a href="zxk_zhengce.html" class="svc-zxk-banner-policy" aria-label="相关政策"></a>
-                <a href="zxkouchu.html" class="svc-zxk-banner-fill" aria-label="填报"></a>
-                <a href="zxkouchu.html" class="svc-zxk-banner-query" aria-label="我要查询"></a>
-                <a href="zonghe.html" class="svc-hot svc-hot-left" aria-label="综合所得年度汇算"></a>
-                <a href="shuiming.html?reset=1" class="svc-hot svc-hot-mid" aria-label="收入纳税明细"></a>
-                <a href="najilu.html" class="svc-hot svc-hot-right" aria-label="纳税记录开具"></a>
+
+            <!-- a6 横向入口 -->
+            <div class="sy-apk-hscroll" id="syHScroll">
+                <a class="sy-apk-hitem" href="zonghe.html" aria-label="综合所得年度汇算"><img src="/img/home/a6_01.jpg?v=20260905-zdfw" alt="" loading="lazy" fetchpriority="low" decoding="async"></a>
+                <a class="sy-apk-hitem" href="shuiming.html?reset=1" aria-label="收入纳税明细"><img src="/img/home/a6_02.jpg?v=20260905-zdfw" alt="" loading="lazy" fetchpriority="low" decoding="async"></a>
+                <a class="sy-apk-hitem" href="najilu.html" aria-label="纳税记录开具"><img src="/img/home/a6_03.jpg?v=20260905-zdfw" alt="" loading="lazy" fetchpriority="low" decoding="async"></a>
+                <a class="sy-apk-hitem" href="zhongdian_fuwu.html" aria-label="更多功能"><img src="/img/home/a6_04.jpg?v=20260905-zdfw" alt="" loading="lazy" fetchpriority="low" decoding="async"></a>
             </div>
-        </div>
-        <div class="guest-experience-bar" id="guestExperienceBar">
-            <div class="guest-experience-copy">
-                <strong>游客体验模式</strong>
-                <span>先浏览产品首页，完整明细与证明需下载或注册</span>
+
+            <!-- 轮播 a4_*：整块常在首屏下，全部 lazy -->
+            <div class="sy-apk-swiper-wrap" id="sySwiper" aria-label="首页轮播">
+                <div class="sy-apk-swiper-track" id="sySwiperTrack">
+                    <img src="/img/home/a4_1_2.png?v=20260901-home-compress" alt="" loading="lazy" decoding="async">
+                    <img src="/img/home/a4_4_2.png?v=20260901-home-compress" alt="" loading="lazy" decoding="async">
+                    <img src="/img/home/a4_2.png?v=20260901-home-compress" alt="" loading="lazy" decoding="async">
+                    <img src="/img/home/a4_3.png?v=20260901-home-compress" alt="" loading="lazy" decoding="async">
+                    <img src="/img/home/a4_4.png?v=20260901-home-compress" alt="" loading="lazy" decoding="async">
+                </div>
+                <div class="sy-apk-swiper-dots" id="sySwiperDots" aria-hidden="true"></div>
             </div>
-            <button type="button" class="guest-experience-action" id="guestExperienceDownload">下载 App</button>
-        </div>
-        <div class="shouye-content">
-            <div class="shouye-lb-wrap">
-                <img id="assetShouyeLb" src="lb.jpg?v=2" alt="轮播" loading="lazy" decoding="async">
-                <a href="help_center.html" class="shouye-news-more" aria-label="查看更多资讯">
-                    查看更多
-                    <span class="shouye-news-more-chevron" aria-hidden="true">&gt;</span>
-                </a>
+
+            <!-- a4 / a5 资讯与查看更多（首屏以下，lazy） -->
+            <div class="sy-apk-block">
+                <img class="sy-apk-slice" src="/img/home/a4.png?v=20260901-home-compress" alt="资讯" width="1284" height="1814" loading="lazy" decoding="async">
+                <a href="zixun.html" class="sy-apk-hit sy-hit-news" style="inset:0;z-index:5" aria-label="查看资讯"></a>
+            </div>
+            <div class="sy-apk-block">
+                <img class="sy-apk-slice" src="/img/home/a5.png?v=20260901-home-compress" alt="" width="1284" height="678" loading="lazy" decoding="async">
+                <a href="jingshi.html" class="sy-apk-hit sy-hit-more" aria-label="查看更多"></a>
             </div>
         </div>
     </div>
@@ -645,303 +1683,493 @@
             </div>
         </div>
     </div>
-    
-    <!-- 底部导航 -->
+
     <div class="bottom-nav">
         <a href="shouye.html" class="nav-item active" data-icon="sy">
-            <div class="nav-icon">
-                <img src="caidan/sy1.png" width="19" height="19" alt="首页">
-            </div>
+            <div class="nav-icon"><img src="caidan/sy1.png" width="19" height="19" alt="首页"></div>
             <span class="nav-text">首页</span>
         </a>
         <a href="daiban.html" class="nav-item" data-icon="db">
-            <div class="nav-icon">
-                <img src="caidan/db2.png" width="19" height="19" alt="待办">
-            </div>
+            <div class="nav-icon"><img src="caidan/db2.png" width="19" height="19" alt="待办"></div>
             <span class="nav-text">待办</span>
         </a>
         <a href="bancha.html" class="nav-item" data-icon="bc">
-            <div class="nav-icon">
-                <img src="caidan/bc2.png" width="19" height="19" alt="办查">
-            </div>
+            <div class="nav-icon"><img src="caidan/bc2.png" width="19" height="19" alt="办查"></div>
             <span class="nav-text">办&查</span>
         </a>
         <a href="message.html" class="nav-item" data-icon="xx">
-            <div class="nav-icon">
-                <img src="caidan/xx2.png" width="19" height="19" alt="消息">
-            </div>
+            <div class="nav-icon"><img src="caidan/xx2.png" width="19" height="19" alt="消息"></div>
             <span class="nav-text">消息</span>
         </a>
         <a href="mine.html" class="nav-item" data-icon="w">
-            <div class="nav-icon">
-                <img src="caidan/w2.png" width="19" height="19" alt="我的">
-            </div>
+            <div class="nav-icon"><img src="caidan/w2.png" width="19" height="19" alt="我的"></div>
             <span class="nav-text">我的</span>
         </a>
     </div>
+
     <script>
-        // 顶栏主题色（蓝/金）与内容区顶距：横幅在搜索条下方，顶栏始终实色蓝
-        var searchWrapper = document.querySelector('.search-bar-wrapper');
-
-        function shouyeTopBarRgb() {
-            var raw = getComputedStyle(document.documentElement).getPropertyValue('--shouye-top-bar-rgb').trim();
-            return raw || '44, 128, 244';
-        }
-
-        function updateSearchBarTopBg() {
-            if (!searchWrapper) return;
-            searchWrapper.style.background = 'rgb(' + shouyeTopBarRgb() + ')';
-        }
-
-        window.addEventListener('mineUiConfig', function () {
-            updateSearchBarTopBg();
-            syncShouyeBannerCrop();
-        });
-        window.syncShouyeBannerCrop = syncShouyeBannerCrop;
-        updateSearchBarTopBg();
-
-        /** Web / Android / iOS：测量固定搜索条高度，内容区顶距与其一致，消除顶栏下灰白条 */
-        /** 新横幅仅为卡片图，无需裁掉顶部蓝条 */
-        var SHOUYE_BANNER_WHITE_RATIO = 0;
-
-        function syncShouyeBannerCrop() {
-            var img = document.getElementById('assetShouyeBanner');
-            var viewport = document.getElementById('shouyeBannerViewport');
-            if (!img || !viewport) {
-                return;
-            }
-            function apply() {
-                var fullH = img.offsetHeight || img.getBoundingClientRect().height || 0;
-                if (fullH <= 0) {
-                    return;
-                }
-                var shift = Math.round(fullH * SHOUYE_BANNER_WHITE_RATIO);
-                var visibleH = Math.max(0, fullH - shift);
-                img.style.transform = 'translateY(-' + shift + 'px)';
-                if (shift > 0) {
-                    viewport.style.height = visibleH + 'px';
-                } else {
-                    viewport.style.height = '';
-                }
-                document.documentElement.style.setProperty('--shouye-banner-shift', (-shift) + 'px');
-            }
-            if (img.complete) {
-                apply();
-            } else {
-                img.addEventListener('load', apply, { once: true });
-            }
-            requestAnimationFrame(function () {
-                apply();
-                requestAnimationFrame(apply);
-            });
-        }
-
-        function syncShouyeTopPadding() {
+        (function () {
+            var ASSET_V = '?v=20260901-home-compress';
+            var searchWrapper = document.getElementById('syAheadWrap') || document.querySelector('.search-bar-wrapper');
             var page = document.querySelector('.shouye-page');
-            if (!searchWrapper || !page) {
-                return;
-            }
-            var html = document.documentElement;
-            function apply() {
-                if (html.classList.contains('app-cordova-huawei-pura70')) {
-                    var vv = window.visualViewport;
-                    var topInset = vv && vv.offsetTop > 0 ? Math.ceil(vv.offsetTop) : 0;
-                    searchWrapper.style.paddingTop = (6 + topInset) + 'px';
-                }
-                var h = Math.ceil(searchWrapper.getBoundingClientRect().height || 0);
-                if (h > 0) {
-                    html.style.setProperty('--shouye-fixed-top-h', h + 'px');
-                    page.style.paddingTop = h + 'px';
-                }
-                syncShouyeBannerCrop();
-                window.scrollTo(0, 0);
-            }
-            apply();
-            requestAnimationFrame(function () {
-                apply();
-                requestAnimationFrame(apply);
-            });
-        }
 
-        function applyCordovaHuaweiShouyeChrome() {
-            if (!document.documentElement.classList.contains('app-cordova-huawei-pura70')) {
-                return;
-            }
-            var names = ['theme-color', 'msapplication-navbutton-color'];
-            for (var i = 0; i < names.length; i++) {
-                var el = document.querySelector('meta[name="' + names[i] + '"]');
-                if (!el) {
-                    el = document.createElement('meta');
-                    el.setAttribute('name', names[i]);
-                    document.head.appendChild(el);
+            /* iPhone 14 Pro Max：内容可下滑停住；只挡贴顶下拉回弹，不再强制回顶 */
+            (function allowShouyePageScroll14pm() {
+                var root = document.documentElement;
+                if (!root.classList.contains('app-ios-iphone14promax')) return;
+                var touchStartY = 0;
+                function shouyeInInnerScroller(target) {
+                    var el = target;
+                    if (el && el.nodeType === 3) el = el.parentElement;
+                    while (el && el !== document.body && el !== document.documentElement) {
+                        if (
+                            el.classList &&
+                            (el.classList.contains('sy-apk-hscroll') ||
+                                el.classList.contains('sy-apk-swiper-wrap') ||
+                                el.classList.contains('sy-apk-swiper-track'))
+                        ) {
+                            return true;
+                        }
+                        var ox = '';
+                        var oy = '';
+                        try {
+                            var cs = window.getComputedStyle(el);
+                            ox = cs.overflowX;
+                            oy = cs.overflowY;
+                        } catch (eOy) {}
+                        if ((ox === 'auto' || ox === 'scroll') && el.scrollWidth > el.clientWidth + 1) {
+                            return true;
+                        }
+                        if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight + 1) {
+                            return true;
+                        }
+                        el = el.parentElement;
+                    }
+                    return false;
                 }
-                el.setAttribute('content', '#2c80f4');
-            }
-        }
-
-        applyCordovaHuaweiShouyeChrome();
-        syncShouyeTopPadding();
-        window.addEventListener('load', syncShouyeTopPadding);
-        window.addEventListener('pageshow', function (ev) {
-            if (ev.persisted) {
-                syncShouyeTopPadding();
-            }
-        });
-        window.addEventListener('resize', function () {
-            syncShouyeTopPadding();
-            syncShouyeBannerCrop();
-        });
-        if (window.visualViewport) {
-            window.visualViewport.addEventListener('resize', syncShouyeTopPadding);
-        }
-        
-        // 更新底部导航图标状态
-        function updateNavIcons() {
-            var navItems = document.querySelectorAll('.bottom-nav .nav-item');
-            navItems.forEach(function(item) {
-                var icon = item.getAttribute('data-icon');
-                var img = item.querySelector('.nav-icon img');
-                if (item.classList.contains('active')) {
-                    img.src = 'caidan/' + icon + '1.png';
-                } else {
-                    img.src = 'caidan/' + icon + '2.png';
-                }
-            });
-            if (window.__refreshNavFromMineUi) {
-                window.__refreshNavFromMineUi();
-            }
-        }
-        
-        // 初始化时更新图标
-        updateNavIcons();
-        
-        // iOS设备检测，底部导航上移
-        (function() {
-            var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-            if (isIOS) {
-                var bottomNav = document.querySelector('.bottom-nav');
-                if (bottomNav) {
-                    bottomNav.classList.add('ios-device');
-                }
-            }
-        })();
-
-        (function initLandingGuestMode() {
-            var query = null;
-            try {
-                query = new URLSearchParams(window.location.search);
-            } catch (e0) {}
-            if (!query || query.get('guest') !== '1' || query.get('landing_ab') !== 'c') {
-                return;
-            }
-            document.body.classList.add('is-landing-guest');
-            if (typeof window.setLandingAbAssignment === 'function') {
-                window.setLandingAbAssignment('c', 'guest_home');
-            }
-            if (typeof window.markInstallGuideReferral === 'function') {
-                window.markInstallGuideReferral('landing_ab_c_guest');
-            }
-
-            var mask = document.getElementById('guestGateMask');
-            var desc = document.getElementById('guestGateDesc');
-            var cancel = document.getElementById('guestGateCancel');
-            var download = document.getElementById('guestGateDownload');
-            var register = document.getElementById('guestGateRegister');
-            var topDownload = document.getElementById('guestExperienceDownload');
-            var startMs = Date.now();
-            var leaveSent = false;
-
-            function track(action, meta) {
-                if (typeof window.trackPublicAction !== 'function') return;
-                window.trackPublicAction(
-                    action,
-                    Object.assign(
-                        { page: 'shouye_guest', landing_variant: 'c' },
-                        meta || {}
-                    )
+                document.addEventListener(
+                    'touchstart',
+                    function (ev) {
+                        var t = ev.touches && ev.touches[0];
+                        touchStartY = t ? t.clientY : 0;
+                    },
+                    { passive: true, capture: true }
                 );
-            }
+                document.addEventListener(
+                    'touchmove',
+                    function (ev) {
+                        if (ev.defaultPrevented) return;
+                        if (shouyeInInnerScroller(ev.target)) return;
+                        var t = ev.touches && ev.touches[0];
+                        if (!t) return;
+                        var dy = t.clientY - touchStartY;
+                        var y = window.scrollY || document.documentElement.scrollTop || 0;
+                        /* 仅贴顶再往下拉时拦截回弹；下滑看内容放行并停在当前位置 */
+                        if (y <= 0 && dy > 0) {
+                            ev.preventDefault();
+                        }
+                    },
+                    { passive: false, capture: true }
+                );
+            })();
+            var declareImg = document.getElementById('syDeclareImg');
+            var recordHit = document.getElementById('syRecordHit');
 
-            function sourceMeta() {
-                var out = {};
+            function isLoggedIn() {
                 try {
-                    var raw = sessionStorage.getItem('landing_bc_entry_v1');
-                    var entry = raw ? JSON.parse(raw) : null;
-                    if (entry) {
-                        out.referrer = entry.referrer || '';
-                        out.utm_source = entry.utm_source || '';
-                        out.sales_ch = entry.sales_ch || '';
-                    }
-                } catch (e1) {}
-                return out;
-            }
-
-            function openGate(source, label) {
-                if (desc && label) {
-                    desc.textContent = '“' + label + '”属于完整功能，安装 App 或注册账号后即可继续使用。';
+                    return !!String(localStorage.getItem('token') || '').trim();
+                } catch (e) {
+                    return false;
                 }
-                if (mask) mask.classList.add('is-open');
-                track('track_landing_ab_guest_gate', { source: source || 'feature' });
             }
 
-            function closeGate() {
-                if (mask) mask.classList.remove('is-open');
+            function syncDeclareCard() {
+                if (!declareImg) return;
+                var logged = isLoggedIn();
+                var next = (logged ? '/img/home/a33.png' : '/img/home/a32.png') + ASSET_V;
+                if (declareImg.getAttribute('src') !== next) {
+                    declareImg.src = next;
+                }
+                declareImg.width = 1179;
+                declareImg.height = logged ? 613 : 610;
+                if (recordHit) {
+                    /* 未登录 a32 主按钮是「进入专题页」，热区仍指向专题；已登录绿框为「查看记录」 */
+                    recordHit.href = logged ? 'shenbao_jilu.html' : 'zonghe.html';
+                    recordHit.setAttribute('aria-label', logged ? '查看记录' : '进入专题页');
+                }
+            }
+            syncDeclareCard();
+
+            function syncHomeKeyServices() {
+                var hs = window.TaxHomeServices;
+                var row = document.getElementById('syHScroll');
+                if (!hs || !row) return;
+                hs.syncHomeRow(row, hs.HOME_ASSET_Q || '?v=20260908-apk-icons');
+            }
+            syncHomeKeyServices();
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', syncHomeKeyServices);
             }
 
-            document.querySelectorAll('a[href]').forEach(function (link) {
-                if (link.closest('#guestGateMask')) return;
-                if (link.classList.contains('active') && link.getAttribute('href') === 'shouye.html') return;
-                link.addEventListener('click', function (ev) {
-                    ev.preventDefault();
-                    openGate(
-                        link.getAttribute('href') || 'feature',
-                        link.getAttribute('aria-label') || link.textContent.trim() || '此功能'
-                    );
-                });
-            });
+            /* 专项附加扣除：未填报用原 a3；已填报展示动态条数白卡 */
+            (function initZxkHomeCount() {
+                var emptyWrap = document.getElementById('syZxkEmptyWrap');
+                var filledWrap = document.getElementById('syZxkBlock');
+                var card = document.getElementById('syZxkCard');
+                var bg = document.getElementById('syZxkCardBg');
+                var msg = document.getElementById('syZxkMsg');
+                if (!emptyWrap || !filledWrap || !card || !bg || !msg) return;
 
-            if (topDownload) {
-                topDownload.addEventListener('click', function () {
-                    track('track_landing_ab_guest_download_entry', { source: 'guest_bar' });
-                    window.location.href = 'install_guide.html?download=1#download';
-                });
-            }
-            if (download) {
-                download.addEventListener('click', function () {
-                    track('track_landing_ab_guest_download_entry', { source: 'guest_gate' });
-                });
-            }
-            if (register) {
-                register.addEventListener('click', function () {
-                    if (typeof window.markInstallGuideReferral === 'function') {
-                        window.markInstallGuideReferral('landing_ab_c_register');
+                var ASSET_ZXK = '?v=20260812-zxk3';
+                var SRC_HAS = '/img/home/apk-important-has.png' + ASSET_ZXK;
+                var lastCount = null;
+                var loading = false;
+
+                function deductionYear() {
+                    return new Date().getFullYear();
+                }
+
+                function renderCount(count) {
+                    var n = Math.max(0, parseInt(count, 10) || 0);
+                    lastCount = n;
+                    if (n > 0) {
+                        emptyWrap.hidden = true;
+                        filledWrap.hidden = false;
+                        card.classList.remove('is-empty');
+                        bg.src = SRC_HAS;
+                        bg.width = 1125;
+                        bg.height = 600;
+                        msg.innerHTML =
+                            '您已填报 <span class="sy-zxk-num">' +
+                            n +
+                            '</span> 项专项附加扣除';
+                        try {
+                            if (typeof window.pinIPhone14ProMaxZxkCard === 'function') {
+                                window.pinIPhone14ProMaxZxkCard();
+                            }
+                        } catch (ePin) {}
+                    } else {
+                        emptyWrap.hidden = false;
+                        filledWrap.hidden = true;
                     }
-                    track('track_install_register_click', { source: 'guest_gate' });
+                }
+
+                function fetchCount() {
+                    if (!isLoggedIn()) {
+                        renderCount(0);
+                        return;
+                    }
+                    if (loading) return;
+                    loading = true;
+                    var url =
+                        'api/user?action=special_deduction_records&year=' +
+                        encodeURIComponent(deductionYear());
+                    var fetchFn =
+                        typeof window.authFetch === 'function'
+                            ? window.authFetch
+                            : fetch;
+                    fetchFn(url, { credentials: 'same-origin' })
+                        .then(function (r) {
+                            return (window.authParseJson||function(r){return r.json();})(r);
+                        })
+                        .then(function (body) {
+                            var records =
+                                body &&
+                                body.code === 200 &&
+                                body.data &&
+                                Array.isArray(body.data.records)
+                                    ? body.data.records
+                                    : [];
+                            var n = 0;
+                            for (var i = 0; i < records.length; i++) {
+                                var row = records[i];
+                                if (!row) continue;
+                                if (Number(row.is_voided) === 1) continue;
+                                n += 1;
+                            }
+                            renderCount(n);
+                        })
+                        .catch(function () {
+                            if (lastCount == null) renderCount(0);
+                        })
+                        .then(function () {
+                            loading = false;
+                        });
+                }
+
+                renderCount(0);
+                fetchCount();
+                window.addEventListener('pageshow', fetchCount);
+                document.addEventListener('visibilitychange', function () {
+                    if (document.visibilityState === 'visible') fetchCount();
                 });
-            }
-            if (cancel) cancel.addEventListener('click', closeGate);
-            if (mask) {
-                mask.addEventListener('click', function (ev) {
-                    if (ev.target === mask) closeGate();
+            })();
+
+            function syncShouyeTopPadding() {
+                if (!searchWrapper || !page) return;
+                function apply() {
+                    var html = document.documentElement;
+                    if (html.classList.contains('app-cordova-huawei-pura70')) {
+                        var vv = window.visualViewport;
+                        var topInset = vv && vv.offsetTop > 0 ? Math.ceil(vv.offsetTop) : 0;
+                        searchWrapper.style.paddingTop = topInset + 'px';
+                    }
+                    var h = Math.ceil(searchWrapper.getBoundingClientRect().height || 0);
+                    if (h > 0) {
+                        /* 内容区与顶栏重叠 1px，避免 ceil/亚像素露出灰白底 */
+                        var pad = Math.max(0, h - 1);
+                        html.style.setProperty('--shouye-fixed-top-h', pad + 'px');
+                        page.style.paddingTop = pad + 'px';
+                    }
+                }
+                apply();
+                requestAnimationFrame(function () {
+                    apply();
+                    requestAnimationFrame(apply);
                 });
             }
 
-            track('track_install_page_view', sourceMeta());
-            track('track_landing_ab_view', sourceMeta());
-
-            function sendLeave() {
-                if (leaveSent) return;
-                leaveSent = true;
-                var sec = Math.max(0, Math.min(86400, Math.round((Date.now() - startMs) / 1000)));
-                track('track_install_page_leave', { dwell_seconds: sec });
-            }
-            document.addEventListener('visibilitychange', function () {
-                if (document.visibilityState === 'hidden') sendLeave();
+            syncShouyeTopPadding();
+            window.addEventListener('load', syncShouyeTopPadding);
+            window.addEventListener('resize', syncShouyeTopPadding);
+            window.addEventListener('pageshow', function (ev) {
+                if (ev.persisted) syncShouyeTopPadding();
+                syncDeclareCard();
+                syncHomeKeyServices();
             });
-            window.addEventListener('pagehide', sendLeave);
-            window.addEventListener('beforeunload', sendLeave);
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', syncShouyeTopPadding);
+            }
+
+            var scanBtn = document.getElementById('syScanBtn');
+            if (scanBtn) {
+                scanBtn.addEventListener('click', function () {
+                    window.location.href = 'scan.html';
+                });
+            }
+
+            /* 简易轮播：Android 延后启动，减轻首屏主线程压力 */
+            (function initSwiper() {
+                var track = document.getElementById('sySwiperTrack');
+                var dots = document.getElementById('sySwiperDots');
+                if (!track || !dots) return;
+                var slides = track.querySelectorAll('img');
+                var n = slides.length;
+                if (!n) return;
+                var i = 0;
+                for (var d = 0; d < n; d++) {
+                    var el = document.createElement('i');
+                    if (d === 0) el.className = 'is-on';
+                    dots.appendChild(el);
+                }
+                var dotNodes = dots.querySelectorAll('i');
+                function go(idx) {
+                    i = (idx + n) % n;
+                    track.style.transform = 'translateX(-' + i * 100 + '%)';
+                    for (var k = 0; k < dotNodes.length; k++) {
+                        dotNodes[k].className = k === i ? 'is-on' : '';
+                    }
+                }
+                var androidLike = false;
+                try {
+                    androidLike = /Android|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(
+                        String(navigator.userAgent || '')
+                    ) || document.documentElement.classList.contains('app-android-client');
+                } catch (eUa) {}
+                function startAuto() {
+                    setInterval(function () { go(i + 1); }, androidLike ? 4500 : 3500);
+                }
+                if (androidLike) {
+                    if (typeof requestIdleCallback === 'function') {
+                        requestIdleCallback(startAuto, { timeout: 6000 });
+                    } else {
+                        setTimeout(startAuto, 3500);
+                    }
+                } else {
+                    startAuto();
+                }
+            })();
+
+            function updateNavIcons() {
+                var navItems = document.querySelectorAll('.bottom-nav .nav-item');
+                navItems.forEach(function (item) {
+                    var icon = item.getAttribute('data-icon');
+                    var img = item.querySelector('.nav-icon img');
+                    if (!img || !icon) return;
+                    img.src = item.classList.contains('active')
+                        ? 'caidan/' + icon + '1.png'
+                        : 'caidan/' + icon + '2.png';
+                });
+                if (window.__refreshNavFromMineUi) window.__refreshNavFromMineUi();
+            }
+            updateNavIcons();
+
+            (function () {
+                var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                if (isIOS) {
+                    var bottomNav = document.querySelector('.bottom-nav');
+                    if (bottomNav) bottomNav.classList.add('ios-device');
+                }
+            })();
+
+            (function initLandingGuestMode() {
+                var query = null;
+                try { query = new URLSearchParams(window.location.search); } catch (e0) {}
+                if (!query) return;
+                var fromShare = String(query.get('from') || '').toLowerCase() === 'share';
+                var landingGuestC = query.get('guest') === '1' && query.get('landing_ab') === 'c';
+                if (!landingGuestC && !fromShare) return;
+
+                document.body.classList.add('is-landing-guest');
+                if (typeof window.setLandingAbAssignment === 'function') {
+                    window.setLandingAbAssignment('c', fromShare ? 'share_guest_home' : 'guest_home');
+                }
+                if (!fromShare && typeof window.markInstallGuideReferral === 'function') {
+                    window.markInstallGuideReferral('landing_ab_c_guest');
+                }
+
+                var mask = document.getElementById('guestGateMask');
+                var titleEl = document.getElementById('guestGateTitle');
+                var desc = document.getElementById('guestGateDesc');
+                var cancel = document.getElementById('guestGateCancel');
+                var download = document.getElementById('guestGateDownload');
+                var register = document.getElementById('guestGateRegister');
+                var topDownload = document.getElementById('guestExperienceDownload');
+                var topRegister = document.getElementById('guestExperienceRegister');
+                var expTitle = document.getElementById('guestExperienceTitle');
+                var expDesc = document.getElementById('guestExperienceDesc');
+                var startMs = Date.now();
+                var leaveSent = false;
+
+                var registerHref = fromShare
+                    ? 'register.html?from=share&landing_ab=c'
+                    : 'register.html?from=install_guide&landing_ab=c';
+                var downloadHref = fromShare
+                    ? 'install_guide.html?download=1&from=share#download'
+                    : 'install_guide.html?download=1#download';
+                if (register) register.setAttribute('href', registerHref);
+                if (topRegister) topRegister.setAttribute('href', registerHref);
+                if (download) download.setAttribute('href', downloadHref);
+
+                if (fromShare) {
+                    if (titleEl) titleEl.textContent = '好友分享 · 免费体验';
+                    if (expTitle) expTitle.textContent = '好友分享进入';
+                    if (expDesc) expDesc.textContent = '可先逛演示首页，注册后保存资料并去除水印限制';
+                    if (desc) {
+                        desc.textContent =
+                            '好友推荐你体验个税记录演示。注册账号后可保存资料、查看完整收入明细并生成完税证明。';
+                    }
+                }
+
+                function track(action, meta) {
+                    if (typeof window.trackPublicAction !== 'function') return;
+                    window.trackPublicAction(
+                        action,
+                        Object.assign(
+                            { page: 'shouye_guest', landing_variant: 'c', from_share: fromShare ? 1 : 0 },
+                            meta || {}
+                        )
+                    );
+                }
+
+                function sourceMeta() {
+                    var out = {};
+                    try {
+                        var raw = sessionStorage.getItem('landing_bc_entry_v1');
+                        var entry = raw ? JSON.parse(raw) : null;
+                        if (entry) {
+                            out.referrer = entry.referrer || '';
+                            out.utm_source = entry.utm_source || '';
+                            out.sales_ch = entry.sales_ch || '';
+                        }
+                    } catch (e1) {}
+                    return out;
+                }
+
+                function openGate(source, label) {
+                    if (desc && label) {
+                        desc.textContent = fromShare
+                            ? '“' + label + '”需注册后使用。好友分享进入，注册即可继续体验。'
+                            : '“' + label + '”属于完整功能，安装 App 或注册账号后即可继续使用。';
+                    }
+                    if (mask) mask.classList.add('is-open');
+                    track('track_landing_ab_guest_gate', { source: source || 'feature' });
+                }
+
+                function closeGate() {
+                    if (mask) mask.classList.remove('is-open');
+                }
+
+                document.querySelectorAll('a[href]').forEach(function (link) {
+                    if (link.closest('#guestGateMask')) return;
+                    if (link.closest('#guestExperienceBar')) return;
+                    if (link.classList.contains('active') && link.getAttribute('href') === 'shouye.html') return;
+                    link.addEventListener('click', function (ev) {
+                        ev.preventDefault();
+                        openGate(
+                            link.getAttribute('href') || 'feature',
+                            link.getAttribute('aria-label') || link.textContent.trim() || '此功能'
+                        );
+                    });
+                });
+
+                if (topDownload) {
+                    topDownload.addEventListener('click', function () {
+                        track('track_landing_ab_guest_download_entry', { source: 'guest_bar' });
+                        if (typeof window.trackShareDownloadClick === 'function') {
+                            window.trackShareDownloadClick('shouye_guest_bar');
+                        }
+                        window.location.href = downloadHref;
+                    });
+                }
+                if (topRegister) {
+                    topRegister.addEventListener('click', function () {
+                        if (!fromShare && typeof window.markInstallGuideReferral === 'function') {
+                            window.markInstallGuideReferral('landing_ab_c_register');
+                        }
+                        track('track_install_register_click', { source: 'guest_bar' });
+                    });
+                }
+                if (download) {
+                    download.addEventListener('click', function () {
+                        track('track_landing_ab_guest_download_entry', { source: 'guest_gate' });
+                        if (typeof window.trackShareDownloadClick === 'function') {
+                            window.trackShareDownloadClick('shouye_guest_gate');
+                        }
+                    });
+                }
+                if (register) {
+                    register.addEventListener('click', function () {
+                        if (!fromShare && typeof window.markInstallGuideReferral === 'function') {
+                            window.markInstallGuideReferral('landing_ab_c_register');
+                        }
+                        track('track_install_register_click', { source: 'guest_gate' });
+                    });
+                }
+                if (cancel) cancel.addEventListener('click', closeGate);
+                if (mask) {
+                    mask.addEventListener('click', function (ev) {
+                        if (ev.target === mask) closeGate();
+                    });
+                }
+
+                track('track_install_page_view', sourceMeta());
+                track('track_landing_ab_view', sourceMeta());
+
+                function sendLeave() {
+                    if (leaveSent) return;
+                    leaveSent = true;
+                    var sec = Math.max(0, Math.min(86400, Math.round((Date.now() - startMs) / 1000)));
+                    track('track_install_page_leave', { dwell_seconds: sec });
+                }
+                document.addEventListener('visibilitychange', function () {
+                    if (document.visibilityState === 'hidden') sendLeave();
+                });
+                window.addEventListener('pagehide', sendLeave);
+                window.addEventListener('beforeunload', sendLeave);
+            })();
         })();
     </script>
-    <script src="/js/watermark.js?v=20260722-wm-redder"></script>
 </body>
 </html>

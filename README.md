@@ -7,29 +7,6 @@
 
 ---
 
-## 软件截图
-
-### 首页
-
-![首页](docs/images/shot-home.png)
-
-### 我的
-
-![我的](docs/images/shot-mine.png)
-
-### 收入纳税明细
-
-![收入纳税明细](docs/images/shot-income.png)
-
-### 个人中心 · 税务记录
-
-![税务记录](docs/images/shot-tax.png)
-
-更新截图：先安装中文字体（Linux：`sudo apt-get install -y fonts-noto-cjk`），再执行
-`SCREENSHOT_USERNAME=… SCREENSHOT_PASSWORD=… node scripts/capture-readme-screenshots.mjs`（需已安装 Playwright 浏览器）。未装字体时截图中文会显示为方框。
-
----
-
 ## 下载安装
 
 | 端 | 安装方式 |
@@ -116,24 +93,52 @@ https://www.installguide1.top/
 
 | 项 | 数量 / 说明 |
 |----|-------------|
-| **源码规模** | 约 **160+** 个源文件、**8.8 万+** 行（不含 `node_modules`、Cordova 编译产物、`package-lock.json`） |
-| **前端页面** | **58** 个 HTML 页面（`frontend/*.html`） |
+| **源码规模（约）** | 前端 HTML **69** 页；JS/HTML/CSS 合计约 **17.4 万**行（不含 `node_modules`、`site/` 产物、Cordova 编译产物、lock 文件） |
+| **前端页面** | **69** 个 HTML（`frontend/*.html`；含管理端与验证页） |
 | **后端** | 薄入口 `backend/server.js` → `src/bootstrap.js`；域路由见 `src/{auth,user,tax,payments,admin,...}/` |
 | **数据库** | `backend/schema.sql` + `backend/migrations/`（启动时由 migrate 运行） |
-| **GitHub Actions** | 2 个工作流：Android APK、iOS 打包 |
+| **GitHub Actions** | 3 个工作流：单元测试、Android APK、iOS 打包 |
 | **运维脚本** | `deploy.sh`、`backup-mysql.sh`、`import-mysql-dump.sh` 等 |
 
-### 代码规模（按语言，约 2026-07）
+### 代码规模（按语言，约 2026-09-03 重计）
 
-| 语言 | 说明 |
+以下为目录内文本行粗算（含注释/空行；不含 `node_modules` / `site/` / Cordova `platforms|plugins|www` / lock 文件），供体感参考：
+
+| 语言 | 约文件数 | 约行数 |
+|------|----------|--------|
+| JavaScript | ~212 | ~12.0 万 |
+| HTML | ~69 | ~4.8 万 |
+| CSS | ~10 | ~0.6 万 |
+| Python / Shell / SQL / Markdown | ~126 | ~1.6 万 |
+
+核心路径：`backend/src/legacy/monolith.js`、`frontend/public/js/admin_panel.js`、`frontend/consult.html`（`css/consult.css` + `js/consult-*.js`）、`frontend/public/js/auth.js`、`frontend/purchase.html`、`frontend/lizhi_cert.html`、`backend/scripts/lizhi_render_pdf.py`。
+
+### C 端前端结构（维护者）
+
+**源码 vs 产物**
+
+| 路径 | 说明 |
 |------|------|
-| JavaScript | 后端 `src/` + 前端 `public/js/`（含管理端懒加载模块） |
-| HTML / CSS | 用户端多页 + 管理端面板 |
-| Shell / YAML / SQL | 部署、CI、migrations |
+| `frontend/*.html`、`frontend/public/js/`、`frontend/css/` | **源码**；改这里 |
+| `frontend/site/` | `npm run build`（`scripts/assemble-site.mjs`）产物；**勿手改**，下次 build 覆盖 |
+| 构建 | **无 Vite**；仅 assemble（minify / 部分混淆 / content-hash 壳）。阶段 3 文档若仍写 Vite，以本说明为准 |
 
-按模块：`frontend/` 为主 · `backend/src/` 为 API 与迁移 · `docs/` 含架构与转化规划。
+**运行时链路**
 
-核心路径：`backend/src/legacy/monolith.js`、`frontend/public/js/admin_panel.js`、`frontend/consult.html`、`frontend/public/js/auth.js`、`frontend/purchase.html`。
+1. 页头同步加载 `auth-boot.js`（公开页判断、轻量门禁）
+2. `auth.js`（defer）：机型 class、渠道归因、`authFetch`、并**动态注入** `conversion-guide.js`、`fast-nav.js`、`page-loading.js`、`page-perf.js`、`tab-shell.js`、`message-badge.js`（HTML 无静态引用，勿当死文件删）
+3. 业务页：`consult-*.js`、`purchase.html` 内联、`najilu.js` 等
+
+优先页（assemble 注入 TaxApp 壳）：`mine.html`、`shouye.html`、`consult.html`、`install_guide.html`。
+
+**「我的」页与机型**
+
+| 入口 | 用途 |
+|------|------|
+| `mine.html` | **主线**；Cordova 壳启动页；Mate60 检测后跳冻结页 |
+| `mine_mate60_aug12.html` + `auth-mate60-aug12.js` | Mate60 **冻结分叉**（勿与主线 auth 同步期望） |
+| `mine_jul23_mate60.html` | 旧缓存跳转桩（保留） |
+| ~~`mine_v2.html`~~ | **已退役**；nginx `301` → `mine.html` |
 
 ### 技术栈
 
@@ -152,9 +157,14 @@ https://www.installguide1.top/
 |------|------|
 | 一键部署 | `./scripts/deploy.sh`（需 Docker，访问 `docker.sock`） |
 | 仅部署前端/后端 | `DEPLOY_SERVICES="frontend backend" ./scripts/deploy.sh` |
-| 本地备份数据库 | `./scripts/backup-mysql.sh` → `data/db-backups/`（整库 `personal_tax`，保留 24h） |
-| 导入 SQL 备份 | `./scripts/import-mysql-dump.sh /path/to/dump.sql` |
+| 前端组装产物 | `cd frontend && npm run build`（→ `site/`） |
+| 本地备份数据库 | `./scripts/backup-mysql.sh` → `data/db-backups/`（整库 `personal_tax`，每 15 分钟、保留 48h / 最多 200 份） |
+| 导入 SQL 备份 | `./scripts/import-mysql-dump.sh /path/to/dump.sql[.gz]` |
 | 转化引导脚本 | `frontend/public/js/conversion-guide.js`（由 `auth.js` 注入） |
+| 后端单元测试 | `cd backend && npm test`（Vitest；覆盖率：`npm run test:coverage`） |
+| 前端单元测试 | `cd frontend && npm test`（Vitest + jsdom） |
+
+单元测试目录：`backend/tests/unit/**`、`frontend/tests/unit/**`。CI 见 `.github/workflows/unit-tests.yml`（PR / `lkj` 推送触发）。
 
 ### 管理后台能力
 
@@ -164,9 +174,10 @@ https://www.installguide1.top/
 
 - **激活码**：单码生成；超管可 **按渠道批量生成**（内置闲鱼 / 酷发卡，可自定义渠道），导出 TXT；列表可按渠道 / 归属管理员筛选
 - **用户管理**：注册/删除/封禁、激活、**修改密码**、退款；列表展示 **上线**（激活码 `owner_admin_username`）
+- **邮箱运营**：已留邮箱列表 / 定向或人群群发（SMTP）；人群含「未激活且已留邮箱」「有专属价未开通」
+- **专属价 / 心理价**：账号 SKU 特价；出价达线自动通过或人工审
 - **数据统计**：注册转化率、7 日漏斗、渠道分析、安装页统计、API 调用 / 用户接口 5xx
 - **用户数据**：扣缴义务人分析、工资分布、未填个税行为导出
-- **在线客服**：会话回复、固定话术、可选 AI 自动回复
 - **引导安装**：APK / 描述文件、代理推广链接；落地页 A/B
 - **系统设置**：转化 A/B、外观主题、QQ / 收款码
 
@@ -176,60 +187,108 @@ https://www.installguide1.top/
 - [阶段 0 基线](docs/architecture-phase0/README.md)
 - [阶段 1 后端切块](docs/architecture-phase1/README.md)（已完成）
 - [阶段 2 管理端解耦](docs/architecture-phase2/README.md)（已完成；可选 DNS：`admin.geshui.vip`）
+- [阶段 3 C 端壳](docs/architecture-phase3/README.md)（TaxApp 壳 + assemble；构建以 `assemble-site.mjs` 为准）
 
-### 近期产品要点（2026-07）
+### 近期产品要点（2026-07 ~ 2026-09）
 
 - **安装引导页**：首屏精简；`?download=1` 聚焦下载
-- **咨询 · 税务记录**：个税计算表与公式；批量生成 / 粘贴导入 / 示例填写
+- **咨询 · 税务记录**：工具栏降噪、空状态 / 折叠、成功后滚到列表；样式与脚本拆分为 `consult.css` + `consult-core/batch-tax/records.js`
+- **咨询 · 回收站**：按公司筛选与分组；支持全部恢复 / 按公司恢复（已去掉导出 JSON）
+- **离职 / 在职证明**：C 端生成 PDF（公章、演示水印）；付费去水印；费用可后台配置
+- **咨询页入口精简**：去掉「在线客服」Tab；登录成功后不再弹操作教程引导
 - **批量激活码多渠道**：闲鱼 / 酷发卡 / 自定义；备注「渠道名+批量」
 - **游客 / 落地漏斗**：落地 A/B、游客样例数据（见 `docs/user-conversion-plan.md`）
 - **支付宝当面付**：购买页扫码；付款成功自动开通；自动发卡归属 **admin（上线）**；酷发卡渠道激活码同样归属 admin
+- **专属价 / 半价运营**：后台为账号设 SKU 特价；可对「未激活且已留邮箱」群发半价开通邮件
+- **邮箱收集**：转化引导邮箱 nudge；个人信息可补邮箱
 - **C 端跳转加速**：`/js/` 强缓存（`?v=` 换版本）、HTML 短缓存 + SWR、底栏预取 / Speculation Rules、`fast-nav.js`
-- **Cordova 支付兼容**：禁止用 `location.href` 打开支付宝页（防回 App 白屏）；华为等机型用 Intent + 包名唤起；QQ / 酷发卡等外链经壳打开，失败则复制链接提示
-- **在线客服 AI**：OpenAI 兼容协议；人工介入可暂停 / 恢复（见下节）
+- **机型适配**：荣耀 Magic / 小米 HyperOS / 华为 Mate60 冻结页 / 多款 iPhone 顶栏单独适配；已退役并行 `mine_v2`
+- **Cordova 支付兼容**：禁止用 `location.href` 打开支付宝页（防回 App 白屏）；华为等机型用 Intent + 包名唤起；QQ / 酷发卡等外链经壳打开，失败则复制链接提示；壳启动主线 `mine.html`
 
 ### 数据库备份
 
-- **本机**：cron 每 30 分钟执行 `./scripts/backup-mysql.sh` → `data/db-backups/personal_tax-*.sql.gz`
+- **本机热备**：cron 每 15 分钟执行 `./scripts/backup-mysql.sh` → `data/db-backups/personal_tax-*.sql.gz`（安装：`./scripts/backup-mysql.sh --install-cron` 或 `./scripts/dr-install.sh`）
 - **内容**：整库 `personal_tax`（用户/个税记录/激活码/埋点/管理端/支付与客服等表；含 routines/triggers），不含系统库与前端静态资源
-- **保留**：**24 小时**、最多约 50 份
+- **热备保留**：**48 小时**、最多 **36** 份（可用 `RETAIN_HOURS` / `MAX_BACKUPS` 覆盖）
+- **日备 / 周备 / uploads**：`./scripts/sync-backup-offsite.sh`（日备 14 天、周备 8 周；配置 `COS_*` 后异地上传）
+- **`.env` 封机备份**：`./scripts/backup-env.sh`（AES-256 密文寄告警邮箱；口令在 `/root/.env-backup-passphrase`，须另存离机）。恢复见 [`docs/env-recovery.md`](docs/env-recovery.md)
 - GitHub Actions 远端每日备份已取消
 
 > 完整生产库 **不建议** commit 进 Git；本地备份目录 `data/db-backups/` 已加入 `.gitignore`。
 
 环境变量与数据库初始化见 `docker-compose.yml`、`.env.example` 及 `backend/` 内说明；勿将 `.env`、凭据提交入库。
 
-### 多域名 / 多服务器（同一套代码）
+### 本地联调
 
-不要为每个域名拉长期分支。三台机都跟踪 `master`，用本机 `.env` 区分对外地址：
+如果你要在本机直接跑接口联调，先确认这几个前置条件：
+
+- `Node.js >= 20.18.1`
+- `MySQL` 可用，库名默认 `personal_tax`
+- `Redis` 可用
+- 后端依赖已安装：`cd backend && npm install`
+
+常用启动方式：
 
 ```bash
+# 启动依赖服务
+docker compose up -d db redis
+
+# 启动后端
+cd backend
+npm start
+```
+
+如果本机只想验证 Docker 环境，直接使用仓库里的 `docker compose up -d` 即可，`backend` 容器会连接同一套 `db` / `redis` 服务。
+
+### 验证方式
+
+我们建议在改代码后做三步检查：
+
+1. 前端构建：`cd frontend && npm run build`
+2. 后端语法 / 依赖：`cd backend && npm install && npm start`
+3. 容器联调：`docker compose up -d db redis backend frontend`
+
+如果你遇到“接口联调失败”，通常先看这三项：
+
+- MySQL 是否已启动且端口映射正确
+- Redis 是否已启动，后端容器内应使用 `redis:6379`
+- 当前 Node 版本是否满足 `backend/package.json` 的 `engines` 要求
+
+### 多域名 / 多服务器
+
+- **lkj.qiyun888.top（本机）**：长期跟踪 GitHub 分支 **`lkj`**，与 **`master`** 分开演进与部署。
+- 其他站点若仍共用主线，可继续跟踪 `master`，仅用本机 `.env` 区分域名。
+
+本机（lkj）日常更新：
+
+```bash
+# .env 中已设 DEPLOY_BRANCH=lkj
+./scripts/pull-and-deploy.sh
+```
+
+仅重建容器（不拉代码）：
+
+```bash
+./scripts/deploy.sh
+```
+
+新建机器若要挂同一域名线：
+
+```bash
+git clone git@github.com:as1285/test_platform.git
+cd test_platform
+git checkout lkj
+# 有邮箱密文时：./scripts/restore-env.sh ~/env-xxxx.enc .env
 cp .env.example .env
-# 编辑 PUBLIC_SITE_URL / APP_URL，例如：
-#   https://lkj.qiyun888.top
-#   https://www.geshui.vip
-#   http://85.137.247.81
+# 编辑 PUBLIC_SITE_URL / APP_URL / DEPLOY_BRANCH=lkj
 ./scripts/deploy.sh
 ```
 
 - 前端：`scripts/render-site-config.sh` 生成 `site-config.js`（分享链接 / 受信 Host）
 - 后端：读取 `PUBLIC_SITE_URL`、`SITE_TRUSTED_HOSTS`
 - Nginx：`server_name _` 接受任意 Host；直连 HTTPS 可参考 `docker-compose.override.example.yml`
-- Cordova 壳内 `APP_ORIGIN` 仍需按渠道打包时修改（与 H5 多域名无关）
-
-### 在线客服 AI 自动回复
-
-默认关闭。在管理控制台「在线客服」中可开启 AI，并编辑系统提示词。API 密钥**仅**通过服务器 `.env` 配置（OpenAI 兼容协议，默认 DeepSeek）：
-
-```dotenv
-CHAT_AI_API_KEY=你的密钥
-CHAT_AI_BASE_URL=https://api.deepseek.com
-CHAT_AI_MODEL=deepseek-chat
-```
-
-- 开场欢迎语仍为固定话术；用户发消息后优先走 AI，失败时回退到固定自动回复。
-- 人工客服发送消息后该会话会暂停 AI（可点「恢复 AI」重新启用）。
-- 不要将 `CHAT_AI_API_KEY` 写入后台设置或提交到 Git。
+- Cordova 壳：`www/index.html` 默认 `APP_ORIGIN=https://lkj.qiyun888.top/`，启动 **`mine.html`**（Mate60 由页内再跳冻结页）；渠道包用 `./scripts/build-agent-packages.sh <渠道>`（或单独 `build-agent-apk.sh` / `build-agent-mobileconfig.sh`）从 `.env` 写入。GitHub Actions：`cordova-android.yml`（APK）、`agent-ios-mobileconfig.yml`（iOS 描述文件）；Secret `APP_ORIGIN` 可覆盖域名
+- 前端生产构建：`cd frontend && npm run build` → `assemble-site.mjs` 组装静态多页与 `public/` 资源到 `site/`（无 Vite / 已下线的 Vue 脚手架）。
 
 ### 支付宝自动开通
 

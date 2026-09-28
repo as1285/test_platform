@@ -1,0 +1,1 @@
+var e=`/cmb-sim/reference/user/customer.png`;export{e as t};

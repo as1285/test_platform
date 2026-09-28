@@ -7,6 +7,7 @@
 
 | 前缀 / action | 含义 | 落表 |
 |---------------|------|------|
+| `track_refund_ad_*` / `track_purchase_refund_ad_*` | 二次退税广告页停留与操作 | `ad_page_track_events` + 日聚合 |
 | `track_install_*` | 安装/下载漏斗 | `install_guide_track_events` + 日聚合 |
 | `track_landing_*` | 落地页 / AB | 同上 |
 | `track_guest_*` | 游客沙箱 | 同上 |
@@ -30,6 +31,7 @@
 | `api_error` | `api_error_events` | `recordApiErrorEvent` | `http_status`, `biz_code`, `latency_ms` |
 | `page_view` / `user_action` | `user_page_events` | `recordUserPageEvent` | `username`, `page_path`, `route_key`, `client_id` |
 | `install_funnel` | `install_guide_track_events` | `recordInstallGuideTrackEvent` | `event_key`, `client_id`, `device_fp`, `dwell_seconds`, `meta_json` |
+| `ad_page` | `ad_page_track_events` | `recordAdPageTrackEvent` | `username`, `event_key`, `dwell_seconds`, `meta_json` |
 | `login_attempt` | `user_login_events` | `recordUserLoginAttempt` / 注册 | `ok`, `reason`, `ip`, `device_fp` |
 | `admin_login_attempt` | `admin_login_events` | `recordAdminLoginAttempt` | `admin_username`, `ok`, `reason` |
 | `admin_audit` | `admin_operation_logs` | `recordAdminOperationLog` | `path`, `action`, `request_brief`, `status_code` |

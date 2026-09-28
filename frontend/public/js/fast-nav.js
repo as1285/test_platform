@@ -1,19 +1,22 @@
 /**
- * C 端跳转加速：
+ * C 端跳转加速（由 auth.js 动态注入，HTML 无静态引用）：
  * - 底栏 / 常用链接触摸即预取 HTML（配合 nginx 短缓存）
  * - Chrome Speculation Rules 预渲染底栏页
  * - 预热关键 JS（已强缓存时几乎无成本）
+ * data-fast-nav=1 防重复注入。
  */
 (function () {
   if (typeof document === 'undefined') return;
   if (document.documentElement.getAttribute('data-fast-nav') === '1') return;
   document.documentElement.setAttribute('data-fast-nav', '1');
 
+  // === 预取目标 / 预热脚本 ===
   var TAB_PAGES = ['shouye.html', 'daiban.html', 'bancha.html', 'message.html', 'mine.html'];
   var WARM_JS = [
-    '/js/auth.js?v=20260722-fetch-timeout',
-    '/js/page-loading.js?v=20260721-shuiming-spin',
-    '/js/theme-loader.js?v=20260720-nav-speed',
+    '/js/auth-boot.js?v=20260828-android-load',
+    '/js/auth.js?v=20260831-m60home',
+    '/js/page-loading.js?v=20260903-mate60pay',
+    '/js/theme-loader.js?v=20260828-android-load',
     '/js/toast-duration.js?v=20260529-toast-3s'
   ];
   var warmed = Object.create(null);
@@ -101,7 +104,6 @@
     if (here === 'mine.html' || here === 'shouye.html') {
       prefetchDocument('consult.html?v=20260721d-bonus');
       prefetchDocument('purchase.html');
-      prefetchDocument('chat.html');
     }
   }
 
@@ -142,7 +144,21 @@
   document.addEventListener('pointerdown', onIntent, true);
   document.addEventListener('touchstart', onIntent, { capture: true, passive: true });
 
+  function isAndroidLikeWebView() {
+    try {
+      return /Android|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(
+        String(navigator.userAgent || '')
+      );
+    } catch (e) {
+      return false;
+    }
+  }
+
   function start() {
+    /* 安卓 / 鸿蒙：进页不预取其它 Tab，避免和首屏大图抢网；按下仍走 onIntent */
+    if (isAndroidLikeWebView()) {
+      return;
+    }
     warmCriticalAssets();
     installSpeculationRules();
   }

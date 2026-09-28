@@ -1,0 +1,2 @@
+-- noop: tax_issue_applications.qr_image_url / qr_block_image_url
+-- 由 initDatabase 中 CREATE + 幂等 ALTER 保障（避免与 ensureSchema 重复执行冲突）

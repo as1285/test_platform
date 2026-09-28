@@ -1,11 +1,14 @@
 /**
  * TaxApp 底栏：激活态与 data-page 归一（阶段 3）
+ * 由 assemble 哈希注入；与 tab-shell.js（iframe 单页壳）分工：本模块只负责高亮态，不接管跳转。
  */
 (function (global) {
+  // === Tab 文件名 → data-page key ===
   var TAB_PAGES = {
     'shouye.html': 'shouye',
     'daiban.html': 'daiban',
     'bancha.html': 'bancha',
+    'refund_ad.html': 'mine',
     'message.html': 'message',
     'mine.html': 'mine',
     'consult.html': 'mine'
@@ -27,15 +30,15 @@
       if (body.classList.contains('page-daiban')) return 'daiban';
       if (body.classList.contains('page-bancha')) return 'bancha';
       if (body.classList.contains('page-message')) return 'message';
+      if (body.classList.contains('page-refund-ad')) return 'mine';
     }
     return '';
   }
 
-  /** 根据当前页给 .bottom-nav .nav-item 打 active */
-  function hydrateBottomNav(root) {
+  /** 按 tab key 给 .bottom-nav .nav-item 打 active（单页壳切换时用） */
+  function hydrateBottomNavByKey(root, key) {
     var nav = root || document.querySelector('.bottom-nav');
     if (!nav) return;
-    var key = activeKey();
     var items = nav.querySelectorAll('.nav-item');
     for (var i = 0; i < items.length; i++) {
       var a = items[i];
@@ -48,8 +51,14 @@
     }
   }
 
+  /** 根据当前页给 .bottom-nav .nav-item 打 active */
+  function hydrateBottomNav(root) {
+    hydrateBottomNavByKey(root, activeKey());
+  }
+
   global.TaxAppNav = {
     hydrateBottomNav: hydrateBottomNav,
+    hydrateBottomNavByKey: hydrateBottomNavByKey,
     activeKey: activeKey,
     currentPageName: currentPageName
   };

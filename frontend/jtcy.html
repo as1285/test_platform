@@ -10,7 +10,8 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260722-fetch-timeout"></script>
+    <script src="/js/auth-boot.js?v=20260902-adopt"></script>
+    <script src="/js/auth.js?v=20260902-adopt" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>家庭成员</title>
     <style>
@@ -135,6 +136,33 @@
         (function () {
             var mount = document.getElementById('memberListMount');
 
+            function jtcyAuthFetch(url, opts) {
+                opts = opts || {};
+                if (typeof window.authFetch === 'function') {
+                    return window.authFetch(url, opts);
+                }
+                var headers = { 'Content-Type': 'application/json' };
+                try {
+                    if (typeof window.authHeaders === 'function') {
+                        headers = Object.assign(headers, window.authHeaders());
+                    }
+                } catch (eHdr) {}
+                if (!headers.Authorization && !headers.authorization) {
+                    var t = '';
+                    try {
+                        t = String(localStorage.getItem('token') || '').trim();
+                    } catch (eTok) {}
+                    if (t) headers.Authorization = 'Bearer ' + t;
+                }
+                return fetch(
+                    url,
+                    Object.assign({}, opts, {
+                        headers: Object.assign({}, headers, opts.headers || {}),
+                        credentials: opts.credentials || 'same-origin'
+                    })
+                );
+            }
+
             function esc(s) {
                 return String(s == null ? '' : s)
                     .replace(/&/g, '&amp;')
@@ -181,10 +209,9 @@
 
             function loadMembers() {
                 if (!mount) return;
-                var fetchFn = typeof authFetch === 'function' ? authFetch : fetch;
-                fetchFn('api/user?action=family_members', { credentials: 'same-origin' })
+                jtcyAuthFetch('api/user?action=family_members', { credentials: 'same-origin' })
                     .then(function (r) {
-                        return r.json();
+                        return (window.authParseJson||function(r){return r.json();})(r);
                     })
                     .then(function (data) {
                         if (data.code === 200 && data.data && Array.isArray(data.data.members)) {
@@ -203,6 +230,6 @@
             loadMembers();
         })();
     </script>
-    <script src="/js/watermark.js?v=20260722-wm-redder"></script>
+    <script src="/js/watermark.js?v=20260831-m60home"></script>
 </body>
 </html>

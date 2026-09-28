@@ -1,43 +1,423 @@
-/* 底部导航：悬浮白色胶囊。各 TAB / 机型共用同一 --bottom-nav-bottom，切页不上下跳 */
+/* 底部导航：对齐参考站悬浮半透明胶囊（tax.ezgen.top/tax/8082） */
 
 :root {
-    --bottom-nav-height: 72px;
+    --bottom-nav-height: 54px;
     --bottom-nav-side: 16px;
-    --bottom-nav-gap: 2px;
-    /*
-     * 悬浮胶囊贴视觉底部（gap），不要再用 safe-area 整段上抬。
-     * iPhone 上用 safe 抬高后，「我的」等短页空隙会特别明显；
-     * 内容避让交给 --bottom-nav-clearance（含 safe-area）。
-     */
+    /* 悬浮胶囊贴近底边（4~8px）；过大空隙像「悬空」 */
+    --bottom-nav-gap: 8px;
     --bottom-nav-bottom: var(--bottom-nav-gap);
+    --bottom-nav-radius: 32px;
     --bottom-nav-clearance: calc(
-        var(--bottom-nav-height) + var(--bottom-nav-bottom) + env(safe-area-inset-bottom, 0px) + 16px
+        var(--bottom-nav-height) + var(--bottom-nav-bottom) + 12px
     );
+    --bottom-nav-text: #999999;
+    --bottom-nav-text-active: #1e6fff;
+}
+
+/*
+ * iOS：勿把 env(safe-area-inset-bottom) 再加进 bottom。
+ * WebView 已全屏时再叠加 safe-area 会把胶囊抬高一整截灰底（约 50px+）。
+ * 与 Android 一样只保留很小的悬浮间隙。
+ */
+html.app-ios-client {
+    --bottom-nav-gap: 8px;
+    --bottom-nav-bottom: 8px;
+    --bottom-nav-side: 16px;
+}
+
+/* iOS PWA：与其它环境同一小浮起，勿叠加 safe-area */
+html.ios-pwa {
+    --bottom-nav-bottom: 8px;
+    --bottom-nav-gap: 8px;
+}
+
+/* 首页 / 待办 / 办查 / 消息 / 我的：同一悬浮间隙，避免切 TAB 高低不一 */
+html body.page-shouye,
+html body.page-daiban,
+html body.page-bancha,
+html body.page-refund-ad,
+html body.page-message,
+html body.page-mine,
+html body.page-zixun {
+    --bottom-nav-bottom: 8px !important;
+    --bottom-nav-gap: 8px !important;
 }
 
 /*
  * 高优先级锁：覆盖各页内联 / 机型补丁，保证切 TAB 时 bottom 一致。
- * 位置只由 --bottom-nav-bottom 决定（默认 2px；Cordova 2410 为 32px）。
  */
 html body .bottom-nav,
 html body > .bottom-nav,
-html body.page-mine > .bottom-nav,
 html body.page-shouye > .bottom-nav,
 html body.page-daiban > .bottom-nav,
 html body.page-bancha > .bottom-nav,
+html body.page-refund-ad > .bottom-nav,
 html body.page-message > .bottom-nav,
+html body.page-mine > .bottom-nav,
+html body.page-zixun > .bottom-nav,
 html body.tax-app-shell > .bottom-nav,
-.bottom-nav.ios-device {
+html body .bottom-nav.ios-device {
     position: fixed !important;
     left: var(--bottom-nav-side) !important;
     right: var(--bottom-nav-side) !important;
     bottom: var(--bottom-nav-bottom) !important;
-    z-index: 200 !important;
+    top: auto !important;
+    z-index: 10050 !important;
     margin: 0 !important;
+    width: auto !important;
+    max-width: none !important;
     transform: none !important;
     -webkit-transform: none !important;
+    translate: none !important;
     view-transition-name: none !important;
     animation: none !important;
+    pointer-events: auto !important;
+    /* 切 TAB 时胶囊高度必须一致，禁止被内边距/字号撑开 */
+    height: var(--bottom-nav-height) !important;
+    min-height: var(--bottom-nav-height) !important;
+    max-height: var(--bottom-nav-height) !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+    box-sizing: border-box !important;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    /* 避免被祖先 stacking / 滚动容器影响观感 */
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+}
+
+html body.page-mine {
+    --bottom-nav-bottom: var(--bottom-nav-gap) !important;
+}
+
+/*
+ * iOS 最终锁（必须在通用 bottom 规则之后）：
+ * 只用 8px 浮起，禁止 padding/bottom 再吃 safe-area。
+ */
+html.app-ios-client body.page-shouye,
+html.app-ios-client body.page-mine,
+html.app-ios-client body.page-daiban,
+html.app-ios-client body.page-bancha,
+
+html.app-ios-client body.page-refund-ad,
+html.app-ios-client body.page-message {
+    --bottom-nav-bottom: 8px !important;
+    --bottom-nav-gap: 8px !important;
+}
+
+html.app-ios-client body > .bottom-nav,
+html.app-ios-client body > .bottom-nav.ios-device,
+html.app-ios-client body.page-daiban > .bottom-nav,
+html.app-ios-client body.page-bancha > .bottom-nav,
+
+html.app-ios-client body.page-refund-ad > .bottom-nav,
+html.app-ios-client body.page-daiban > .bottom-nav.ios-device,
+html.app-ios-client body.page-bancha > .bottom-nav.ios-device,
+
+html.app-ios-client body.page-refund-ad > .bottom-nav.ios-device,
+html.app-ios-client body.page-shouye > .bottom-nav,
+html.app-ios-client body.page-message > .bottom-nav,
+html.app-ios-client body.page-mine > .bottom-nav,
+html.app-ios-client body.page-mine > .bottom-nav.ios-device {
+    bottom: 8px !important;
+    height: var(--bottom-nav-height) !important;
+    min-height: var(--bottom-nav-height) !important;
+    max-height: var(--bottom-nav-height) !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+    margin-bottom: 0 !important;
+    border-radius: 32px !important;
+    /* 关闭模糊，避免 iOS WebKit 把 fixed 底栏抬高一整截 */
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-backface-visibility: visible !important;
+    backface-visibility: visible !important;
+    background: rgba(255, 255, 255, 0.98) !important;
+}
+
+/* iPhone 16 Pro / Pro Max：待办 / 我的 / 消息同一底边，勿再单独压「我的」 */
+/* iPhone 12 / 12 Pro / 16 Pro：同一底边，勿再按机型单独改 bottom */
+html.app-ios-iphone12pro body.page-shouye > .bottom-nav,
+html.app-ios-iphone12pro body.page-shouye > .bottom-nav.ios-device,
+html.app-ios-iphone12pro body.page-daiban > .bottom-nav,
+html.app-ios-iphone12pro body.page-daiban > .bottom-nav.ios-device,
+html.app-ios-iphone12pro body.page-bancha > .bottom-nav,
+
+html.app-ios-iphone12pro body.page-refund-ad > .bottom-nav,
+html.app-ios-iphone12pro body.page-bancha > .bottom-nav.ios-device,
+
+html.app-ios-iphone12pro body.page-refund-ad > .bottom-nav.ios-device,
+html.app-ios-iphone12pro body.page-message > .bottom-nav,
+html.app-ios-iphone12pro body.page-message > .bottom-nav.ios-device,
+html.app-ios-iphone12pro body.page-mine > .bottom-nav,
+html.app-ios-iphone12pro body.page-mine > .bottom-nav.ios-device,
+html.app-ios-iphone12promax body.page-shouye > .bottom-nav,
+html.app-ios-iphone12promax body.page-shouye > .bottom-nav.ios-device,
+html.app-ios-iphone12promax body.page-mine > .bottom-nav,
+html.app-ios-iphone12promax body.page-mine > .bottom-nav.ios-device,
+html.app-ios-iphone16pro body.page-shouye > .bottom-nav,
+html.app-ios-iphone16pro body.page-shouye > .bottom-nav.ios-device,
+html.app-ios-iphone16pro body.page-daiban > .bottom-nav,
+html.app-ios-iphone16pro body.page-daiban > .bottom-nav.ios-device,
+html.app-ios-iphone16pro body.page-bancha > .bottom-nav,
+
+html.app-ios-iphone16pro body.page-refund-ad > .bottom-nav,
+html.app-ios-iphone16pro body.page-bancha > .bottom-nav.ios-device,
+
+html.app-ios-iphone16pro body.page-refund-ad > .bottom-nav.ios-device,
+html.app-ios-iphone16pro body.page-message > .bottom-nav,
+html.app-ios-iphone16pro body.page-message > .bottom-nav.ios-device,
+html.app-ios-iphone16pro body.page-mine > .bottom-nav,
+html.app-ios-iphone16pro body.page-mine > .bottom-nav.ios-device,
+html.app-ios-iphone16promax body.page-shouye > .bottom-nav,
+html.app-ios-iphone16promax body.page-shouye > .bottom-nav.ios-device,
+html.app-ios-iphone16promax body.page-daiban > .bottom-nav,
+html.app-ios-iphone16promax body.page-daiban > .bottom-nav.ios-device,
+html.app-ios-iphone16promax body.page-bancha > .bottom-nav,
+
+html.app-ios-iphone16promax body.page-refund-ad > .bottom-nav,
+html.app-ios-iphone16promax body.page-bancha > .bottom-nav.ios-device,
+
+html.app-ios-iphone16promax body.page-refund-ad > .bottom-nav.ios-device,
+html.app-ios-iphone16promax body.page-message > .bottom-nav,
+html.app-ios-iphone16promax body.page-message > .bottom-nav.ios-device,
+html.app-ios-iphone16promax body.page-mine > .bottom-nav,
+html.app-ios-iphone16promax body.page-mine > .bottom-nav.ios-device {
+    bottom: 8px !important;
+}
+
+/*
+ * iPhone 15 Pro Max / 15 Plus / 13 Pro Max：悬浮胶囊与 Home Indicator 之间会透出页面，
+ * 或 13 PM 被按 screen.height 下拉裁掉。铺满底边成原生 Tab 条；勿套到 16 等其它 iPhone。
+ */
+html.app-ios-client.app-ios-iphone14promax,
+html.app-ios-client.app-ios-iphone15promax,
+html.app-ios-client.app-ios-iphone13promax {
+    --bottom-nav-side: 0px;
+    --bottom-nav-bottom: 0px;
+    --bottom-nav-gap: 0px;
+    --bottom-nav-radius: 0px;
+    --bottom-nav-clearance: calc(62px + env(safe-area-inset-bottom, 34px));
+}
+
+html.app-ios-client.app-ios-iphone14promax body.page-shouye,
+html.app-ios-client.app-ios-iphone14promax body.page-daiban,
+html.app-ios-client.app-ios-iphone14promax body.page-bancha,
+html.app-ios-client.app-ios-iphone14promax body.page-refund-ad,
+html.app-ios-client.app-ios-iphone14promax body.page-message,
+html.app-ios-client.app-ios-iphone14promax body.page-mine,
+html.app-ios-client.app-ios-iphone15promax body.page-shouye,
+html.app-ios-client.app-ios-iphone15promax body.page-daiban,
+html.app-ios-client.app-ios-iphone15promax body.page-bancha,
+
+html.app-ios-client.app-ios-iphone15promax body.page-refund-ad,
+html.app-ios-client.app-ios-iphone15promax body.page-message,
+html.app-ios-client.app-ios-iphone15promax body.page-mine,
+html.app-ios-client.app-ios-iphone13promax body.page-shouye,
+html.app-ios-client.app-ios-iphone13promax body.page-daiban,
+html.app-ios-client.app-ios-iphone13promax body.page-bancha,
+
+html.app-ios-client.app-ios-iphone13promax body.page-refund-ad,
+html.app-ios-client.app-ios-iphone13promax body.page-message,
+html.app-ios-client.app-ios-iphone13promax body.page-mine {
+    --bottom-nav-bottom: 0px !important;
+    --bottom-nav-gap: 0px !important;
+}
+
+html.app-ios-client.app-ios-iphone14promax body > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone14promax body.page-shouye > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-shouye > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone14promax body.page-daiban > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-daiban > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone14promax body.page-bancha > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-refund-ad > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-bancha > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone14promax body.page-refund-ad > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone14promax body.page-message > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-message > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone15promax body > .bottom-nav,
+html.app-ios-client.app-ios-iphone15promax body > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone15promax body.page-shouye > .bottom-nav,
+html.app-ios-client.app-ios-iphone15promax body.page-shouye > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone15promax body.page-daiban > .bottom-nav,
+html.app-ios-client.app-ios-iphone15promax body.page-daiban > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone15promax body.page-bancha > .bottom-nav,
+
+html.app-ios-client.app-ios-iphone15promax body.page-refund-ad > .bottom-nav,
+html.app-ios-client.app-ios-iphone15promax body.page-bancha > .bottom-nav.ios-device,
+
+html.app-ios-client.app-ios-iphone15promax body.page-refund-ad > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone15promax body.page-message > .bottom-nav,
+html.app-ios-client.app-ios-iphone15promax body.page-message > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone15promax body.page-mine > .bottom-nav,
+html.app-ios-client.app-ios-iphone15promax body.page-mine > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone13promax body > .bottom-nav,
+html.app-ios-client.app-ios-iphone13promax body > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone13promax body.page-shouye > .bottom-nav,
+html.app-ios-client.app-ios-iphone13promax body.page-shouye > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone13promax body.page-daiban > .bottom-nav,
+html.app-ios-client.app-ios-iphone13promax body.page-daiban > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone13promax body.page-bancha > .bottom-nav,
+
+html.app-ios-client.app-ios-iphone13promax body.page-refund-ad > .bottom-nav,
+html.app-ios-client.app-ios-iphone13promax body.page-bancha > .bottom-nav.ios-device,
+
+html.app-ios-client.app-ios-iphone13promax body.page-refund-ad > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone13promax body.page-message > .bottom-nav,
+html.app-ios-client.app-ios-iphone13promax body.page-message > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone13promax body.page-mine > .bottom-nav,
+html.app-ios-client.app-ios-iphone13promax body.page-mine > .bottom-nav.ios-device {
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    border-radius: 0 !important;
+    height: auto !important;
+    min-height: 54px !important;
+    max-height: none !important;
+    padding-top: 8px !important;
+    padding-bottom: max(8px, env(safe-area-inset-bottom, 34px)) !important;
+    background: #fff !important;
+    box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.06) !important;
+    overflow: visible !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+}
+
+/*
+ * iPhone 14 Pro Max（及同屏 15 PM）：正版是贴底全宽毛玻璃，不是实心白条。
+ * 模糊放在 ::before，底栏本身不设 backdrop-filter，避免 WebKit 把 fixed 条抬高。
+ */
+html.app-ios-client.app-ios-iphone14promax body > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone14promax body.page-shouye > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-daiban > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-bancha > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-message > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav,
+html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body > .bottom-nav,
+html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body.page-shouye > .bottom-nav,
+html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body.page-daiban > .bottom-nav,
+html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body.page-bancha > .bottom-nav,
+html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body.page-message > .bottom-nav,
+html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body.page-mine > .bottom-nav {
+    background: rgba(255, 255, 255, 0.52) !important;
+    box-shadow: 0 -0.33px 0 rgba(60, 60, 67, 0.16) !important;
+    border: none !important;
+    isolation: isolate;
+}
+
+html.app-ios-client.app-ios-iphone14promax body > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone14promax body.page-shouye > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone14promax body.page-daiban > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone14promax body.page-bancha > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone14promax body.page-message > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body.page-shouye > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body.page-daiban > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body.page-bancha > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body.page-message > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body.page-mine > .bottom-nav::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: rgba(255, 255, 255, 0.38);
+    -webkit-backdrop-filter: saturate(180%) blur(26px);
+    backdrop-filter: saturate(180%) blur(26px);
+}
+
+html.app-ios-client.app-ios-iphone14promax body > .bottom-nav .nav-item,
+html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body > .bottom-nav .nav-item {
+    z-index: 1;
+}
+
+/*
+ * iPhone 14 Pro Max：用户要悬浮胶囊，不要贴底长条。
+ * 须写在 15 PM 贴底规则之后，避免同屏 430×932 被带成 dock。
+ */
+html.app-ios-client.app-ios-iphone14promax {
+    --bottom-nav-side: 16px !important;
+    --bottom-nav-bottom: calc(env(safe-area-inset-bottom, 34px) + 8px) !important;
+    --bottom-nav-gap: calc(env(safe-area-inset-bottom, 34px) + 8px) !important;
+    --bottom-nav-height: 54px !important;
+    --bottom-nav-radius: 32px !important;
+    --bottom-nav-clearance: calc(54px + env(safe-area-inset-bottom, 34px) + 20px) !important;
+}
+
+html.app-ios-client.app-ios-iphone14promax body > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone14promax body.page-shouye > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-daiban > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-bancha > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-message > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav.ios-device {
+    left: 16px !important;
+    right: 16px !important;
+    bottom: calc(env(safe-area-inset-bottom, 34px) + 8px) !important;
+    width: auto !important;
+    max-width: none !important;
+    border-radius: 32px !important;
+    height: 54px !important;
+    min-height: 54px !important;
+    max-height: 54px !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+    background: rgba(255, 255, 255, 0.96) !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08) !important;
+    border: 1px solid rgba(0, 0, 0, 0.04) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    backdrop-filter: blur(8px) !important;
+    isolation: auto;
+}
+
+html.app-ios-client.app-ios-iphone14promax body > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone14promax body.page-shouye > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone14promax body.page-daiban > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone14promax body.page-bancha > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone14promax body.page-message > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav::before {
+    content: none !important;
+    display: none !important;
+}
+
+/* Tab 壳 iframe：只保留宿主底栏，子页底栏一律隐藏（含 iPhone 16 Pro 等 iOS 机型选择器） */
+html.tab-embed-mode .bottom-nav,
+html.tab-embed-mode body > .bottom-nav,
+html.tab-embed-mode body.page-shouye > .bottom-nav,
+html.tab-embed-mode body.page-daiban > .bottom-nav,
+html.tab-embed-mode body.page-bancha > .bottom-nav,
+html.tab-embed-mode body.page-message > .bottom-nav,
+html.tab-embed-mode body.page-mine > .bottom-nav,
+html.tab-embed-mode body .bottom-nav.ios-device,
+html.app-ios-client.tab-embed-mode .bottom-nav,
+html.app-ios-client.tab-embed-mode body > .bottom-nav,
+html.app-ios-client.tab-embed-mode body.page-daiban > .bottom-nav,
+html.app-ios-client.tab-embed-mode body.page-bancha > .bottom-nav,
+html.app-ios-client.tab-embed-mode body.page-message > .bottom-nav,
+html.app-ios-iphone16pro.tab-embed-mode .bottom-nav,
+html.app-ios-iphone16pro.tab-embed-mode body > .bottom-nav,
+html.app-ios-iphone16pro.tab-embed-mode body.page-daiban > .bottom-nav,
+html.app-ios-iphone16pro.tab-embed-mode body.page-bancha > .bottom-nav,
+html.app-ios-iphone16pro.tab-embed-mode body.page-message > .bottom-nav,
+html.app-ios-iphone16promax.tab-embed-mode .bottom-nav,
+html.app-ios-iphone16promax.tab-embed-mode body > .bottom-nav {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+    opacity: 0 !important;
 }
 
 .bottom-nav {
@@ -45,18 +425,25 @@ html body.tax-app-shell > .bottom-nav,
     align-items: center;
     justify-content: space-around;
     height: var(--bottom-nav-height);
-    background: #fff;
-    border-radius: 36px;
-    border: none;
-    padding: 0 8px;
-    box-shadow: 0 8px 24px rgba(36, 55, 86, 0.12);
+    min-height: var(--bottom-nav-height);
+    max-height: var(--bottom-nav-height);
+    /*
+     * 提高不透明度：半透明+强模糊会透出下方切片，像「底栏叠在页面截图上」。
+     * 接近原版实心底栏观感，仍保留圆角胶囊形态。
+     */
+    background: rgba(255, 255, 255, 0.96);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border-radius: var(--bottom-nav-radius);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    padding: 8px 0;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
     box-sizing: border-box;
-    overflow: hidden;
+    overflow: visible;
 }
 
-/* 旧脚本会加 ios-device，内边距不得抬高胶囊 */
 .bottom-nav.ios-device {
-    padding-bottom: 0 !important;
+    padding: 8px 0 !important;
 }
 
 .bottom-nav .nav-item,
@@ -68,15 +455,18 @@ html body.tax-app-shell > .bottom-nav,
     align-items: center;
     justify-content: center;
     height: 100%;
-    padding: 8px 2px 7px;
+    padding: 0 2px;
     text-decoration: none;
-    color: #30333a;
-    font-size: 12px;
-    line-height: 1.15;
+    color: var(--bottom-nav-text);
+    font-size: 11px;
+    line-height: 1.1;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
     font-weight: 400;
     -webkit-tap-highlight-color: transparent;
     outline: none;
     box-sizing: border-box;
+    position: relative;
 }
 
 .bottom-nav .nav-item:active {
@@ -86,19 +476,44 @@ html body.tax-app-shell > .bottom-nav,
 .bottom-nav .nav-item.active,
 .bottom-nav .nav-item.active:link,
 .bottom-nav .nav-item.active:visited {
-    color: var(--app-accent, #1677ff);
+    color: var(--bottom-nav-text-active);
     font-weight: 400;
 }
 
 .bottom-nav .nav-icon {
-    display: block;
-    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    margin-bottom: 2px;
     line-height: 0;
+    position: relative;
+}
+
+.bottom-nav .nav-unread-badge {
+    position: absolute;
+    top: -4px;
+    right: -8px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    background: #ff3b30;
+    color: #fff;
+    font-size: 10px;
+    line-height: 16px;
+    text-align: center;
+    font-weight: 600;
+    box-sizing: border-box;
+    pointer-events: none;
+    z-index: 1;
 }
 
 .bottom-nav .nav-icon img {
-    width: 22px;
-    height: 22px;
+    width: 19px;
+    height: 19px;
     display: block;
     margin: 0 auto;
     object-fit: contain;
@@ -106,37 +521,83 @@ html body.tax-app-shell > .bottom-nav,
 
 .bottom-nav .nav-text {
     display: block;
+    color: inherit;
+    font-size: 11px;
+    line-height: 12px;
+    height: 12px;
+    white-space: nowrap;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+.bottom-nav .nav-item.active .nav-text {
+    color: var(--bottom-nav-text-active);
+}
+
+.bottom-nav.ios-device .nav-text {
+    color: #000000;
+}
+
+.bottom-nav.ios-device .nav-item.active .nav-text {
+    color: var(--bottom-nav-text-active);
 }
 
 @media (max-width: 360px) {
     :root {
         --bottom-nav-side: 12px;
-        --bottom-nav-height: 68px;
+        --bottom-nav-height: 54px;
     }
 
     .bottom-nav {
-        border-radius: 34px;
+        border-radius: 32px;
+        padding: 8px 0;
     }
 }
 
-/* Cordova 2410DPN6CC：env 常为 0，需额外抬高避开手势条（所有 TAB 同一值） */
+/* Cordova 2410DPN6CC：env 常为 0，需略抬高避开手势条（所有 TAB 同一值） */
 html.app-cordova-xiaomi-2410 {
-    --app-cordova-bottom-inset: 32px;
-    --bottom-nav-bottom: 32px;
+    --app-cordova-bottom-inset: 24px;
+    --bottom-nav-bottom: 24px;
+    --bottom-nav-gap: 24px;
     --bottom-nav-clearance: calc(
-        var(--bottom-nav-height) + var(--bottom-nav-bottom) + 16px
+        var(--bottom-nav-height) + var(--bottom-nav-bottom) + 12px
     );
 }
 
 html.app-cordova-xiaomi-2410 .bottom-nav {
-    padding-bottom: 4px;
+    /* 手势条避让走 --bottom-nav-bottom，勿再加 padding 把胶囊撑高 */
     box-sizing: border-box;
-}
-
-html.app-cordova-xiaomi-2410 .bottom-nav .nav-item {
-    padding-bottom: 10px;
 }
 
 html.app-cordova-xiaomi-2410 body.page-mine .content-wrapper {
     padding-bottom: var(--bottom-nav-clearance) !important;
+}
+
+/*
+ * iOS 12 / 16 Pro：首页 html 曾整页刷成搜索条蓝，胶囊下会露出蓝边，
+ * 切到「我的」（浅灰底）就像导航变高/变矮。蓝只铺顶部，根底与「我的」同灰。
+ */
+html.app-ios-client.app-top-safe-shell:has(body.page-shouye),
+html.app-ios-client body.page-shouye {
+    background-color: #f6f7fb !important;
+}
+
+html.app-ios-client body.page-shouye,
+html.app-ios-client body.page-mine {
+    min-height: 100vh !important;
+}
+
+/* iPhone 16 Pro 待办 / 办查：与首页、我的同一大视口，禁止 100dvh 把胶囊抬高 */
+html.app-ios-iphone16pro,
+html.app-ios-iphone16pro body.page-daiban,
+html.app-ios-iphone16pro body.page-bancha,
+html.app-ios-iphone16pro .daiban-page,
+html.app-ios-iphone16pro .bancha-page {
+    min-height: 100vh !important;
+    height: auto !important;
+}
+
+html.app-ios-client {
+    height: auto !important;
+    min-height: 100vh !important;
 }

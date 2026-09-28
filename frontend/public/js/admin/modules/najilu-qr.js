@@ -1,0 +1,1160 @@
+/** Admin module: 完税证明二维码 / 查询验证码替换 */
+(function (global) {
+  var issueCache = [];
+  var resultDataUrl = '';
+  var assetPreviewUrl = '';
+  var extractedPatchBlob = null;
+  var extractSequence = 0;
+  /* 源图与提取框（自然像素坐标），供框选校正使用 */
+  var sourceImg = null;
+  var sourceObjectUrl = '';
+  var currentRegion = null;
+  var lastQrBox = null;
+  var lastQrAuto = false;
+  var dragStart = null;
+
+  /* 标准画布宽 1240；二维码块 / 仅二维码区域 */
+  var CERT_W = 1240;
+  var BLOCK_X = 983;
+  var BLOCK_Y = 42;
+  var BLOCK_W = 185;
+  var BLOCK_H = 310;
+  var QR_ONLY_H = 185;
+  /* 整块提取需覆盖比二维码更宽的 16 位验证码，且给末行字母留足下边距。 */
+  var BLOCK_SIDE_PAD_RATIO = 0.12;
+  var BLOCK_TOP_PAD_RATIO = 0.05;
+  var BLOCK_BOTTOM_PAD_RATIO = 0.18;
+
+  function fetchAdmin(url, opts) {
+    var fn = global.adminFetch;
+    if (typeof fn !== 'function') {
+      return Promise.reject(new Error('adminFetch unavailable'));
+    }
+    return fn(url, opts);
+  }
+
+  function val(id) {
+    var el = document.getElementById(id);
+    return el ? String(el.value || '').trim() : '';
+  }
+
+  function setField(id, value) {
+    var el = document.getElementById(id);
+    if (el) el.value = value == null ? '' : String(value);
+  }
+
+  function setStatus(msg, isErr) {
+    var status = document.getElementById('najiluQrStatus');
+    if (status) {
+      status.textContent = msg || '';
+      status.style.color = isErr ? '#b91c1c' : '';
+    }
+  }
+
+  function normalizeCode(raw) {
+    return String(raw || '')
+      .replace(/\s+/g, '')
+      .toUpperCase();
+  }
+
+  function loadImageFromFile(file) {
+    return new Promise(function (resolve, reject) {
+      if (!file) {
+        reject(new Error('未选择图片'));
+        return;
+      }
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        URL.revokeObjectURL(url);
+        resolve(img);
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(url);
+        reject(new Error('无法读取该图片'));
+      };
+      img.src = url;
+    });
+  }
+
+  function regionForMode(mode, imgW, imgH) {
+    var scale = imgW / CERT_W;
+    var h = mode === 'qr' ? QR_ONLY_H : BLOCK_H;
+    var sx = Math.round(BLOCK_X * scale);
+    var sy = Math.round(BLOCK_Y * scale);
+    var sw = Math.round(BLOCK_W * scale);
+    var sh = Math.round(h * scale);
+    if (mode !== 'qr') {
+      var sidePad = Math.round(BLOCK_W * BLOCK_SIDE_PAD_RATIO * scale);
+      var topPad = Math.round(BLOCK_W * BLOCK_TOP_PAD_RATIO * scale);
+      var bottomPad = Math.round(BLOCK_W * BLOCK_BOTTOM_PAD_RATIO * scale);
+      sx -= sidePad;
+      sy -= topPad;
+      sw += sidePad * 2;
+      sh += topPad + bottomPad;
+    }
+    sw = Math.min(sw, imgW);
+    sh = Math.min(sh, imgH);
+    sx = Math.max(0, Math.min(sx, imgW - sw));
+    sy = Math.max(0, Math.min(sy, imgH - sh));
+    if (scale <= 0 || sw < 40 || sh < 40) {
+      throw new Error('原始图尺寸不足，无法定位二维码区域');
+    }
+    return { sx: sx, sy: sy, sw: sw, sh: sh };
+  }
+
+  /** 已经是二维码块/截图，不是 1240 宽完整完税证明 */
+  function looksLikeQrPatch(imgW, imgH) {
+    imgW = Number(imgW) || 0;
+    imgH = Number(imgH) || 0;
+    if (imgW < 80 || imgH < 80) return false;
+    if (imgW <= 720) return true;
+    return imgW < 900 && imgH < 1000 && imgW / imgH > 0.75;
+  }
+
+  /**
+   * 自己按像素找二维码，不依赖 BarcodeDetector（桌面 Chrome/Windows 普遍不支持，
+   * 之前就是因此回退到固定坐标才抠错）。
+   * 右上区域二值化 → 膨胀把二维码模块连成整块 → 取近正方形、黑占比接近二维码的连通块。
+   */
+  function detectQrBoxByPixels(img, opts) {
+    var natW = img.naturalWidth;
+    var natH = img.naturalHeight;
+    if (!natW || !natH) return null;
+    var scale = Math.min(1, 1000 / natW);
+    var w = Math.max(1, Math.round(natW * scale));
+    var h = Math.max(1, Math.round(natH * scale));
+    var canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    var data;
+    try {
+      data = ctx.getImageData(0, 0, w, h).data;
+    } catch (eData) {
+      return null;
+    }
+    /* 默认只在完税证明右上角找，避免误命中国徽、表格、印章；fullSearch 用于已裁好的码图 */
+    var fullSearch = !!(opts && opts.fullSearch);
+    var rx0 = fullSearch ? 0 : Math.floor(w * 0.58);
+    var ry1 = fullSearch ? h : Math.max(1, Math.floor(h * 0.5));
+    var mw = w - rx0;
+    if (mw < 8) return null;
+    var dark = new Uint8Array(mw * ry1);
+    var x;
+    var y;
+    for (y = 0; y < ry1; y++) {
+      for (x = 0; x < mw; x++) {
+        var i = (y * w + (x + rx0)) * 4;
+        var lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+        dark[y * mw + x] = lum < 150 ? 1 : 0;
+      }
+    }
+    var r = Math.max(1, Math.round(w * 0.004));
+    var dil = new Uint8Array(mw * ry1);
+    for (y = 0; y < ry1; y++) {
+      for (x = 0; x < mw; x++) {
+        if (!dark[y * mw + x]) continue;
+        var yy1 = Math.min(ry1 - 1, y + r);
+        var xx1 = Math.min(mw - 1, x + r);
+        for (var yy = Math.max(0, y - r); yy <= yy1; yy++) {
+          for (var xx = Math.max(0, x - r); xx <= xx1; xx++) {
+            dil[yy * mw + xx] = 1;
+          }
+        }
+      }
+    }
+    var seen = new Uint8Array(mw * ry1);
+    var queue = new Int32Array(mw * ry1);
+    var best = null;
+    var minSide = Math.max(12, Math.round(w * 0.05));
+    for (y = 0; y < ry1; y++) {
+      for (x = 0; x < mw; x++) {
+        var start = y * mw + x;
+        if (!dil[start] || seen[start]) continue;
+        var head = 0;
+        var tail = 0;
+        queue[tail++] = start;
+        seen[start] = 1;
+        var bx0 = x;
+        var bx1 = x;
+        var by0 = y;
+        var by1 = y;
+        var area = 0;
+        while (head < tail) {
+          var cur = queue[head++];
+          var cy = (cur / mw) | 0;
+          var cx = cur - cy * mw;
+          area++;
+          if (cx < bx0) bx0 = cx;
+          if (cx > bx1) bx1 = cx;
+          if (cy < by0) by0 = cy;
+          if (cy > by1) by1 = cy;
+          if (cx > 0 && dil[cur - 1] && !seen[cur - 1]) {
+            seen[cur - 1] = 1;
+            queue[tail++] = cur - 1;
+          }
+          if (cx < mw - 1 && dil[cur + 1] && !seen[cur + 1]) {
+            seen[cur + 1] = 1;
+            queue[tail++] = cur + 1;
+          }
+          if (cy > 0 && dil[cur - mw] && !seen[cur - mw]) {
+            seen[cur - mw] = 1;
+            queue[tail++] = cur - mw;
+          }
+          if (cy < ry1 - 1 && dil[cur + mw] && !seen[cur + mw]) {
+            seen[cur + mw] = 1;
+            queue[tail++] = cur + mw;
+          }
+        }
+        var bw = bx1 - bx0 + 1;
+        var bh = by1 - by0 + 1;
+        if (bw < minSide || bh < minSide) continue;
+        var ratio = bw / bh;
+        if (ratio < 0.75 || ratio > 1.33) continue;
+        /* 须基本填满外框，排除表格线、印章圆环等空心图形 */
+        if (area / (bw * bh) < 0.55) continue;
+        var darkCount = 0;
+        for (var ty = by0; ty <= by1; ty++) {
+          for (var tx = bx0; tx <= bx1; tx++) {
+            if (dark[ty * mw + tx]) darkCount++;
+          }
+        }
+        var density = darkCount / (bw * bh);
+        if (density < 0.25 || density > 0.78) continue;
+        /* 扫描线上的黑白交替次数：二维码很多，国徽/文字块很少 */
+        var fractions = [0.25, 0.5, 0.75];
+        var transitions = 0;
+        for (var fi = 0; fi < fractions.length; fi++) {
+          var ry = by0 + Math.floor(bh * fractions[fi]);
+          var rxc = bx0 + Math.floor(bw * fractions[fi]);
+          var px;
+          for (px = bx0 + 1; px <= bx1; px++) {
+            if (dark[ry * mw + px] !== dark[ry * mw + px - 1]) transitions++;
+          }
+          for (px = by0 + 1; px <= by1; px++) {
+            if (dark[px * mw + rxc] !== dark[(px - 1) * mw + rxc]) transitions++;
+          }
+        }
+        if (transitions / (fractions.length * 2) < 6) continue;
+        if (!best || bw * bh > best.bw * best.bh) {
+          best = { bx0: bx0, by0: by0, bw: bw, bh: bh };
+        }
+      }
+    }
+    if (!best) return null;
+    /* 去掉膨胀带来的外扩，再补回二维码自带的 1 模块静区（约 3.5%），逼近模板里的 185 方块 */
+    best.bx0 += r;
+    best.by0 += r;
+    best.bw -= r * 2;
+    best.bh -= r * 2;
+    var pad = Math.round(Math.max(best.bw, best.bh) * 0.035);
+    best.bx0 -= pad;
+    best.by0 -= pad;
+    best.bw += pad * 2;
+    best.bh += pad * 2;
+    if (best.bw < 4 || best.bh < 4) return null;
+    return {
+      x: Math.round((best.bx0 + rx0) / scale),
+      y: Math.round(best.by0 / scale),
+      width: Math.round(best.bw / scale),
+      height: Math.round(best.bh / scale)
+    };
+  }
+
+  /** 二维码外框 → 提取区域；整块模式按模板比例向下包含 16 位查询验证码 */
+  function regionFromQrBox(box, mode, imgW, imgH) {
+    var qrSize = Math.max(box.width, box.height);
+    var sidePad = mode === 'qr' ? 0 : qrSize * BLOCK_SIDE_PAD_RATIO;
+    var topPad = mode === 'qr' ? 0 : qrSize * BLOCK_TOP_PAD_RATIO;
+    var bottomPad = mode === 'qr' ? 0 : qrSize * BLOCK_BOTTOM_PAD_RATIO;
+    var sw = Math.round(qrSize + sidePad * 2);
+    var sh =
+      mode === 'qr'
+        ? sw
+        : Math.round((qrSize * BLOCK_H) / BLOCK_W + topPad + bottomPad);
+    var sx = Math.round(box.x + box.width / 2 - sw / 2);
+    var sy = Math.round(box.y + box.height / 2 - qrSize / 2 - topPad);
+    sw = Math.min(sw, imgW);
+    sh = Math.min(sh, imgH);
+    sx = Math.max(0, Math.min(sx, imgW - sw));
+    sy = Math.max(0, Math.min(sy, imgH - sh));
+    return {
+      sx: sx,
+      sy: sy,
+      sw: Math.min(sw, imgW - sx),
+      sh: Math.min(sh, imgH - sy)
+    };
+  }
+
+  function canvasLooksBlank(ctx, w, h) {
+    var data;
+    try {
+      data = ctx.getImageData(0, 0, w, h).data;
+    } catch (eBlank) {
+      return false;
+    }
+    var n = w * h;
+    if (!n) return true;
+    var ink = 0;
+    var i;
+    for (i = 0; i < data.length; i += 4) {
+      if (data[i] < 240 || data[i + 1] < 240 || data[i + 2] < 240) ink++;
+    }
+    return ink / n < 0.015;
+  }
+
+  /** 定位：像素检测优先，检测不到才退回标准证书坐标 */
+  function locateQrRegion(img, mode) {
+    var box = null;
+    try {
+      box = detectQrBoxByPixels(img);
+    } catch (e) {
+      box = null;
+    }
+    if (!box) {
+      try {
+        box = detectQrBoxByPixels(img, { fullSearch: true });
+      } catch (eFull) {
+        box = null;
+      }
+    }
+    if (box) {
+      lastQrBox = box;
+      lastQrAuto = true;
+      return regionFromQrBox(box, mode, img.naturalWidth, img.naturalHeight);
+    }
+    lastQrAuto = false;
+    if (looksLikeQrPatch(img.naturalWidth, img.naturalHeight)) {
+      lastQrBox = { x: 0, y: 0, width: img.naturalWidth, height: img.naturalHeight };
+      return { sx: 0, sy: 0, sw: img.naturalWidth, sh: img.naturalHeight };
+    }
+    var fallback = regionForMode(mode, img.naturalWidth, img.naturalHeight);
+    lastQrBox = {
+      x: fallback.sx,
+      y: fallback.sy,
+      width: fallback.sw,
+      height: Math.min(fallback.sw, fallback.sh)
+    };
+    return fallback;
+  }
+
+  /** 把替换图贴到原始完整完税证明右上角 */
+  function compositeOntoFull(fullImg, patchImg, mode) {
+    var region = regionForMode(mode, fullImg.naturalWidth, fullImg.naturalHeight);
+    var canvas = document.createElement('canvas');
+    canvas.width = fullImg.naturalWidth;
+    canvas.height = fullImg.naturalHeight;
+    var ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(fullImg, 0, 0);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(region.sx, region.sy, region.sw, region.sh);
+    ctx.imageSmoothingEnabled = true;
+    if (typeof ctx.imageSmoothingQuality === 'string') {
+      ctx.imageSmoothingQuality = 'high';
+    }
+    ctx.drawImage(patchImg, region.sx, region.sy, region.sw, region.sh);
+    return canvas.toDataURL('image/png');
+  }
+
+  function showAssetPreview(file) {
+    var prev = document.getElementById('najiluQrAssetPreview');
+    if (!prev || !file) return;
+    if (assetPreviewUrl) URL.revokeObjectURL(assetPreviewUrl);
+    assetPreviewUrl = URL.createObjectURL(file);
+    prev.src = assetPreviewUrl;
+    prev.style.display = 'block';
+  }
+
+  function showResultPreview(dataUrl) {
+    resultDataUrl = dataUrl || '';
+    var wrap = document.getElementById('najiluQrCertPreview');
+    var dl = document.getElementById('najiluQrDownloadBtn');
+    if (wrap) {
+      wrap.innerHTML = '';
+      if (dataUrl) {
+        var img = document.createElement('img');
+        img.src = dataUrl;
+        img.alt = '完税证明结果';
+        img.style.cssText = 'max-width:100%;border:1px solid #ddd;margin-bottom:12px;background:#fff;';
+        wrap.appendChild(img);
+      }
+    }
+    if (dl) dl.style.display = dataUrl ? '' : 'none';
+  }
+
+  function selectedFullFile() {
+    var input = document.getElementById('najiluQrFullFile');
+    return input && input.files && input.files[0] ? input.files[0] : null;
+  }
+
+  function selectedPatchFile() {
+    var input = document.getElementById('najiluQrFile');
+    var direct = input && input.files && input.files[0] ? input.files[0] : null;
+    return direct || extractedPatchBlob;
+  }
+
+  /** 从标准完整完税证明中按原始像素比例裁出二维码 + 16 位查询验证码，不缩放源素材。 */
+  function extractRegionBlob(img, region) {
+    var canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, region.sw);
+    canvas.height = Math.max(1, region.sh);
+    var ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(
+      img,
+      region.sx,
+      region.sy,
+      region.sw,
+      region.sh,
+      0,
+      0,
+      region.sw,
+      region.sh
+    );
+    if (canvasLooksBlank(ctx, canvas.width, canvas.height)) {
+      return Promise.reject(new Error('裁出来是空白图，没有二维码。请拖动框选码所在区域，或直接上传二维码截图'));
+    }
+    return new Promise(function (resolve, reject) {
+      canvas.toBlob(function (blob) {
+        if (!blob) {
+          reject(new Error('二维码区域提取失败'));
+          return;
+        }
+        resolve(blob);
+      }, 'image/png', 1);
+    });
+  }
+
+  /** 把提取框画到源图预览上，便于人工确认/纠正 */
+  function drawCropBox() {
+    var box = document.getElementById('najiluQrCropBox');
+    var imgEl = document.getElementById('najiluQrCropImg');
+    if (!box || !imgEl || !sourceImg || !currentRegion) return;
+    var shown = imgEl.clientWidth;
+    if (!shown) return;
+    var k = shown / sourceImg.naturalWidth;
+    box.style.display = 'block';
+    box.style.left = Math.round(currentRegion.sx * k) + 'px';
+    box.style.top = Math.round(currentRegion.sy * k) + 'px';
+    box.style.width = Math.round(currentRegion.sw * k) + 'px';
+    box.style.height = Math.round(currentRegion.sh * k) + 'px';
+  }
+
+  /** 用当前提取框裁图并作为替换素材 */
+  function applyCurrentRegion(note) {
+    if (!sourceImg || !currentRegion) return;
+    var seq = ++extractSequence;
+    drawCropBox();
+    extractRegionBlob(sourceImg, currentRegion)
+      .then(function (blob) {
+        if (seq !== extractSequence) return;
+        extractedPatchBlob = blob;
+        showAssetPreview(blob);
+        setStatus(
+          note ||
+            (currentIssue()
+              ? '已提取二维码与查询验证码，可点「预览 / 生成结果图」'
+              : '提取完成；请先加载并选择要替换的开具记录'),
+          false
+        );
+      })
+      .catch(function (e) {
+        if (seq !== extractSequence) return;
+        extractedPatchBlob = null;
+        setStatus('提取失败：' + (e && e.message ? e.message : '错误'), true);
+      });
+  }
+
+  function fillIssueSelect(list) {
+    var sel = document.getElementById('najiluQrIssueId');
+    if (!sel) return;
+    issueCache = Array.isArray(list) ? list : [];
+    sel.innerHTML = '';
+    if (!issueCache.length) {
+      var opt0 = document.createElement('option');
+      opt0.value = '';
+      opt0.textContent = '（无开具记录）';
+      sel.appendChild(opt0);
+      return;
+    }
+    issueCache.forEach(function (it, idx) {
+      var opt = document.createElement('option');
+      opt.value = String(it.id || '');
+      opt.textContent =
+        (it.apply_time || it.created_at || '') +
+        ' · ' +
+        (it.period_start || '') +
+        '~' +
+        (it.period_end || '') +
+        (it.query_code ? ' · ' + it.query_code : '');
+      if (idx === 0) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    onIssueChange();
+  }
+
+  function currentIssue() {
+    var id = val('najiluQrIssueId');
+    for (var i = 0; i < issueCache.length; i++) {
+      if (String(issueCache[i].id) === id) return issueCache[i];
+    }
+    return null;
+  }
+
+  function onIssueChange() {
+    var it = currentIssue();
+    if (!it) {
+      setField('najiluQrQueryCode', '');
+      return;
+    }
+    setField('najiluQrQueryCode', it.query_code || '');
+    var modeEl = document.getElementById('najiluQrMode');
+    if (modeEl) {
+      modeEl.value = it.qr_block_image_url ? 'block' : it.qr_image_url ? 'qr' : 'block';
+    }
+    var prev = document.getElementById('najiluQrAssetPreview');
+    var url = it.qr_block_image_url || it.qr_image_url || '';
+    if (prev && url && !selectedPatchFile()) {
+      prev.src = url.charAt(0) === '/' ? url : '/' + url;
+      prev.style.display = 'block';
+    }
+  }
+
+  function loadIssues() {
+    var username = val('najiluQrUser');
+    if (!username) {
+      setStatus('请输入用户名', true);
+      return;
+    }
+    setStatus('加载开具记录…', false);
+    fetchAdmin('api/admin/najilu-qr/list?username=' + encodeURIComponent(username))
+      .then(function (r) {
+        return (window.adminParseJson||function(r){return r.json();})(r);
+      })
+      .then(function (j) {
+        if (!j || j.code !== 200 || !j.data) {
+          setStatus((j && j.msg) || '加载失败', true);
+          return;
+        }
+        fillIssueSelect(j.data.applications || []);
+        setStatus(
+          (j.data.applications || []).length
+            ? '已加载 ' + j.data.applications.length + ' 条开具记录'
+            : '该用户暂无开具记录',
+          !(j.data.applications || []).length
+        );
+      })
+      .catch(function (e) {
+        setStatus('加载失败：' + (e && e.message ? e.message : '网络错误'), true);
+      });
+  }
+
+  function onFileChange() {
+    var input = document.getElementById('najiluQrFile');
+    var file = input && input.files && input.files[0] ? input.files[0] : null;
+    if (!file) return;
+    extractedPatchBlob = null;
+    var fullInput = document.getElementById('najiluQrFullFile');
+    if (fullInput) fullInput.value = '';
+    showAssetPreview(file);
+    setStatus(
+      currentIssue()
+        ? '替换图已就绪，将直接使用已选开具记录生成结果图'
+        : '替换图已就绪；请先加载开具记录，或上传原始完整图',
+      false
+    );
+  }
+
+  function onFullFileChange() {
+    var file = selectedFullFile();
+    if (!file) return;
+    extractedPatchBlob = null;
+    currentRegion = null;
+    var directInput = document.getElementById('najiluQrFile');
+    if (directInput) directInput.value = '';
+    setStatus('正在识别二维码位置…', false);
+    loadImageFromFile(file)
+      .then(function (img) {
+        sourceImg = img;
+        var wrap = document.getElementById('najiluQrCropWrap');
+        var imgEl = document.getElementById('najiluQrCropImg');
+        if (sourceObjectUrl) URL.revokeObjectURL(sourceObjectUrl);
+        sourceObjectUrl = URL.createObjectURL(file);
+        if (imgEl) imgEl.src = sourceObjectUrl;
+        if (wrap) wrap.style.display = 'block';
+        currentRegion = locateQrRegion(img, val('najiluQrMode') || 'block');
+        applyCurrentRegion(
+          lastQrAuto
+            ? '已自动识别二维码；如框选位置不对，可在下方源图上拖动重新框选'
+            : '未能自动识别二维码，已用标准位置；请在下方源图上拖动框选正确区域'
+        );
+      })
+      .catch(function (e) {
+        setStatus(
+          '自动识别失败（' + (e && e.message ? e.message : '错误') + '），请在源图上拖动框选二维码区域',
+          true
+        );
+      });
+  }
+
+  function onModeChange() {
+    if (!sourceImg) return;
+    if (lastQrBox) {
+      currentRegion = regionFromQrBox(
+        lastQrBox,
+        val('najiluQrMode') || 'block',
+        sourceImg.naturalWidth,
+        sourceImg.naturalHeight
+      );
+      applyCurrentRegion();
+    }
+  }
+
+  /** 源图上拖动框选：所选矩形即为替换素材区域 */
+  function cropPointToNatural(ev) {
+    var imgEl = document.getElementById('najiluQrCropImg');
+    if (!imgEl || !sourceImg) return null;
+    var rect = imgEl.getBoundingClientRect();
+    if (!rect.width) return null;
+    var k = sourceImg.naturalWidth / rect.width;
+    return {
+      x: Math.max(0, Math.min(sourceImg.naturalWidth, Math.round((ev.clientX - rect.left) * k))),
+      y: Math.max(0, Math.min(sourceImg.naturalHeight, Math.round((ev.clientY - rect.top) * k)))
+    };
+  }
+
+  function onCropDown(ev) {
+    if (!sourceImg) return;
+    var p = cropPointToNatural(ev);
+    if (!p) return;
+    ev.preventDefault();
+    dragStart = p;
+  }
+
+  function onCropMove(ev) {
+    if (!dragStart) return;
+    var p = cropPointToNatural(ev);
+    if (!p) return;
+    currentRegion = {
+      sx: Math.min(dragStart.x, p.x),
+      sy: Math.min(dragStart.y, p.y),
+      sw: Math.abs(p.x - dragStart.x),
+      sh: Math.abs(p.y - dragStart.y)
+    };
+    drawCropBox();
+  }
+
+  function onCropUp(ev) {
+    if (!dragStart) return;
+    onCropMove(ev);
+    dragStart = null;
+    if (!currentRegion || currentRegion.sw < 20 || currentRegion.sh < 20) {
+      setStatus('框选区域太小，请重新拖动框选二维码区域', true);
+      return;
+    }
+    lastQrBox = null;
+    applyCurrentRegion('已按框选区域提取，可点「预览 / 生成结果图」');
+  }
+
+  function buildFormData(extra) {
+    var fd = new FormData();
+    fd.append('username', val('najiluQrUser'));
+    fd.append('issue_id', val('najiluQrIssueId'));
+    fd.append('query_code', normalizeCode(val('najiluQrQueryCode')));
+    fd.append('mode', val('najiluQrMode') || 'block');
+    if (extra && extra.clear) fd.append('mode', 'clear');
+    var file = selectedPatchFile();
+    if (file && !(extra && extra.clear)) {
+      if (file === extractedPatchBlob) fd.append('file', file, 'najilu-qr-block.png');
+      else fd.append('file', file);
+    }
+    return fd;
+  }
+
+  function save(clear) {
+    if (!val('najiluQrUser') || !val('najiluQrIssueId')) {
+      setStatus('保存到账号时需先加载并选择开具记录（本地改图无需此项）', true);
+      return;
+    }
+    var code = normalizeCode(val('najiluQrQueryCode'));
+    if (code && !/^[A-Z0-9]{16}$/.test(code)) {
+      setStatus('查询验证码须为 16 位字母或数字', true);
+      return;
+    }
+    var file = selectedPatchFile();
+    if (!clear && !file && !code) {
+      setStatus('请填写验证码或上传替换图片', true);
+      return;
+    }
+    setStatus(clear ? '清除中…' : '保存中…', false);
+    var token = '';
+    try {
+      token = localStorage.getItem('admin_token') || '';
+    } catch (e0) {}
+    var headers = {};
+    if (token) headers.Authorization = 'Bearer ' + token;
+    fetch('/api/admin/najilu-qr/save', {
+      method: 'POST',
+      headers: headers,
+      body: buildFormData({ clear: !!clear })
+    })
+      .then(function (r) {
+        return (window.adminParseJson||function(r){return r.json();})(r).then(function (j) {
+          return { http: r.status, j: j };
+        });
+      })
+      .then(function (pack) {
+        var j = pack.j;
+        if (!j || j.code !== 200) {
+          setStatus((j && j.msg) || '保存失败（HTTP ' + pack.http + '）', true);
+          return;
+        }
+        setStatus(
+          clear
+            ? '已清除该账号默认二维码，之后 App 生成将重新出码'
+            : '已保存为该账号默认二维码，之后 App 重新生成都用这张码',
+          false
+        );
+        loadIssues();
+      })
+      .catch(function (e) {
+        setStatus('保存失败：' + (e && e.message ? e.message : '网络错误'), true);
+      });
+  }
+
+  function previewCert() {
+    var patch = selectedPatchFile();
+    var username = val('najiluQrUser');
+    var issue = currentIssue();
+    /*
+     * 使用开具记录重绘底图；上传的完整图片只作为二维码素材源，
+     * 系统先原比例裁出二维码 + 16 位验证码，再贴到记录生成图。
+     */
+    if (!username || !issue) {
+      setStatus('请先输入用户名并加载、选择开具记录', true);
+      return;
+    }
+    if (selectedFullFile() && !patch) {
+      setStatus('正在提取二维码区域，请稍后再点预览', false);
+      return;
+    }
+    setStatus('正在读取开具记录并生成预览…', false);
+    var code = normalizeCode(val('najiluQrQueryCode'));
+    var loader = global.AdminLoader;
+    var ensure =
+      loader && typeof loader.ensureForPage === 'function'
+        ? loader.ensureForPage('najilu-qr')
+        : Promise.resolve();
+    ensure
+      .then(function () {
+        return fetchAdmin(
+          '/api/admin/najilu-qr/prefill?username=' + encodeURIComponent(username)
+        ).then(function (r) {
+          return (window.adminParseJson||function(r){return r.json();})(r);
+        });
+      })
+      .then(function (j) {
+        if (!j || j.code !== 200 || !j.data) {
+          throw new Error((j && j.msg) || '用户数据加载失败');
+        }
+        var Cert = global.TaxIssueCertificate;
+        if (!Cert || typeof Cert.buildAppFromAdminDetail !== 'function') {
+          throw new Error('完税证明渲染器未加载');
+        }
+        var detail = Object.assign({}, j.data);
+        detail.latest_issue_application = Object.assign({}, issue, {
+          query_code: code || issue.query_code || ''
+        });
+        var app = Cert.buildAppFromAdminDetail(detail);
+        var mode = val('najiluQrMode') || 'block';
+        var opts = { query_code: code || app.query_code, showStamp: true };
+
+        function renderWithOpts(o) {
+          return Cert.renderDataUrl(app, o).then(function (urlOrUrls) {
+            var urls = Array.isArray(urlOrUrls) ? urlOrUrls : [urlOrUrls];
+            resultDataUrl = urls[0] || '';
+            var wrap = document.getElementById('najiluQrCertPreview');
+            var dl = document.getElementById('najiluQrDownloadBtn');
+            if (wrap) {
+              wrap.innerHTML = '';
+              urls.forEach(function (u) {
+                var img = document.createElement('img');
+                img.src = u;
+                img.alt = '完税证明预览';
+                img.style.cssText = 'max-width:100%;border:1px solid #ddd;margin-bottom:12px;background:#fff;';
+                wrap.appendChild(img);
+              });
+            }
+            if (dl) dl.style.display = resultDataUrl ? '' : 'none';
+            setStatus('已直接使用开具记录生成结果图，可下载或保存', false);
+          });
+        }
+
+        if (patch) {
+          return new Promise(function (resolve, reject) {
+            var reader = new FileReader();
+            reader.onload = function () {
+              if (mode === 'qr') opts.qr_image_url = reader.result;
+              else opts.qr_block_image_url = reader.result;
+              resolve(renderWithOpts(opts));
+            };
+            reader.onerror = function () {
+              reject(new Error('无法读取替换图片'));
+            };
+            reader.readAsDataURL(patch);
+          });
+        }
+        if (issue.qr_block_image_url) opts.qr_block_image_url = issue.qr_block_image_url;
+        if (issue.qr_image_url) opts.qr_image_url = issue.qr_image_url;
+        return renderWithOpts(opts);
+      })
+      .catch(function (e) {
+        setStatus('预览失败：' + (e && e.message ? e.message : '错误'), true);
+      });
+  }
+
+  function downloadResult() {
+    if (!resultDataUrl) {
+      setStatus('请先生成结果图', true);
+      return;
+    }
+    var a = document.createElement('a');
+    a.href = resultDataUrl;
+    a.download = '完税证明-二维码已替换.png';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function formatDt(iso) {
+    if (!iso) return '—';
+    try {
+      var d = new Date(iso);
+      if (isNaN(d.getTime())) return String(iso);
+      var pad = function (n) {
+        return n < 10 ? '0' + n : String(n);
+      };
+      return (
+        d.getFullYear() +
+        '-' +
+        pad(d.getMonth() + 1) +
+        '-' +
+        pad(d.getDate()) +
+        ' ' +
+        pad(d.getHours()) +
+        ':' +
+        pad(d.getMinutes())
+      );
+    } catch (e0) {
+      return String(iso);
+    }
+  }
+
+  function modeLabel(mode) {
+    if (mode === 'qr') return '仅二维码';
+    if (mode === 'clear') return '清除';
+    return '整块';
+  }
+
+  function renderStats(data) {
+    var el = document.getElementById('najiluQrStatsMount');
+    if (!el) return;
+    if (!data || !data.summary) {
+      el.innerHTML = '<div class="share-stats-empty">暂无统计数据</div>';
+      return;
+    }
+    var s = data.summary;
+    var html = '';
+    if (data.period && data.period.label) {
+      html +=
+        '<p class="hint" style="margin:0 0 10px;">统计区间：' +
+        esc(data.period.label) +
+        '</p>';
+    }
+    if (data.note) {
+      html +=
+        '<p class="hint share-stats-note">' + esc(String(data.note)) + '</p>';
+    }
+    html += '<div class="share-kpi-grid">';
+    html +=
+      '<div class="share-kpi-card is-convert"><div class="ud-label">页面浏览</div><div class="ud-val">' +
+      esc(String(s.page_views || 0)) +
+      '</div><div class="share-kpi-sub">访客 ' +
+      esc(String(s.page_view_users || 0)) +
+      ' · C 端 najilu_qr</div></div>';
+    html +=
+      '<div class="share-kpi-card is-convert"><div class="ud-label">入口点击</div><div class="ud-val">' +
+      esc(String(s.entry_clicks || 0)) +
+      '</div><div class="share-kpi-sub">用户数 ' +
+      esc(String(s.entry_click_users || 0)) +
+      ' · 咨询/开具页等</div></div>';
+    html +=
+      '<div class="share-kpi-card"><div class="ud-label">已解锁用户（累计）</div><div class="ud-val">' +
+      esc(String(s.unlocked_users || 0)) +
+      '</div><div class="share-kpi-sub">najilu_qr_unlocked=1</div></div>';
+    html +=
+      '<div class="share-kpi-card"><div class="ud-label">锁定自定义码（累计）</div><div class="ud-val">' +
+      esc(String(s.locked_qr_users || 0)) +
+      '</div><div class="share-kpi-sub">账号默认二维码</div></div>';
+    html +=
+      '<div class="share-kpi-card is-convert"><div class="ud-label">付费订单</div><div class="ud-val">' +
+      esc(String(s.paid_orders || 0)) +
+      '</div><div class="share-kpi-sub">付费用户 ' +
+      esc(String(s.paid_users || 0)) +
+      ' · 待支付 ' +
+      esc(String(s.pending_orders || 0)) +
+      '</div></div>';
+    html +=
+      '<div class="share-kpi-card is-convert"><div class="ud-label">GMV</div><div class="ud-val">¥' +
+      esc(String(s.gmv || '0.00')) +
+      '</div><div class="share-kpi-sub">sku_najilu_qr</div></div>';
+    html +=
+      '<div class="share-kpi-card"><div class="ud-label">替换保存</div><div class="ud-val">' +
+      esc(String(s.saves || 0)) +
+      '</div><div class="share-kpi-sub">用户数 ' +
+      esc(String(s.save_users || 0)) +
+      ' · 水印 ' +
+      esc(String(s.saves_demo || 0)) +
+      ' · 去水印 ' +
+      esc(String(s.saves_unlocked || 0)) +
+      '</div></div>';
+    html += '</div>';
+
+    var clicks = data.track_events || [];
+    html += '<div class="share-kpi-section-label">C 端点击明细</div>';
+    if (!clicks.length) {
+      html +=
+        '<div class="share-stats-empty">该区间暂无浏览/点击（埋点上线前无历史；请让用户打开 C 端页后再刷新）</div>';
+    } else {
+      html +=
+        '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>事件</th><th>次数</th><th>用户数</th></tr></thead><tbody>';
+      clicks.forEach(function (row) {
+        html += '<tr>';
+        html += '<td>' + esc(row.event_label || row.event_key || '—') + '</td>';
+        html += '<td>' + esc(String(row.cnt || 0)) + '</td>';
+        html += '<td>' + esc(String(row.users || 0)) + '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+
+    var users = data.usage_users || [];
+    html +=
+      '<details class="analytics-section-details najilu-qr-usage-users-details">' +
+      '<summary>使用用户（' +
+      esc(String(users.length)) +
+      '，最多 200）</summary>';
+    if (!users.length) {
+      html += '<div class="share-stats-empty">该区间暂无使用用户（无浏览、保存或付费）</div>';
+    } else {
+      html +=
+        '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>最近使用</th><th>用户</th><th>姓名</th><th>浏览</th><th>入口点</th><th>已解锁</th><th>已锁定码</th><th>保存</th><th>水印</th><th>去水印</th><th>付费单</th><th>付费金额</th></tr></thead><tbody>';
+      users.forEach(function (row) {
+        html += '<tr>';
+        html +=
+          '<td>' +
+          esc(
+            formatDt(
+              row.last_used_at || row.last_viewed_at || row.last_saved_at || row.last_paid_at
+            )
+          ) +
+          '</td>';
+        html += '<td class="cell-break"><code>' + esc(row.username || '—') + '</code></td>';
+        html += '<td>' + esc(row.real_name || '—') + '</td>';
+        html += '<td>' + esc(String(row.page_views || 0)) + '</td>';
+        html += '<td>' + esc(String(row.entry_clicks || 0)) + '</td>';
+        html += '<td>' + (row.unlocked ? '是' : '否') + '</td>';
+        html += '<td>' + (row.has_override ? '是' : '否') + '</td>';
+        html += '<td>' + esc(String(row.saves || 0)) + '</td>';
+        html += '<td>' + esc(String(row.saves_demo || 0)) + '</td>';
+        html += '<td>' + esc(String(row.saves_unlocked || 0)) + '</td>';
+        html += '<td>' + esc(String(row.paid_orders || 0)) + '</td>';
+        html += '<td>¥' + esc(String(row.paid_amount || '0.00')) + '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+    html += '</details>';
+
+    var daily = data.daily || [];
+    html += '<div class="share-kpi-section-label">按日明细</div>';
+    if (!daily.length) {
+      html += '<div class="share-stats-empty">该区间暂无按日数据</div>';
+    } else {
+      html +=
+        '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>日期</th><th>浏览</th><th>浏览用户</th><th>入口点</th><th>入口用户</th><th>付费单</th><th>付费用户</th><th>GMV</th><th>保存</th><th>保存用户</th><th>水印</th><th>去水印</th></tr></thead><tbody>';
+      daily.forEach(function (row) {
+        html += '<tr>';
+        html += '<td>' + esc(row.day || '—') + '</td>';
+        html += '<td>' + esc(String(row.page_views || 0)) + '</td>';
+        html += '<td>' + esc(String(row.page_view_users || 0)) + '</td>';
+        html += '<td>' + esc(String(row.entry_clicks || 0)) + '</td>';
+        html += '<td>' + esc(String(row.entry_click_users || 0)) + '</td>';
+        html += '<td>' + esc(String(row.paid_orders || 0)) + '</td>';
+        html += '<td>' + esc(String(row.paid_users || 0)) + '</td>';
+        html += '<td>¥' + esc(String(row.gmv || '0.00')) + '</td>';
+        html += '<td>' + esc(String(row.saves || 0)) + '</td>';
+        html += '<td>' + esc(String(row.save_users || 0)) + '</td>';
+        html += '<td>' + esc(String(row.saves_demo || 0)) + '</td>';
+        html += '<td>' + esc(String(row.saves_unlocked || 0)) + '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+
+    var views = data.recent_views || [];
+    html +=
+      '<details class="analytics-section-details najilu-qr-recent-views-details">' +
+      '<summary>最近浏览（最多 50）</summary>';
+    if (!views.length) {
+      html += '<div class="share-stats-empty">该区间暂无浏览记录</div>';
+    } else {
+      html +=
+        '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>时间</th><th>用户</th><th>姓名</th><th>事件</th></tr></thead><tbody>';
+      views.forEach(function (row) {
+        html += '<tr>';
+        html += '<td>' + esc(formatDt(row.created_at)) + '</td>';
+        html += '<td class="cell-break"><code>' + esc(row.username || '—') + '</code></td>';
+        html += '<td>' + esc(row.real_name || '—') + '</td>';
+        html += '<td>' + esc(row.event_label || row.event_key || '—') + '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+    html += '</details>';
+
+    var paid = data.recent_paid || [];
+    html += '<div class="share-kpi-section-label">最近付费（最多 50）</div>';
+    if (!paid.length) {
+      html += '<div class="share-stats-empty">该区间暂无付费记录</div>';
+    } else {
+      html +=
+        '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>时间</th><th>用户</th><th>姓名</th><th>金额</th><th>订单号</th></tr></thead><tbody>';
+      paid.forEach(function (row) {
+        html += '<tr>';
+        html += '<td>' + esc(formatDt(row.paid_at)) + '</td>';
+        html += '<td class="cell-break"><code>' + esc(row.username || '—') + '</code></td>';
+        html += '<td>' + esc(row.real_name || '—') + '</td>';
+        html += '<td>¥' + esc(String(row.amount || '0.00')) + '</td>';
+        html += '<td class="cell-break"><code>' + esc(row.out_trade_no || '—') + '</code></td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+
+    var saves = data.recent_saves || [];
+    html += '<div class="share-kpi-section-label">最近保存（最多 50）</div>';
+    if (!saves.length) {
+      html +=
+        '<div class="share-stats-empty">该区间暂无保存记录（统计上线前无历史）</div>';
+    } else {
+      html +=
+        '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>时间</th><th>用户</th><th>姓名</th><th>类型</th><th>方式</th></tr></thead><tbody>';
+      saves.forEach(function (row) {
+        html += '<tr>';
+        html += '<td>' + esc(formatDt(row.created_at)) + '</td>';
+        html += '<td class="cell-break"><code>' + esc(row.username || '—') + '</code></td>';
+        html += '<td>' + esc(row.real_name || '—') + '</td>';
+        html += '<td>' + (row.demo ? '水印演示' : '去水印') + '</td>';
+        html += '<td>' + esc(modeLabel(row.mode)) + '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+
+    el.innerHTML = html;
+  }
+
+  function loadStats() {
+    var el = document.getElementById('najiluQrStatsMount');
+    if (!el) return;
+    var daysEl = document.getElementById('najiluQrStatsDays');
+    var days = daysEl ? String(daysEl.value || '7') : '7';
+    el.textContent = '加载中…';
+    fetchAdmin('/api/admin/najilu-qr/stats?days=' + encodeURIComponent(days))
+      .then(function (r) {
+        return (window.adminParseJson||function(r){return r.json();})(r);
+      })
+      .then(function (j) {
+        if (!j || j.code !== 200 || !j.data) {
+          el.textContent = (j && j.msg) || '加载失败';
+          return;
+        }
+        renderStats(j.data);
+      })
+      .catch(function () {
+        el.textContent = '网络错误';
+      });
+  }
+
+  var bound = false;
+  function bind() {
+    if (bound) return;
+    bound = true;
+    var loadBtn = document.getElementById('najiluQrLoadBtn');
+    var saveBtn = document.getElementById('najiluQrSaveBtn');
+    var clearBtn = document.getElementById('najiluQrClearBtn');
+    var previewBtn = document.getElementById('najiluQrPreviewBtn');
+    var downloadBtn = document.getElementById('najiluQrDownloadBtn');
+    var file = document.getElementById('najiluQrFile');
+    var fullFile = document.getElementById('najiluQrFullFile');
+    var mode = document.getElementById('najiluQrMode');
+    var sel = document.getElementById('najiluQrIssueId');
+    var refresh = document.getElementById('btnRefreshNajiluQrStats');
+    var daysEl = document.getElementById('najiluQrStatsDays');
+    if (loadBtn) loadBtn.addEventListener('click', loadIssues);
+    if (saveBtn) saveBtn.addEventListener('click', function () { save(false); });
+    if (clearBtn) clearBtn.addEventListener('click', function () { save(true); });
+    if (previewBtn) previewBtn.addEventListener('click', previewCert);
+    if (downloadBtn) downloadBtn.addEventListener('click', downloadResult);
+    if (file) file.addEventListener('change', onFileChange);
+    if (fullFile) fullFile.addEventListener('change', onFullFileChange);
+    if (mode) mode.addEventListener('change', onModeChange);
+    if (sel) sel.addEventListener('change', onIssueChange);
+    if (refresh) refresh.addEventListener('click', loadStats);
+    if (daysEl) daysEl.addEventListener('change', loadStats);
+    var cropImg = document.getElementById('najiluQrCropImg');
+    if (cropImg) {
+      cropImg.addEventListener('mousedown', onCropDown);
+      cropImg.addEventListener('load', drawCropBox);
+    }
+    document.addEventListener('mousemove', onCropMove);
+    document.addEventListener('mouseup', onCropUp);
+    window.addEventListener('resize', drawCropBox);
+  }
+
+  function loadPage() {
+    bind();
+    loadStats();
+  }
+
+  global.AdminModules = global.AdminModules || {};
+  global.AdminModules['najilu-qr'] = {
+    ready: true,
+    loadPage: loadPage,
+    loadIssues: loadIssues,
+    previewCert: previewCert,
+    loadStats: loadStats,
+    renderStats: renderStats,
+    _regionFromQrBox: regionFromQrBox,
+    _regionForMode: regionForMode,
+    _looksLikeQrPatch: looksLikeQrPatch,
+    _locateQrRegion: locateQrRegion
+  };
+})(window);

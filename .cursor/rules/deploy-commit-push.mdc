@@ -1,0 +1,20 @@
+---
+description: 每次改完代码必须重新部署、提交并推送
+alwaysApply: true
+---
+
+# 改完即部署 / 提交 / 推送
+
+对 `test_platform` 做完任何会进线上的修改后，同一轮必须做完这三步，不要等用户再催：
+
+1. **部署**
+   - 前端：`./scripts/sync-frontend.sh`（会 `npm run build` 并同步到 `frontend-container`）
+   - 后端：按需 `docker compose up -d --build backend`（或项目惯用方式）
+2. **提交**：`git add` 相关文件并 `git commit`（只提交本次改动，不要混入无关 WIP）
+3. **推送**：`git push -u origin HEAD`
+
+注意：
+
+- 线上前端吃的是容器内 `site/` 构建产物，只改源码不跑 `sync-frontend.sh` 等于没上线。
+- `frontend/site/` 已 gitignore，不要提交构建产物。
+- 未明确要求时不要 `push --force`。

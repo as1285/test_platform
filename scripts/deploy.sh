@@ -38,13 +38,28 @@ if [[ "${ENABLE_ORIGIN_HTTPS:-1}" != "0" ]]; then
   fi
 fi
 
-# 通知后端监控当前正在部署，避免容器重建的短暂不可用触发告警邮件。
+# 通知监控当前正在部署，避免容器重建的短暂不可用触发告警邮件。
+# - 容器内 marker：给 backend serverMonitor 用（uploads 卷）
+# - 宿主机 marker：给 health-guard cron 用（部署中 / 结束后静默窗）
 DEPLOY_MARKER="/data/uploads/.deployment-in-progress"
+DR_STATE_DIR="${DR_STATE_DIR:-/var/tmp/test_platform-dr}"
+HOST_DEPLOY_IN_PROGRESS="${DR_STATE_DIR}/deploy-in-progress"
+HOST_DEPLOY_QUIET_UNTIL="${DR_STATE_DIR}/deploy-quiet-until"
+# 部署结束后继续静默秒数（覆盖 compose recreate 收尾）
+DEPLOY_POST_QUIET_SEC="${DEPLOY_POST_QUIET_SEC:-300}"
+# 部署开始时预留的最长静默（防止长构建中途 marker 过期）
+DEPLOY_BUILD_QUIET_SEC="${DEPLOY_BUILD_QUIET_SEC:-900}"
+
 mark_deploy_start() {
+  mkdir -p "$DR_STATE_DIR"
+  date +%s >"$HOST_DEPLOY_IN_PROGRESS"
+  echo $(($(date +%s) + DEPLOY_BUILD_QUIET_SEC)) >"$HOST_DEPLOY_QUIET_UNTIL"
   docker compose exec -T backend sh -c \
     "date -u +%Y-%m-%dT%H:%M:%SZ > '$DEPLOY_MARKER'" >/dev/null 2>&1 || true
 }
 mark_deploy_end() {
+  rm -f "$HOST_DEPLOY_IN_PROGRESS"
+  echo $(($(date +%s) + DEPLOY_POST_QUIET_SEC)) >"$HOST_DEPLOY_QUIET_UNTIL"
   docker compose exec -T backend rm -f "$DEPLOY_MARKER" >/dev/null 2>&1 || true
 }
 mark_deploy_start
@@ -63,13 +78,15 @@ echo "[deploy] compose ps:"
 docker compose ps
 
 if command -v curl >/dev/null 2>&1; then
-  if curl -sfS --max-time 5 -o /dev/null "http://127.0.0.1/"; then
+  # CI / 受控环境可能设置 http_proxy/https_proxy，导致本机探测请求被劫持并误报 502。
+  # 这里强制绕过代理，确保探测真实命中本机 nginx。
+  if curl --noproxy '*' -sfS --max-time 5 -o /dev/null "http://127.0.0.1/"; then
     echo "[deploy] probe OK: http://127.0.0.1/ responded"
   else
     echo "[deploy] WARN: http://127.0.0.1/ did not return HTTP 2xx — check: docker compose logs frontend"
   fi
   if [[ "${ENABLE_ORIGIN_HTTPS:-1}" != "0" ]]; then
-    if curl -kfsS --max-time 5 -o /dev/null "https://127.0.0.1/"; then
+    if curl --noproxy '*' -kfsS --max-time 5 -o /dev/null "https://127.0.0.1/"; then
       echo "[deploy] probe OK: https://127.0.0.1/ responded"
     else
       echo "[deploy] WARN: https://127.0.0.1/ failed — check certs mount and docker compose logs frontend"
@@ -79,4 +96,17 @@ else
   echo "[deploy] (skip curl probe: curl not installed)"
 fi
 echo "[deploy] public site: ${APP_URL}"
-echo "[deploy] 其他机器：复制 .env.example → .env，改 PUBLIC_SITE_URL 后执行本脚本即可，无需按域名分分支。"
+echo "[deploy] 本机分支部署：在 .env 设 DEPLOY_BRANCH（lkj 站默认 lkj），然后执行 ./scripts/pull-and-deploy.sh"
+
+# 可选发版自检（发码/注册/激活后自动删掉脏数据）
+# DEPLOY_SELFTEST=1 ./scripts/deploy.sh
+if [[ "${DEPLOY_SELFTEST:-0}" == "1" ]]; then
+  if [[ -x "${ROOT}/scripts/redeploy-selftest.sh" ]]; then
+    echo "[deploy] running redeploy-selftest (will auto-cleanup)…"
+    bash "${ROOT}/scripts/redeploy-selftest.sh" || {
+      echo "[deploy] WARN: redeploy-selftest failed — leftovers cleaned by trap if any" >&2
+    }
+  else
+    echo "[deploy] WARN: scripts/redeploy-selftest.sh missing, skip selftest" >&2
+  fi
+fi

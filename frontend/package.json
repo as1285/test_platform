@@ -4,23 +4,30 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build && node scripts/assemble-site.mjs",
-    "typecheck": "vue-tsc --noEmit",
+    "build": "node scripts/assemble-site.mjs",
     "assemble": "node scripts/assemble-site.mjs",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "element-plus": "^2.8.6",
-    "vue": "^3.5.13",
-    "vue-router": "^4.4.5"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "../scripts/ui-smoke-playwright.sh",
+    "test:e2e:local": "UI_SMOKE_LOCAL=1 ../scripts/ui-smoke-playwright.sh",
+    "test:e2e:docker": "UI_SMOKE_NODE_FALLBACK=1 ../scripts/ui-smoke-playwright.sh",
+    "test:e2e:full": "UI_SMOKE_DEVICES=full ../scripts/ui-smoke-playwright.sh",
+    "test:e2e:recent": "UI_SMOKE_DEVICES=recent ../scripts/ui-smoke-playwright.sh",
+    "test:e2e:popular": "UI_SMOKE_DEVICES=popular ../scripts/ui-smoke-playwright.sh",
+    "test:e2e:mainstream": "UI_SMOKE_DEVICES=mainstream ../scripts/ui-smoke-playwright.sh",
+    "test:e2e:popular-chrome": "UI_SMOKE_CHROME_ONLY=1 UI_SMOKE_DEVICES=popular ../scripts/ui-smoke-playwright.sh",
+    "test:e2e:android-top": "UI_SMOKE_DEVICES=oneplus-12,oneplus-ace6,oneplus-ace2pro,oneplus-ace2v,oneplus-ace3v,oppo-reno10,oppo-k9x,oppo-a58,xiaomi-13,xiaomi-14,xiaomi-14pro,xiaomi-15,redmi-k80pro,redmi-k80ultra,redmi-k70,redmi-note11-5g,mate60,mate30,huawei-nova13,hinova9se,vivo-x200pro,vivo-s50promini,vivo-x90,vivo-x100,iqoo-neo8,iqoo-neo8pro,iqoo-15,pixel-9,meizu-20pro,oppo-findx8,oppo-a57 ../scripts/ui-smoke-playwright.sh",
+    "test:e2e:redmi-k70": "UI_SMOKE_CHROME_ONLY=1 UI_SMOKE_DEVICES=redmi-k70 ../scripts/ui-smoke-playwright.sh",
+    "test:ci": "../scripts/ci-ui-compat.sh",
+    "test:ci:chrome": "../scripts/ci-ui-compat.sh --chrome"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^5.2.1",
+    "@vitest/coverage-v8": "^3.2.7",
     "esbuild": "^0.25.12",
     "javascript-obfuscator": "^4.1.1",
-    "typescript": "~5.6.2",
-    "vite": "^6.0.1",
-    "vue-tsc": "^2.1.10"
+    "jsdom": "^26.1.0",
+    "playwright": "^1.52.0",
+    "vitest": "^3.2.7"
   }
 }

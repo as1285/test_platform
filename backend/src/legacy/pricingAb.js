@@ -1,91 +1,403 @@
 /**
- * 支付页 A/B/C：
- * A(control)=199 永久 + 全渠道；B(treatment)=多档支付宝；C=仅下载+激活码。
- * Sticky：登录用户写入 pricing_ab_assignments；改占比只影响未分配用户。
+ * 支付页定价：可配置目录（周卡 / 双周卡 / 月卡）。
+ * 价格、时长、是否上架以后台「支付套餐」为准。
+ * 历史 A/B/C 分流与 sticky 仍可读，新解析一律走 B（treatment）。
+ * 小时卡 / 天卡 / 3天卡 / 永久档已下架，仅历史订单 / 已有专属价可解析。
+ * GitHub 等推广渠道与全站同价（sales_promo_channel 仅作统计/归因，不再改价）。
  */
 'use strict';
 
 var SETTING_KEY_PRICING_AB = 'pricing_ab_json';
+var SETTING_KEY_SKU_PRICES = 'sku_catalog_prices_json';
 var SETTING_KEY_LANDING_AB = 'landing_ab_json';
 
-var SKU_CONTROL_199_PERM = {
-  id: 'sku_199_perm_legacy',
-  amount: '199.00',
-  label: '永久激活',
-  subject: '激活码',
-  grant_kind: 'permanent',
-  grant_hours: 0,
-  grant_days: 0,
-  grant_minutes: 0
-};
-
-var SKU_9_9_30M = {
-  id: 'sku_9_9_30m',
-  amount: '9.90',
-  label: '体验30分钟',
-  subject: '激活码',
-  grant_kind: 'trial',
-  grant_hours: 0,
-  grant_days: 0,
-  grant_minutes: 30
-};
-
-var SKU_49_24H = {
-  id: 'sku_49_24h',
-  amount: '49.00',
-  label: '24小时',
-  subject: '激活码',
-  grant_kind: 'trial',
-  grant_hours: 24,
-  grant_days: 0,
-  grant_minutes: 0
-};
-
-var SKU_99_3D = {
-  id: 'sku_99_3d',
+/** 旧档：小时卡已下架，仅历史订单 / 已有专属价解析 */
+var SKU_99_HOUR = {
+  id: 'sku_99_1h',
   amount: '99.00',
-  label: '3天',
-  subject: '激活码',
+  label: '小时卡',
+  subject: '激活码·小时卡',
+  grant_kind: 'trial',
+  grant_hours: 1,
+  grant_days: 0,
+  grant_minutes: 0
+};
+
+/** 旧档：天卡已下架，仅历史订单 / 已有专属价解析 */
+var SKU_249_DAY = {
+  id: 'sku_249_1d',
+  amount: '249.00',
+  label: '天卡',
+  subject: '激活码·天卡',
+  grant_kind: 'trial',
+  grant_hours: 0,
+  grant_days: 1,
+  grant_minutes: 0
+};
+
+/** 旧档：3天卡已下架，仅历史订单 / 已有专属价解析 */
+var SKU_268_3DAY = {
+  id: 'sku_268_3d',
+  amount: '268.00',
+  label: '3天卡',
+  subject: '激活码·3天卡',
   grant_kind: 'trial',
   grant_hours: 0,
   grant_days: 3,
   grant_minutes: 0
 };
 
-var SKU_199_1Y = {
-  id: 'sku_199_1y',
-  amount: '199.00',
-  label: '1年',
-  subject: '激活码',
+/** GitHub 未开通入口价：贴近调研心理价 50–98，不进全站货架 */
+var SKU_98_3DAY = {
+  id: 'sku_98_3d',
+  amount: '98.00',
+  label: '体验卡',
+  subject: '激活码·体验卡',
   grant_kind: 'trial',
   grant_hours: 0,
-  grant_days: 365,
+  grant_days: 3,
   grant_minutes: 0
 };
 
-var SKU_499_PERM = {
-  id: 'sku_499_perm',
-  amount: '499.00',
+/** 现售周卡：300 */
+var SKU_300_WEEK = {
+  id: 'sku_300_7d',
+  amount: '300.00',
+  label: '周卡',
+  subject: '激活码·周卡',
+  grant_kind: 'trial',
+  grant_hours: 0,
+  grant_days: 7,
+  grant_minutes: 0
+};
+
+/** 现售双周卡：348 */
+var SKU_348_2WEEK = {
+  id: 'sku_348_14d',
+  amount: '348.00',
+  label: '双周卡',
+  subject: '激活码·双周卡',
+  grant_kind: 'trial',
+  grant_hours: 0,
+  grant_days: 14,
+  grant_minutes: 0
+};
+
+/** 现售月卡：398 */
+var SKU_398_MONTH = {
+  id: 'sku_398_30d',
+  amount: '398.00',
+  label: '月卡',
+  subject: '激活码·月卡',
+  grant_kind: 'trial',
+  grant_hours: 0,
+  grant_days: 30,
+  grant_minutes: 0
+};
+
+/** 旧档：永久 999 已下架，仅历史订单 / 已有专属价解析 */
+var SKU_999_PERM = {
+  id: 'sku_999_perm',
+  amount: '999.00',
   label: '永久',
-  subject: '激活码',
+  subject: '激活码·永久',
   grant_kind: 'permanent',
   grant_hours: 0,
   grant_days: 0,
   grant_minutes: 0
 };
 
+/** 旧档：298 日卡 / 398 永久，仅历史订单 / 专属价解析 */
+var SKU_298_DAY = {
+  id: 'sku_298_1d',
+  amount: '298.00',
+  label: '日卡',
+  subject: '激活码·日卡',
+  grant_kind: 'trial',
+  grant_hours: 0,
+  grant_days: 1,
+  grant_minutes: 0
+};
+var SKU_398_PERM = {
+  id: 'sku_398_forever',
+  amount: '398.00',
+  label: '永久',
+  subject: '激活码·永久',
+  grant_kind: 'permanent',
+  grant_hours: 0,
+  grant_days: 0,
+  grant_minutes: 0
+};
+
+/** 旧档：498 永久，仅历史订单 / 专属价解析 */
+var SKU_CONTROL_600_PERM = {
+  id: 'sku_600_perm',
+  amount: '498.00',
+  label: '永久',
+  subject: '激活码·永久',
+  grant_kind: 'permanent',
+  grant_hours: 0,
+  grant_days: 0,
+  grant_minutes: 0
+};
+
+/** 兼容旧变量名 / 旧订单 id 查询 */
+var SKU_CONTROL_320_WEEK = SKU_CONTROL_600_PERM;
+var SKU_CONTROL_199_PERM = SKU_CONTROL_600_PERM;
+
+/** 旧档：小时体验，仅历史订单 / 专属价解析 */
+var SKU_199_HOUR = {
+  id: 'sku_199_1h',
+  amount: '199.00',
+  label: '小时体验卡',
+  subject: '激活码·小时体验',
+  grant_kind: 'trial',
+  grant_hours: 1,
+  grant_days: 0,
+  grant_minutes: 0
+};
+
+var SKU_268_DAY = {
+  id: 'sku_268_1d',
+  amount: '268.00',
+  label: '日卡',
+  subject: '激活码·日卡',
+  grant_kind: 'trial',
+  grant_hours: 0,
+  grant_days: 1,
+  grant_minutes: 0
+};
+
+var SKU_328_WEEK = {
+  id: 'sku_328_7d',
+  amount: '320.00',
+  label: '周卡',
+  subject: '激活码·周卡',
+  grant_kind: 'trial',
+  grant_hours: 0,
+  grant_days: 7,
+  grant_minutes: 0
+};
+
+var SKU_600_PERM = {
+  id: 'sku_600_perm',
+  amount: '498.00',
+  label: '永久',
+  subject: '激活码·永久',
+  grant_kind: 'permanent',
+  grant_hours: 0,
+  grant_days: 0,
+  grant_minutes: 0
+};
+
+/** 旧档：仅用于历史订单 sku_id 解析，不再出现在默认售卖列表 */
+var SKU_398_WEEK = {
+  id: 'sku_398_7d',
+  amount: '398.00',
+  label: '周卡',
+  subject: '激活码·周卡',
+  grant_kind: 'trial',
+  grant_hours: 0,
+  grant_days: 7,
+  grant_minutes: 0
+};
+var SKU_498_MONTH = {
+  id: 'sku_498_30d',
+  amount: '498.00',
+  label: '月卡',
+  subject: '激活码·月卡',
+  grant_kind: 'trial',
+  grant_hours: 0,
+  grant_days: 30,
+  grant_minutes: 0
+};
+var SKU_698_YEAR = {
+  id: 'sku_698_365d',
+  amount: '698.00',
+  label: '年卡',
+  subject: '激活码·年卡',
+  grant_kind: 'trial',
+  grant_hours: 0,
+  grant_days: 365,
+  grant_minutes: 0
+};
+var SKU_998_PERM = {
+  id: 'sku_998_perm',
+  amount: '998.00',
+  label: '永久',
+  subject: '激活码·永久',
+  grant_kind: 'permanent',
+  grant_hours: 0,
+  grant_days: 0,
+  grant_minutes: 0
+};
+var SKU_398_PERM_LEGACY = {
+  id: 'sku_398_perm',
+  amount: '600.00',
+  label: '永久',
+  subject: '激活码·永久',
+  grant_kind: 'permanent',
+  grant_hours: 0,
+  grant_days: 0,
+  grant_minutes: 0
+};
+
+var LEGACY_CATALOG_SKUS = [
+  SKU_99_HOUR,
+  SKU_249_DAY,
+  SKU_268_3DAY,
+  SKU_999_PERM,
+  SKU_298_DAY,
+  SKU_398_PERM,
+  SKU_398_WEEK,
+  SKU_498_MONTH,
+  SKU_698_YEAR,
+  SKU_998_PERM,
+  SKU_398_PERM_LEGACY
+];
+
+var CONFIGURABLE_CATALOG_SKUS = [
+  SKU_300_WEEK,
+  SKU_348_2WEEK,
+  SKU_398_MONTH
+];
+var CONFIGURABLE_SKU_IDS = CONFIGURABLE_CATALOG_SKUS.map(function (s) {
+  return s.id;
+});
+var LIVE_CATALOG_SKUS = CONFIGURABLE_CATALOG_SKUS.slice();
+var LIVE_SKU_IDS = LIVE_CATALOG_SKUS.map(function (s) {
+  return s.id;
+});
+
+function skuByConfigurableId(id) {
+  var i;
+  for (i = 0; i < CONFIGURABLE_CATALOG_SKUS.length; i++) {
+    if (CONFIGURABLE_CATALOG_SKUS[i].id === id) return CONFIGURABLE_CATALOG_SKUS[i];
+  }
+  return null;
+}
+
+function defaultCatalogEnabled(id) {
+  return CONFIGURABLE_SKU_IDS.indexOf(String(id || '')) >= 0;
+}
+
+function defaultCatalogConfig() {
+  var map = {};
+  var i;
+  for (i = 0; i < CONFIGURABLE_CATALOG_SKUS.length; i++) {
+    var s = CONFIGURABLE_CATALOG_SKUS[i];
+    map[s.id] = {
+      amount: String(s.amount),
+      psych_amount: '',
+      grant_days: parseInt(s.grant_days, 10) || 0,
+      grant_hours: parseInt(s.grant_hours, 10) || 0,
+      grant_minutes: parseInt(s.grant_minutes, 10) || 0,
+      enabled: defaultCatalogEnabled(s.id)
+    };
+  }
+  return map;
+}
+
+function defaultCatalogAmounts() {
+  var cfg = defaultCatalogConfig();
+  return catalogAmountsFromConfig(cfg);
+}
+
+function catalogAmountsFromConfig(cfg) {
+  var map = {};
+  var i;
+  for (i = 0; i < CONFIGURABLE_SKU_IDS.length; i++) {
+    var id = CONFIGURABLE_SKU_IDS[i];
+    if (cfg && cfg[id] && cfg[id].amount) map[id] = String(cfg[id].amount);
+  }
+  return map;
+}
+
+function normalizeCatalogAmount(raw) {
+  var s = String(raw == null ? '' : raw).replace(/,/g, '').replace(/，/g, '').trim();
+  if (!s) return '';
+  var n = Number(s);
+  if (!isFinite(n) || n < 0.01 || n > 99999.99) return '';
+  return n.toFixed(2);
+}
+
+function normalizeGrantInt(raw, min, max) {
+  if (raw == null || String(raw).trim() === '') return null;
+  var n = parseInt(raw, 10);
+  if (!isFinite(n) || n < min || n > max) return null;
+  return n;
+}
+
+function catalogEntryHasGrant(entry) {
+  if (!entry) return false;
+  return (
+    (parseInt(entry.grant_days, 10) || 0) +
+      (parseInt(entry.grant_hours, 10) || 0) +
+      (parseInt(entry.grant_minutes, 10) || 0) >
+    0
+  );
+}
+
+function normalizeCatalogEntry(raw, fallback) {
+  var fb = fallback || {};
+  var obj = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : null;
+  var amountRaw = obj ? obj.amount : raw;
+  var amount = normalizeCatalogAmount(amountRaw) || String(fb.amount || '');
+  var days = obj && obj.grant_days != null ? normalizeGrantInt(obj.grant_days, 0, 365) : null;
+  var hours = obj && obj.grant_hours != null ? normalizeGrantInt(obj.grant_hours, 0, 720) : null;
+  var minutes = obj && obj.grant_minutes != null ? normalizeGrantInt(obj.grant_minutes, 0, 59) : null;
+  var enabled = fb.enabled !== false;
+  if (obj && obj.enabled != null) {
+    enabled = !(obj.enabled === false || obj.enabled === 0 || obj.enabled === '0');
+  }
+  var psychAmount = '';
+  if (obj) {
+    var psychRaw = obj.psych_amount != null ? obj.psych_amount : obj.psychAmount;
+    if (psychRaw != null && String(psychRaw).trim() !== '') {
+      psychAmount = normalizeCatalogAmount(psychRaw);
+    }
+  } else if (fb.psych_amount != null && String(fb.psych_amount).trim() !== '') {
+    psychAmount = normalizeCatalogAmount(fb.psych_amount) || '';
+  }
+  return {
+    amount: amount,
+    psych_amount: psychAmount,
+    grant_days: days != null ? days : parseInt(fb.grant_days, 10) || 0,
+    grant_hours: hours != null ? hours : parseInt(fb.grant_hours, 10) || 0,
+    grant_minutes: minutes != null ? minutes : parseInt(fb.grant_minutes, 10) || 0,
+    enabled: enabled
+  };
+}
+
+function normalizeCatalogConfig(raw) {
+  var defaults = defaultCatalogConfig();
+  var out = {};
+  var i;
+  for (i = 0; i < CONFIGURABLE_SKU_IDS.length; i++) {
+    var id = CONFIGURABLE_SKU_IDS[i];
+    var fb = Object.assign({}, defaults[id]);
+    var src = raw && typeof raw === 'object' ? raw[id] : null;
+    out[id] = normalizeCatalogEntry(src, fb);
+  }
+  return out;
+}
+
+function normalizeCatalogAmounts(raw) {
+  return catalogAmountsFromConfig(normalizeCatalogConfig(raw));
+}
+
 var DEFAULT_PRICING_AB = {
   enabled: true,
-  a_percent: 50,
-  b_percent: 50,
+  a_percent: 0,
+  b_percent: 100,
   c_percent: 0,
-  treatment_percent: 50,
-  control_skus: [SKU_CONTROL_199_PERM],
-  treatment_skus: [SKU_9_9_30M, SKU_49_24H, SKU_99_3D, SKU_199_1Y, SKU_499_PERM]
+  treatment_percent: 100,
+  control_skus: LIVE_CATALOG_SKUS.slice(),
+  treatment_skus: LIVE_CATALOG_SKUS.slice()
 };
 
 function cloneSku(s) {
-  return {
+  var out = {
     id: String(s.id || ''),
     amount: String(s.amount || ''),
     label: String(s.label || ''),
@@ -95,15 +407,100 @@ function cloneSku(s) {
     grant_days: parseInt(s.grant_days, 10) || 0,
     grant_minutes: parseInt(s.grant_minutes, 10) || 0
   };
+  if (s.list_amount != null && String(s.list_amount).trim() !== '') {
+    out.list_amount = String(s.list_amount);
+  }
+  if (s.psych_offer) out.psych_offer = true;
+  if (s.channel_price) out.channel_price = true;
+  return out;
+}
+
+function applyCatalogEntryToSku(sku, entry) {
+  var c = cloneSku(sku);
+  if (!entry) return c;
+  if (entry.amount) c.amount = String(entry.amount);
+  if (entry.grant_days != null) c.grant_days = parseInt(entry.grant_days, 10) || 0;
+  if (entry.grant_hours != null) c.grant_hours = parseInt(entry.grant_hours, 10) || 0;
+  if (entry.grant_minutes != null) c.grant_minutes = parseInt(entry.grant_minutes, 10) || 0;
+  var psych = entry.psych_amount ? String(entry.psych_amount) : '';
+  var listN = Number(c.amount);
+  var psychN = Number(psych);
+  if (
+    psych &&
+    isFinite(psychN) &&
+    psychN > 0 &&
+    isFinite(listN) &&
+    listN > 0 &&
+    psychN < listN
+  ) {
+    c.list_amount = String(c.amount);
+    c.amount = psych;
+    c.psych_offer = true;
+    if (c.label && String(c.label).indexOf('心理价') < 0) {
+      c.label = String(c.label) + '·心理价特惠';
+    }
+  }
+  return c;
+}
+
+function cloneLiveCatalog(catalogOrAmounts) {
+  var cfg = normalizeCatalogConfig(catalogOrAmounts);
+  return CONFIGURABLE_CATALOG_SKUS.map(function (s) {
+    var entry = cfg[s.id];
+    if (!entry || entry.enabled === false) return null;
+    return applyCatalogEntryToSku(s, entry);
+  }).filter(Boolean);
+}
+
+function listConfigurableCatalog(catalogOrAmounts) {
+  var cfg = normalizeCatalogConfig(catalogOrAmounts);
+  return CONFIGURABLE_CATALOG_SKUS.map(function (s) {
+    var entry = cfg[s.id] || {};
+    var sku = applyCatalogEntryToSku(s, entry);
+    sku.enabled = entry.enabled !== false;
+    return sku;
+  });
+}
+
+/** UTF-8 中文被当成 Latin-1 再存回时会出现 æ/å/Ã 等乱码 */
+function looksMojibakeText(s) {
+  var t = String(s || '');
+  if (!t) return false;
+  if (/[\u4e00-\u9fff]/.test(t)) return false;
+  return /[æåøÃÂäé]/.test(t);
+}
+
+function defaultSkuById(id) {
+  // 含旧档：DB/历史配置里仍可能残留 sku_199_1h 等，乱码修复需能命中
+  var all = []
+    .concat(DEFAULT_PRICING_AB.control_skus || [])
+    .concat(DEFAULT_PRICING_AB.treatment_skus || [])
+    .concat([SKU_99_HOUR, SKU_199_HOUR, SKU_249_DAY, SKU_268_3DAY, SKU_268_DAY, SKU_328_WEEK, SKU_398_MONTH, SKU_600_PERM])
+    .concat(LEGACY_CATALOG_SKUS || []);
+  for (var i = 0; i < all.length; i++) {
+    if (all[i].id === id) return cloneSku(all[i]);
+  }
+  return null;
 }
 
 function normalizeSkuList(list, fallback) {
   if (!Array.isArray(list) || !list.length) {
     return (fallback || []).map(cloneSku);
   }
-  return list.map(cloneSku).filter(function (s) {
-    return s.id && s.amount;
-  });
+  return list
+    .map(function (raw) {
+      var s = cloneSku(raw);
+      if (!s.id || !s.amount) return null;
+      if (looksMojibakeText(s.label) || looksMojibakeText(s.subject)) {
+        var def = defaultSkuById(s.id);
+        if (def) {
+          if (looksMojibakeText(s.label)) s.label = def.label;
+          if (looksMojibakeText(s.subject)) s.subject = def.subject;
+        }
+      }
+      return s;
+    })
+    .filter(Boolean);
 }
 
 function clampPct(v, fallback) {
@@ -159,7 +556,6 @@ function resolvePricingAbVariant(seed, treatmentPercent) {
 
 function abcToOfferVariant(abc) {
   if (abc === 'b') return 'treatment';
-  if (abc === 'c') return 'c';
   return 'control';
 }
 
@@ -207,12 +603,280 @@ function normalizeAbcPercents(raw, landingCPercent) {
       }
     }
   }
+  c = 0;
+  if (a + b === 0) {
+    a = 100;
+    b = 0;
+  } else if (a + b !== 100) {
+    var rest = 100 - a;
+    b = rest;
+  }
   return {
     a_percent: a,
     b_percent: b,
     c_percent: c,
     treatment_percent: b
   };
+}
+
+function isGithubChannel(userRow) {
+  return (
+    String((userRow && userRow.sales_promo_channel) || '')
+      .trim()
+      .toLowerCase() === 'github'
+  );
+}
+
+function shouldOfferGithubEntry(userRow) {
+  if (!userRow) return false;
+  var active =
+    userRow.account_active === 1 ||
+    userRow.account_active === true ||
+    Number(userRow.account_active) === 1;
+  if (active) return false;
+  return isGithubChannel(userRow);
+}
+
+/** GitHub 渠道货架价：周卡 200 / 双周 300 / 月卡 398；不改全站目录 */
+var GITHUB_CHANNEL_AMOUNT_BY_SKU = {
+  sku_300_7d: '200.00',
+  sku_348_14d: '300.00',
+  sku_398_30d: '398.00'
+};
+
+function applyGithubChannelCatalogPrices(skus) {
+  return applyChannelCatalogPrices(skus, GITHUB_CHANNEL_AMOUNT_BY_SKU);
+}
+
+/** 渠道专属第 4/5 档：不进全站货架，仅渠道覆盖时追加到支付页 */
+var SKU_CH_T4 = {
+  id: 'sku_ch_t4',
+  amount: '598.00',
+  label: '档位4',
+  subject: '激活码·档位4',
+  grant_kind: 'trial',
+  grant_hours: 0,
+  grant_days: 90,
+  grant_minutes: 0
+};
+var SKU_CH_T5 = {
+  id: 'sku_ch_t5',
+  amount: '998.00',
+  label: '档位5',
+  subject: '激活码·档位5',
+  grant_kind: 'trial',
+  grant_hours: 0,
+  grant_days: 365,
+  grant_minutes: 0
+};
+var CHANNEL_EXTRA_SKU_IDS = [SKU_CH_T4.id, SKU_CH_T5.id];
+
+function channelOverrideObject(raw) {
+  if (raw == null || raw === '') return null;
+  if (typeof raw === 'object' && !Array.isArray(raw)) {
+    /* 深拷贝字段，避免多档共享同一对象引用时互相覆盖金额/心理价 */
+    var copy = {};
+    if (raw.amount != null) copy.amount = raw.amount;
+    else if (raw.price != null) copy.amount = raw.price;
+    if (raw.list_amount != null) copy.list_amount = raw.list_amount;
+    else if (raw.psych_amount != null) copy.list_amount = raw.psych_amount;
+    if (raw.grant_days != null) copy.grant_days = raw.grant_days;
+    if (raw.grant_hours != null) copy.grant_hours = raw.grant_hours;
+    if (raw.label != null) copy.label = raw.label;
+    return copy;
+  }
+  var amt = String(raw).trim();
+  if (!amt) return null;
+  return { amount: amt };
+}
+
+function resolveChannelOverrideAmount(ov) {
+  if (!ov || typeof ov !== 'object') return '';
+  var raw = ov.amount != null ? ov.amount : ov.price != null ? ov.price : '';
+  return raw != null ? String(raw).trim() : '';
+}
+
+function resolveChannelOverrideListAmount(ov) {
+  if (!ov || typeof ov !== 'object') return '';
+  var raw =
+    ov.list_amount != null
+      ? ov.list_amount
+      : ov.psych_amount != null
+        ? ov.psych_amount
+        : '';
+  return raw != null ? String(raw).trim() : '';
+}
+
+function autoChannelGrantLabel(days, hours) {
+  var d = parseInt(days, 10) || 0;
+  var h = parseInt(hours, 10) || 0;
+  if (d > 0 && h > 0) return d + '天' + h + '小时';
+  if (d > 0) return d === 1 ? '日卡' : d + '天卡';
+  if (h > 0) return h === 1 ? '小时卡' : h + '小时卡';
+  return '';
+}
+
+/** 渠道「永久」档：名称或超长天数视为永久开通，但仍用该档自己的实付价（绝不用年卡/模板默认 998） */
+function isChannelPermanentGrant(label, days, hours) {
+  var name = String(label || '').trim();
+  if (name === '永久' || name.indexOf('永久') === 0) return true;
+  var d = parseInt(days, 10) || 0;
+  var h = parseInt(hours, 10) || 0;
+  return d >= 3650 && h <= 0;
+}
+
+function applyChannelPermanentGrant(sku) {
+  if (!sku) return;
+  if (!isChannelPermanentGrant(sku.label, sku.grant_days, sku.grant_hours)) return;
+  sku.grant_kind = 'permanent';
+  sku.grant_days = 0;
+  sku.grant_hours = 0;
+  sku.grant_minutes = 0;
+}
+
+function buildChannelExtraSku(id, ov) {
+  if (!ov) return null;
+  var amount = resolveChannelOverrideAmount(ov);
+  /* 第 4/5 档必须显式配置实付价；禁止回落到 SKU_CH_T5 模板默认 998（易与年卡同价） */
+  if (!amount) return null;
+  var d = ov.grant_days != null ? parseInt(ov.grant_days, 10) || 0 : 0;
+  var h = ov.grant_hours != null ? parseInt(ov.grant_hours, 10) || 0 : 0;
+  if (d < 0) d = 0;
+  if (h < 0) h = 0;
+  if (h > 23) h = 23;
+  if (d + h <= 0 && !isChannelPermanentGrant(ov.label, d, h)) return null;
+  var label =
+    ov.label != null && String(ov.label).trim() !== ''
+      ? String(ov.label).trim().slice(0, 32)
+      : autoChannelGrantLabel(d, h) || String(id);
+  var sku = {
+    id: String(id),
+    amount: amount,
+    label: label,
+    subject: '激活码·' + label,
+    grant_kind: 'trial',
+    grant_hours: h,
+    grant_days: d,
+    grant_minutes: 0,
+    channel_price: true
+  };
+  applyChannelPermanentGrant(sku);
+  if (sku.grant_kind !== 'permanent' && d + h <= 0) return null;
+  applyChannelListAmount(sku, ov);
+  sku.subject = '激活码·' + (sku.label || label);
+  return sku;
+}
+
+/** 渠道心理价：划线对照原价；须高于实付价才生效（与支付页 list_amount 一致） */
+function applyChannelListAmount(sku, ov) {
+  if (!sku || !ov) return;
+  var list = resolveChannelOverrideListAmount(ov);
+  if (!list) return;
+  var listN = Number(list);
+  var payN = Number(sku.amount);
+  if (!(isFinite(listN) && listN > 0 && isFinite(payN) && payN > 0 && listN > payN)) {
+    return;
+  }
+  sku.list_amount = listN.toFixed(2);
+  sku.psych_offer = true;
+  if (sku.label && String(sku.label).indexOf('心理价') < 0) {
+    sku.label = String(sku.label) + '·心理价特惠';
+  }
+}
+
+/** 去掉全站「·心理价特惠」后缀，避免渠道覆盖后仍挂心理价文案 */
+function stripSitePsychLabelSuffix(label) {
+  var s = String(label || '');
+  if (!s) return s;
+  return s.replace(/·心理价特惠/g, '').trim();
+}
+
+/** 按渠道覆盖货架：金额 / 心理价划线 / 天数 / 小时 / 名称。兼容旧 map 值为纯金额字符串。 */
+function applyChannelCatalogPrices(skus, priceMap) {
+  var map = priceMap && typeof priceMap === 'object' ? priceMap : {};
+  /*
+   * 先去掉货架上已有的渠道第 4/5 档，再按 map 重建。
+   * 避免「模板默认金额 998」残留：若覆盖只改了天数/名称而漏了 amount，
+   * 旧逻辑会让永久档继续显示年卡同价 998。
+   */
+  var next = (Array.isArray(skus) ? skus : [])
+    .filter(function (s) {
+      return CHANNEL_EXTRA_SKU_IDS.indexOf(String((s && s.id) || '')) < 0;
+    })
+    .map(cloneSku);
+  var i;
+  for (i = 0; i < next.length; i++) {
+    var raw = map[next[i].id];
+    if (raw == null || raw === '') continue;
+    var ov = channelOverrideObject(raw);
+    if (!ov) continue;
+    var touched = false;
+    var payAmt = resolveChannelOverrideAmount(ov);
+    if (payAmt) {
+      next[i].amount = payAmt;
+      touched = true;
+    }
+    if (ov.grant_days != null || ov.grant_hours != null) {
+      var d = ov.grant_days != null ? parseInt(ov.grant_days, 10) || 0 : next[i].grant_days || 0;
+      var h = ov.grant_hours != null ? parseInt(ov.grant_hours, 10) || 0 : next[i].grant_hours || 0;
+      if (d < 0) d = 0;
+      if (h < 0) h = 0;
+      if (h > 23) h = 23;
+      next[i].grant_days = d;
+      next[i].grant_hours = h;
+      next[i].grant_minutes = 0;
+      next[i].grant_kind = 'trial';
+      touched = true;
+    }
+    if (ov.label != null && String(ov.label).trim() !== '') {
+      next[i].label = String(ov.label).trim().slice(0, 32);
+      touched = true;
+    } else if (ov.grant_days != null || ov.grant_hours != null) {
+      var auto = autoChannelGrantLabel(next[i].grant_days, next[i].grant_hours);
+      if (auto) next[i].label = auto;
+    }
+    var listRaw = resolveChannelOverrideListAmount(ov);
+    if (listRaw) touched = true;
+    if (touched) {
+      /*
+       * 渠道档一旦覆盖：先清全站 list_amount / psych_offer。
+       * 心理价位留空则不显示划线，禁止回落全站默认心理价。
+       */
+      delete next[i].list_amount;
+      delete next[i].psych_offer;
+      next[i].label = stripSitePsychLabelSuffix(next[i].label);
+      if (listRaw) {
+        applyChannelListAmount(next[i], ov);
+      }
+      next[i].channel_price = true;
+      applyChannelPermanentGrant(next[i]);
+      next[i].subject = '激活码·' + (next[i].label || next[i].id);
+    }
+  }
+  var present = {};
+  for (i = 0; i < next.length; i++) present[next[i].id] = true;
+  var extraOrder = CHANNEL_EXTRA_SKU_IDS.slice();
+  Object.keys(map).forEach(function (id) {
+    if (extraOrder.indexOf(id) < 0) extraOrder.push(id);
+  });
+  extraOrder.forEach(function (id) {
+    if (present[id]) return;
+    var extra = buildChannelExtraSku(id, channelOverrideObject(map[id]));
+    if (!extra) return;
+    next.push(extra);
+    present[id] = true;
+  });
+  return next;
+}
+
+function prependGithubEntrySku(skus) {
+  var next = Array.isArray(skus) ? skus.map(cloneSku) : [];
+  var i;
+  for (i = 0; i < next.length; i++) {
+    if (next[i].id === SKU_98_3DAY.id) return next;
+  }
+  next.unshift(cloneSku(SKU_98_3DAY));
+  return next;
 }
 
 function grantDurationMs(sku) {
@@ -225,7 +889,20 @@ function grantDurationMs(sku) {
 
 function findSkuById(cfg, skuId) {
   var id = String(skuId || '');
-  var lists = [cfg.control_skus || [], cfg.treatment_skus || []];
+  /* 旧订单 SKU id → 新档 */
+  var legacyMap = {
+    sku_199_perm_legacy: 'sku_600_perm',
+    sku_499_perm: 'sku_398_30d',
+    sku_199_1y: 'sku_398_30d'
+  };
+  if (legacyMap[id]) id = legacyMap[id];
+  var lists = [
+    cfg.control_skus || [],
+    cfg.treatment_skus || [],
+    [SKU_98_3DAY, SKU_99_HOUR, SKU_249_DAY, SKU_268_3DAY, SKU_300_WEEK, SKU_348_2WEEK, SKU_398_MONTH, SKU_999_PERM, SKU_298_DAY, SKU_398_PERM, SKU_268_DAY, SKU_199_HOUR, SKU_328_WEEK, SKU_600_PERM, SKU_CH_T4, SKU_CH_T5].concat(
+      LEGACY_CATALOG_SKUS
+    )
+  ];
   var i;
   var j;
   for (i = 0; i < lists.length; i++) {
@@ -276,6 +953,10 @@ function createPricingAb(deps) {
   var alipayNormalizeAmount = deps.alipayNormalizeAmount;
   var _cache = null;
   var _cacheAt = 0;
+  var _priceCache = null;
+  var _priceCacheAt = 0;
+  var _catalogCache = null;
+  var _catalogCacheAt = 0;
   var _tableReady = false;
 
   async function ensureAssignmentsTable(conn) {
@@ -308,17 +989,137 @@ function createPricingAb(deps) {
     }
   }
 
+  async function loadCatalogConfig(force) {
+    var now = Date.now();
+    if (!force && _catalogCache && now - _catalogCacheAt < 10000) return _catalogCache;
+    var out = defaultCatalogConfig();
+    if (!pool) {
+      _catalogCache = out;
+      _catalogCacheAt = now;
+      _priceCache = catalogAmountsFromConfig(out);
+      _priceCacheAt = now;
+      return out;
+    }
+    const conn = await pool.getConnection();
+    try {
+      const [rows] = await conn.execute(
+        'SELECT setting_value FROM app_settings WHERE setting_key = ? LIMIT 1',
+        [SETTING_KEY_SKU_PRICES]
+      );
+      if (rows.length && rows[0].setting_value) {
+        out = normalizeCatalogConfig(JSON.parse(String(rows[0].setting_value)));
+      }
+    } catch (e) {
+      /* keep defaults */
+    } finally {
+      conn.release();
+    }
+    _catalogCache = out;
+    _catalogCacheAt = now;
+    _priceCache = catalogAmountsFromConfig(out);
+    _priceCacheAt = now;
+    return out;
+  }
+
+  async function loadCatalogAmounts(force) {
+    var cfg = await loadCatalogConfig(force);
+    return catalogAmountsFromConfig(cfg);
+  }
+
+  async function saveCatalogAmountsFromAdmin(body) {
+    var incoming = body && typeof body === 'object' ? body : {};
+    var current = await loadCatalogConfig(true);
+    var merged = {};
+    var i;
+    for (i = 0; i < CONFIGURABLE_SKU_IDS.length; i++) {
+      var id = CONFIGURABLE_SKU_IDS[i];
+      var cur = current[id] || defaultCatalogConfig()[id];
+      var inc = incoming[id];
+      if (inc && typeof inc === 'object' && !Array.isArray(inc)) {
+        merged[id] = Object.assign({}, cur, inc);
+      } else if (inc != null && String(inc).trim() !== '') {
+        merged[id] = Object.assign({}, cur, { amount: inc });
+      } else {
+        merged[id] = cur;
+      }
+    }
+    var next = normalizeCatalogConfig(merged);
+    var missing = CONFIGURABLE_SKU_IDS.filter(function (id) {
+      return !normalizeCatalogAmount(next[id] && next[id].amount);
+    });
+    if (missing.length) {
+      var err = new Error('套餐价格无效，请填写 0.01～99999.99');
+      err.statusCode = 400;
+      throw err;
+    }
+    var badPsych = CONFIGURABLE_SKU_IDS.filter(function (id) {
+      var row = next[id] || {};
+      var raw =
+        merged[id] && merged[id].psych_amount != null
+          ? String(merged[id].psych_amount).trim()
+          : '';
+      if (!raw) return false;
+      if (!row.psych_amount) return true;
+      var listN = Number(row.amount);
+      var psychN = Number(row.psych_amount);
+      return !(isFinite(psychN) && psychN > 0 && isFinite(listN) && psychN < listN);
+    });
+    if (badPsych.length) {
+      var errPsych = new Error('心理价须小于套餐价格，且为 0.01～99999.99；不填则不启用心理价特惠');
+      errPsych.statusCode = 400;
+      throw errPsych;
+    }
+    var badGrant = CONFIGURABLE_SKU_IDS.filter(function (id) {
+      return !catalogEntryHasGrant(next[id]);
+    });
+    if (badGrant.length) {
+      var errGrant = new Error('套餐时长无效，请至少填写天数或小时（天数 0–365，小时 0–720）');
+      errGrant.statusCode = 400;
+      throw errGrant;
+    }
+    var enabledCount = CONFIGURABLE_SKU_IDS.filter(function (id) {
+      return next[id] && next[id].enabled !== false;
+    }).length;
+    if (!enabledCount) {
+      var errOff = new Error('请至少上架一个套餐');
+      errOff.statusCode = 400;
+      throw errOff;
+    }
+    if (!pool || typeof upsertAppSetting !== 'function') {
+      var err2 = new Error('无法保存套餐');
+      err2.statusCode = 500;
+      throw err2;
+    }
+    const conn = await pool.getConnection();
+    try {
+      await upsertAppSetting(conn, SETTING_KEY_SKU_PRICES, JSON.stringify(next));
+    } finally {
+      conn.release();
+    }
+    _catalogCache = next;
+    _catalogCacheAt = Date.now();
+    _priceCache = catalogAmountsFromConfig(next);
+    _priceCacheAt = Date.now();
+    invalidateCache();
+    return next;
+  }
+
   async function loadPricingAbParsed(force) {
     var now = Date.now();
     if (!force && _cache && now - _cacheAt < 10000) return _cache;
+    var catalog = await loadCatalogConfig(force);
+    var amounts = catalogAmountsFromConfig(catalog);
+    var live = cloneLiveCatalog(catalog);
     var out = {
       enabled: DEFAULT_PRICING_AB.enabled,
       a_percent: DEFAULT_PRICING_AB.a_percent,
       b_percent: DEFAULT_PRICING_AB.b_percent,
       c_percent: DEFAULT_PRICING_AB.c_percent,
       treatment_percent: DEFAULT_PRICING_AB.treatment_percent,
-      control_skus: DEFAULT_PRICING_AB.control_skus.map(cloneSku),
-      treatment_skus: DEFAULT_PRICING_AB.treatment_skus.map(cloneSku)
+      control_skus: live.map(cloneSku),
+      treatment_skus: live.map(cloneSku),
+      catalog_amounts: amounts,
+      sku_catalog: catalog
     };
     if (!pool) {
       _cache = out;
@@ -334,23 +1135,16 @@ function createPricingAb(deps) {
       if (rows.length && rows[0].setting_value) {
         var parsed = JSON.parse(String(rows[0].setting_value));
         if (parsed && typeof parsed === 'object') {
-          out.enabled = parsed.enabled !== false;
-          var landingC = 0;
-          var needsLegacy =
-            parsed.a_percent == null && parsed.b_percent == null && parsed.c_percent == null;
-          if (needsLegacy) {
-            landingC = await loadLandingCPercentHint(conn);
-          }
-          var pct = normalizeAbcPercents(parsed, landingC);
-          out.a_percent = pct.a_percent;
-          out.b_percent = pct.b_percent;
-          out.c_percent = pct.c_percent;
-          out.treatment_percent = pct.treatment_percent;
-          out.control_skus = normalizeSkuList(parsed.control_skus, DEFAULT_PRICING_AB.control_skus);
-          out.treatment_skus = normalizeSkuList(
-            parsed.treatment_skus,
-            DEFAULT_PRICING_AB.treatment_skus
-          );
+          out.enabled = true;
+          out.a_percent = 0;
+          out.b_percent = 100;
+          out.c_percent = 0;
+          out.treatment_percent = 100;
+          /* 售卖目录与金额、时长以后台「支付套餐」为准 */
+          out.control_skus = cloneLiveCatalog(catalog);
+          out.treatment_skus = cloneLiveCatalog(catalog);
+          out.catalog_amounts = amounts;
+          out.sku_catalog = catalog;
         }
       }
     } catch (e) {
@@ -368,24 +1162,19 @@ function createPricingAb(deps) {
     _cacheAt = 0;
   }
 
-  async function savePricingAbFromAdmin(body) {
-    var cur = await loadPricingAbParsed(true);
-    var a = clampPct(body.a_percent != null ? body.a_percent : cur.a_percent, cur.a_percent);
-    var b = clampPct(body.b_percent != null ? body.b_percent : cur.b_percent, cur.b_percent);
-    var c = clampPct(body.c_percent != null ? body.c_percent : cur.c_percent, cur.c_percent);
-    if (a + b + c !== 100) {
-      var err = new Error('A/B/C 流量占比之和必须为 100（当前 ' + (a + b + c) + '）');
-      err.statusCode = 400;
-      throw err;
-    }
+  async function savePricingAbFromAdmin() {
+    var catalog = await loadCatalogConfig(true);
+    var amounts = catalogAmountsFromConfig(catalog);
     var next = {
-      enabled: body.enabled !== false && body.enabled !== 0 && body.enabled !== '0',
-      a_percent: a,
-      b_percent: b,
-      c_percent: c,
-      treatment_percent: b,
-      control_skus: normalizeSkuList(body.control_skus, cur.control_skus),
-      treatment_skus: normalizeSkuList(body.treatment_skus, cur.treatment_skus)
+      enabled: true,
+      a_percent: 0,
+      b_percent: 100,
+      c_percent: 0,
+      treatment_percent: 100,
+      control_skus: cloneLiveCatalog(catalog),
+      treatment_skus: cloneLiveCatalog(catalog),
+      catalog_amounts: amounts,
+      sku_catalog: catalog
     };
     const conn = await pool.getConnection();
     try {
@@ -397,19 +1186,24 @@ function createPricingAb(deps) {
     return loadPricingAbParsed(true);
   }
 
-  async function getStickyAbc(username) {
+  async function getStickyAssignment(username) {
     var u = String(username || '').trim();
     if (!u || u === 'guest' || !pool) return null;
     const conn = await pool.getConnection();
     try {
       await ensureAssignmentsTable(conn);
       const [rows] = await conn.execute(
-        'SELECT variant FROM pricing_ab_assignments WHERE username = ? LIMIT 1',
+        'SELECT variant, source, assigned_at FROM pricing_ab_assignments WHERE username = ? LIMIT 1',
         [u]
       );
       if (!rows.length) return null;
-      var v = String(rows[0].variant || '').toLowerCase();
-      return v === 'a' || v === 'b' || v === 'c' ? v : null;
+      var v = normalizeAbcToken(rows[0].variant);
+      if (!v) return null;
+      return {
+        variant: v,
+        source: String(rows[0].source || '').substring(0, 32),
+        assigned_at: rows[0].assigned_at || null
+      };
     } catch (e) {
       return null;
     } finally {
@@ -417,19 +1211,48 @@ function createPricingAb(deps) {
     }
   }
 
-  async function setStickyAbc(username, abc, source) {
+  async function getStickyAbc(username) {
+    var row = await getStickyAssignment(username);
+    return row ? row.variant : null;
+  }
+
+  function normalizeAbcToken(raw) {
+    var s = String(raw == null ? '' : raw).trim();
+    try {
+      if (typeof s.normalize === 'function') s = s.normalize('NFKC');
+    } catch (eNfkc) {}
+    s = s.toLowerCase();
+    if (s === 'a' || s === 'control') return 'a';
+    if (s === 'b' || s === 'treatment') return 'b';
+    if (s === 'c') return 'c';
+    return '';
+  }
+
+  async function setStickyAbc(username, abc, source, force) {
     var u = String(username || '').trim();
-    var v = String(abc || '').toLowerCase();
-    if (!u || u === 'guest' || (v !== 'a' && v !== 'b' && v !== 'c') || !pool) return null;
+    var v = normalizeAbcToken(abc);
+    if (!u || u === 'guest' || !v || !pool) return null;
     const conn = await pool.getConnection();
     try {
       await ensureAssignmentsTable(conn);
-      await conn.execute(
-        `INSERT INTO pricing_ab_assignments (username, variant, source)
-         VALUES (?, ?, ?)
-         ON DUPLICATE KEY UPDATE username = username`,
-        [u, v, String(source || 'allocation').substring(0, 32)]
-      );
+      if (force) {
+        await conn.execute(
+          `INSERT INTO pricing_ab_assignments (username, variant, source, assigned_at)
+           VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+           ON DUPLICATE KEY UPDATE
+             variant = VALUES(variant),
+             source = VALUES(source),
+             assigned_at = CURRENT_TIMESTAMP`,
+          [u, v, String(source || 'allocation').substring(0, 32)]
+        );
+      } else {
+        await conn.execute(
+          `INSERT INTO pricing_ab_assignments (username, variant, source)
+           VALUES (?, ?, ?)
+           ON DUPLICATE KEY UPDATE username = username`,
+          [u, v, String(source || 'allocation').substring(0, 32)]
+        );
+      }
       return v;
     } catch (e) {
       console.error('setStickyAbc', e);
@@ -439,63 +1262,49 @@ function createPricingAb(deps) {
     }
   }
 
-  /**
-   * 为用户解析可见 SKU 列表与变体。
-   * preferredAbc: 客户端已 sticky 的 a|b|c，仅在服务端尚无记录时采纳。
-   */
-  async function resolveOfferForUser(username, envFallbackAmount, envSubject, preferredAbc) {
+  /** 管理端指定账号方案：强制覆盖，优先于代理渠道锁定 */
+  async function assignAbcForAdmin(username, abc) {
+    var u = String(username || '').trim();
+    var v = normalizeAbcToken(abc);
+    if (!u || u === 'guest') {
+      var err = new Error('请填写有效账号');
+      err.statusCode = 400;
+      throw err;
+    }
+    if (!v) {
+      var err2 = new Error('方案须为 a / b / c（大小写均可）');
+      err2.statusCode = 400;
+      throw err2;
+    }
+    var ok = await setStickyAbc(u, v, 'admin_force', true);
+    if (!ok) {
+      var err3 = new Error('分配失败');
+      err3.statusCode = 500;
+      throw err3;
+    }
+    return getStickyAssignment(u);
+  }
+
+  async function resolveOfferForUser(username) {
     var cfg = await loadPricingAbParsed();
     var seed = String(username || '').trim() || 'guest';
-    if (!cfg.enabled) {
-      var amt = alipayNormalizeAmount(envFallbackAmount);
-      var legacy = cloneSku(SKU_CONTROL_199_PERM);
-      if (amt) legacy.amount = amt;
-      if (envSubject) legacy.subject = String(envSubject).slice(0, 128);
-      return {
-        enabled: true,
-        variant: 'control',
-        abc_variant: 'a',
-        skus: [legacy],
-        pricing_ab_enabled: false
-      };
-    }
-
-    var abc = null;
+    var skus =
+      cfg.treatment_skus && cfg.treatment_skus.length
+        ? cfg.treatment_skus.map(cloneSku)
+        : cloneLiveCatalog(cfg.sku_catalog || cfg.catalog_amounts);
     if (seed !== 'guest') {
-      abc = await getStickyAbc(seed);
-    }
-    if (!abc) {
-      var pref = String(preferredAbc || '').toLowerCase();
-      if (pref === 'a' || pref === 'b' || pref === 'c') {
-        abc = pref;
-      } else {
-        abc = resolvePurchaseAbcVariant(seed, cfg.a_percent, cfg.b_percent, cfg.c_percent);
-      }
-      if (seed !== 'guest') {
-        await setStickyAbc(seed, abc, preferredAbc ? 'client_sticky' : 'allocation');
-      }
-    }
-
-    var variant = abcToOfferVariant(abc);
-    var skus = [];
-    if (abc === 'c') {
-      skus = [];
-    } else if (abc === 'b') {
-      skus = cfg.treatment_skus.map(cloneSku);
-    } else {
-      skus = cfg.control_skus.map(cloneSku);
-    }
-    if (abc !== 'c' && !skus.length) {
-      skus = [cloneSku(SKU_CONTROL_199_PERM)];
-      variant = 'control';
-      abc = 'a';
+      await setStickyAbc(seed, 'b', 'single_plan', true);
     }
     return {
-      enabled: abc !== 'c',
-      variant: variant,
-      abc_variant: abc,
+      enabled: true,
+      variant: 'treatment',
+      abc_variant: 'b',
+      abc_source: 'single_plan',
       skus: skus,
-      pricing_ab_enabled: true
+      pricing_ab_enabled: false,
+      forced_by_channel: false,
+      force_client_abc: true,
+      github_entry: false
     };
   }
 
@@ -511,16 +1320,14 @@ function createPricingAb(deps) {
     return null;
   }
 
-  /** 公开配置：供落地/支付页客户端分流（已分配设备自行 sticky） */
+  /** 公开配置：全站只走一套支付页，客户端不再分流 */
   async function publicAbcConfig() {
-    var cfg = await loadPricingAbParsed();
-    var enabled = cfg.enabled !== false;
     return {
-      enabled: enabled,
-      a_percent: enabled ? cfg.a_percent : 100,
-      b_percent: enabled ? cfg.b_percent : 0,
-      c_percent: enabled ? cfg.c_percent : 0,
-      b_landing_percent: enabled ? cfg.a_percent + cfg.b_percent : 100,
+      enabled: true,
+      a_percent: 0,
+      b_percent: 100,
+      c_percent: 0,
+      b_landing_percent: 100,
       experiment: 'purchase_abc_v1',
       delegated: true
     };
@@ -531,6 +1338,9 @@ function createPricingAb(deps) {
     DEFAULT_PRICING_AB: DEFAULT_PRICING_AB,
     loadPricingAbParsed: loadPricingAbParsed,
     savePricingAbFromAdmin: savePricingAbFromAdmin,
+    loadCatalogAmounts: loadCatalogAmounts,
+    loadCatalogConfig: loadCatalogConfig,
+    saveCatalogAmountsFromAdmin: saveCatalogAmountsFromAdmin,
     invalidateCache: invalidateCache,
     resolveOfferForUser: resolveOfferForUser,
     pickSkuFromOffer: pickSkuFromOffer,
@@ -542,7 +1352,9 @@ function createPricingAb(deps) {
     abcToOfferVariant: abcToOfferVariant,
     offerVariantToAbc: offerVariantToAbc,
     getStickyAbc: getStickyAbc,
+    getStickyAssignment: getStickyAssignment,
     setStickyAbc: setStickyAbc,
+    assignAbcForAdmin: assignAbcForAdmin,
     publicAbcConfig: publicAbcConfig
   };
 }
@@ -550,10 +1362,29 @@ function createPricingAb(deps) {
 module.exports = {
   createPricingAb: createPricingAb,
   SETTING_KEY_PRICING_AB: SETTING_KEY_PRICING_AB,
+  SETTING_KEY_SKU_PRICES: SETTING_KEY_SKU_PRICES,
+  LIVE_SKU_IDS: LIVE_SKU_IDS,
+  CONFIGURABLE_SKU_IDS: CONFIGURABLE_SKU_IDS,
+  defaultCatalogAmounts: defaultCatalogAmounts,
+  defaultCatalogConfig: defaultCatalogConfig,
+  normalizeCatalogAmounts: normalizeCatalogAmounts,
+  normalizeCatalogConfig: normalizeCatalogConfig,
+  catalogAmountsFromConfig: catalogAmountsFromConfig,
+  cloneLiveCatalog: cloneLiveCatalog,
   DEFAULT_PRICING_AB: DEFAULT_PRICING_AB,
   resolveCoverLongerGrant: resolveCoverLongerGrant,
   resolvePricingAbVariant: resolvePricingAbVariant,
   resolvePurchaseAbcVariant: resolvePurchaseAbcVariant,
   abcToOfferVariant: abcToOfferVariant,
-  offerVariantToAbc: offerVariantToAbc
+  offerVariantToAbc: offerVariantToAbc,
+  shouldOfferGithubEntry: shouldOfferGithubEntry,
+  isGithubChannel: isGithubChannel,
+  applyGithubChannelCatalogPrices: applyGithubChannelCatalogPrices,
+  applyChannelCatalogPrices: applyChannelCatalogPrices,
+  GITHUB_CHANNEL_AMOUNT_BY_SKU: GITHUB_CHANNEL_AMOUNT_BY_SKU,
+  prependGithubEntrySku: prependGithubEntrySku,
+  SKU_98_3DAY: SKU_98_3DAY,
+  SKU_CH_T4: SKU_CH_T4,
+  SKU_CH_T5: SKU_CH_T5,
+  CHANNEL_EXTRA_SKU_IDS: CHANNEL_EXTRA_SKU_IDS
 };

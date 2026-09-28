@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth-boot.js?v=20260902-adopt"></script>
+    <script src="/js/auth.js?v=20260902-adopt" defer></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>在职证明生成</title>
+    <style>
+        :root {
+            --ink: #0f172a;
+            --ink-soft: #475569;
+            --muted: #94a3b8;
+            --line: #e2e8f0;
+            --bg: #f4f7fb;
+            --accent: #1d6fd8;
+            --accent-deep: #1860be;
+            --accent-soft: #eff6ff;
+            --warn: #b45309;
+            --warn-soft: #fff7e8;
+            --safe-t: env(safe-area-inset-top, 0px);
+            --safe-b: env(safe-area-inset-bottom, 0px);
+            --wrap: 440px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            color: var(--ink);
+            min-height: 100vh;
+            background: var(--bg);
+            padding-bottom: calc(28px + var(--safe-b));
+        }
+        .header {
+            max-width: var(--wrap);
+            margin: 0 auto;
+            padding: calc(12px + var(--safe-t)) 20px 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .back-btn {
+            color: var(--accent);
+            font-size: 15px;
+            text-decoration: none;
+            padding: 4px 2px;
+        }
+        .header-title { font-size: 16px; font-weight: 600; }
+        .page { max-width: var(--wrap); margin: 0 auto; padding: 8px 20px 0; }
+        .hero {
+            padding: 18px 16px;
+            border-radius: 16px;
+            margin-bottom: 12px;
+            color: #fff;
+            background: linear-gradient(135deg, #0f4c9a 0%, #1d6fd8 55%, #5aa3f0 100%);
+            box-shadow: 0 10px 24px rgba(29, 111, 216, 0.18);
+        }
+        .hero h1 { font-size: 20px; margin: 0 0 6px; }
+        .hero p { font-size: 13px; line-height: 1.5; color: rgba(255,255,255,.88); margin: 0; }
+        .card {
+            padding: 16px;
+            margin-top: 12px;
+            border: 1px solid rgba(226, 232, 240, 0.85);
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 5px 18px rgba(15, 23, 42, 0.05);
+        }
+        .card[hidden] { display: none !important; }
+        .card-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+        .card-hint { font-size: 13px; color: var(--muted); line-height: 1.45; margin-bottom: 12px; }
+        .field-label {
+            display: block;
+            font-size: 12px;
+            color: var(--ink-soft);
+            margin: 0 0 6px;
+        }
+        .field {
+            width: 100%;
+            min-height: 44px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 15px;
+            margin-bottom: 12px;
+            font-family: inherit;
+            background: #fff;
+        }
+        .field:focus {
+            outline: none;
+            border-color: #93c0f0;
+            box-shadow: 0 0 0 3px rgba(29, 111, 216, 0.12);
+        }
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            min-height: 48px;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            text-decoration: none;
+            color: #fff;
+            background: var(--accent);
+        }
+        .btn + .btn { margin-top: 8px; }
+        .btn:disabled { opacity: .55; cursor: not-allowed; }
+        .btn-secondary {
+            background: #fff;
+            color: var(--ink-soft);
+            border: 1px solid var(--line);
+        }
+        .quick-box {
+            margin: 0 0 16px;
+            padding: 12px;
+            border-radius: 12px;
+            background: var(--accent-soft);
+            border: 1px solid #dbeafe;
+        }
+        .quick-box .card-hint { margin-bottom: 0; color: var(--ink-soft); }
+        .quick-company {
+            display: none;
+            margin: 8px 0 0;
+            font-size: 13px;
+            line-height: 1.45;
+            color: var(--accent-deep);
+            font-weight: 600;
+        }
+        .quick-company.is-on { display: block; }
+        .form-divider {
+            margin: 4px 0 14px;
+            font-size: 12px;
+            color: var(--muted);
+            text-align: center;
+        }
+        .status {
+            margin-top: 10px;
+            font-size: 13px;
+            line-height: 1.45;
+            color: var(--accent-deep);
+            text-align: center;
+        }
+        .status.is-err { color: #b91c1c; }
+        .qr-wrap {
+            margin-top: 12px;
+            text-align: center;
+            min-height: 40px;
+        }
+        .qr-wrap img {
+            width: 180px;
+            height: 180px;
+            background: #fff;
+            border-radius: 8px;
+        }
+        .badge {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 600;
+            color: #166534;
+            background: #ecfdf3;
+            border-radius: 6px;
+            padding: 3px 8px;
+            margin-bottom: 8px;
+        }
+        .pdf-save-card .card-title { margin-bottom: 8px; }
+        .pdf-frame-wrap {
+            margin: 10px 0 12px;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            overflow: auto;
+            background: #e8eef5;
+            min-height: 280px;
+            max-height: 52vh;
+            -webkit-overflow-scrolling: touch;
+        }
+        .pdf-frame-wrap iframe {
+            display: block;
+            width: 100%;
+            height: 360px;
+            border: 0;
+            background: #fff;
+        }
+        .pdf-preview-img {
+            display: block;
+            width: 100%;
+            height: auto;
+            background: #fff;
+        }
+        .pdf-preview-fallback {
+            margin: 0;
+            padding: 48px 16px;
+            text-align: center;
+            color: #64748b;
+            font-size: 13px;
+        }
+        .pdf-save-tip {
+            font-size: 12px;
+            line-height: 1.5;
+            color: var(--ink-soft);
+            margin: 0 0 10px;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js" defer></script>
+    <script src="/js/cert-page-survey.js?v=20260828-cert-survey"></script>
+</head>
+<body>
+    <div class="header">
+        <a class="back-btn" href="consult.html?tab=products" id="lizhiBack">‹ 返回</a>
+        <div class="header-title">在职证明</div>
+    </div>
+    <div class="page">
+        <div class="hero">
+            <h1>在职证明生成</h1>
+            <p id="lizhiHeroDesc">未付款可生成带「演示样例」水印的 PDF；支付宝付 ¥50 开通后，可生成无演示水印版本。</p>
+        </div>
+
+        <div class="card" id="cardPay" hidden>
+            <div class="card-title" id="lizhiPayTitle">开通权益 · ¥50</div>
+            <p class="card-hint">付款成功后自动解锁并去除「演示样例」水印，无需激活码。</p>
+            <button type="button" class="btn" id="btnLizhiPay">支付宝付款开通</button>
+            <div class="qr-wrap" id="lizhiQrWrap" hidden></div>
+            <p class="status" id="lizhiPayStatus" hidden></p>
+        </div>
+
+        <div class="card" id="cardForm">
+            <span class="badge" id="lizhiUnlockBadge">未开通 · PDF 含演示水印</span>
+            <div class="card-title">填写并生成</div>
+            <p class="card-hint">可一键用账号里最近任职公司生成，也可改表单后再生成。安卓生成后点「保存到手机」即可写入本机。</p>
+            <div class="quick-box">
+                <button type="button" class="btn" id="btnLizhiQuick">一键生成最近任职公司</button>
+                <p class="quick-company" id="lizhiQuickCompany"></p>
+                <p class="card-hint" style="margin-top:8px;">优先取在职雇主；否则按个税最近月份对应公司，岗位为空时按「职员」。</p>
+            </div>
+            <p class="form-divider">或修改下方信息后生成</p>
+            <label class="field-label" for="lzName">姓名</label>
+            <input class="field" id="lzName" maxlength="64" autocomplete="name">
+            <label class="field-label" for="lzId">身份证号</label>
+            <input class="field" id="lzId" maxlength="32" autocomplete="off">
+            <label class="field-label" for="lzCompany">公司全称</label>
+            <input class="field" id="lzCompany" maxlength="128" autocomplete="organization">
+            <label class="field-label" for="lzDepartment">部门</label>
+            <input class="field" id="lzDepartment" maxlength="64" placeholder="如：市场部" autocomplete="organization-title">
+            <label class="field-label" for="lzPosition">担任岗位</label>
+            <input class="field" id="lzPosition" maxlength="64" placeholder="如：销售经理" autocomplete="organization-title">
+            <label class="field-label" for="lzGender">性别</label>
+            <input class="field" id="lzGender" maxlength="8" placeholder="男 / 女" autocomplete="sex">
+            <label class="field-label" for="lzHire">入职日期</label>
+            <input class="field" id="lzHire" maxlength="32" placeholder="2025/12/15">
+            <label class="field-label" for="lzIssue">开具日期</label>
+            <input class="field" id="lzIssue" maxlength="48" placeholder="2026 年 7 月 13 日">
+            <button type="button" class="btn" id="btnLizhiGenerate">生成并保存 PDF</button>
+            <button type="button" class="btn btn-secondary" id="btnLizhiPrefill">重新预填</button>
+            <p class="status" id="lizhiGenStatus" hidden></p>
+        </div>
+
+        <div class="card pdf-save-card" id="cardPdfSave" hidden>
+            <div class="card-title">PDF 已生成</div>
+            <p class="pdf-save-tip" id="lizhiPdfTip">
+                安卓请点「保存到手机」写入下载/相册；也可长按预览图保存。
+            </p>
+            <div class="pdf-frame-wrap">
+                <img id="lizhiPdfPreview" class="pdf-preview-img" alt="在职证明预览" hidden>
+                <iframe id="lizhiPdfFrame" title="在职证明预览" hidden></iframe>
+                <p class="pdf-preview-fallback" id="lizhiPdfPreviewFallback" hidden>预览图加载中…</p>
+            </div>
+            <p class="pdf-save-tip" id="lizhiLongPressTip" hidden style="margin-top:8px;">也可长按上方预览图，选择「保存图片 / 下载图片」。</p>
+            <button type="button" class="btn" id="btnLizhiShare">系统分享保存</button>
+            <button type="button" class="btn btn-secondary" id="btnLizhiOpenPdf">打开预览</button>
+            <button type="button" class="btn btn-secondary" id="btnLizhiDesktopDl">浏览器下载 PDF</button>
+            <p class="status" id="lizhiSaveStatus" hidden></p>
+        </div>
+    </div>
+
+        <script src="/js/employment-cert-page.js?v=20260907-android-save"></script>
+    <script>
+(function () {
+    window.initEmploymentCertPage({
+        product: 'zaizhi_cert',
+        productLabel: '工作证明',
+        apiPrefix: '/api/zaizhi-cert',
+        skuId: 'sku_zaizhi_cert_50',
+        pageFile: 'zaizhi_cert.html',
+        defaultFilename: '工作证明.pdf',
+        surveyProduct: 'zaizhi',
+        quick: true,
+        requireDepartmentManual: true,
+        quickCompanyPrefix: '当前/最近任职：',
+        quickEmptyCompanyMsg: '账号里没有找到任职公司，请先添加个税记录或手动填写',
+        quickBusyMsg: '正在按最近任职公司生成 PDF…',
+        quickLoadingMsg: '正在读取最近任职公司…',
+        prefillDoneMsg: '已按最近任职公司重新预填',
+        ids: {
+            back: 'lizhiBack',
+            cardPay: 'cardPay',
+            cardForm: 'cardForm',
+            cardPdfSave: 'cardPdfSave',
+            payStatus: 'lizhiPayStatus',
+            genStatus: 'lizhiGenStatus',
+            saveStatus: 'lizhiSaveStatus',
+            pdfFrame: 'lizhiPdfFrame',
+            pdfPreview: 'lizhiPdfPreview',
+            pdfPreviewFallback: 'lizhiPdfPreviewFallback',
+            longPressTip: 'lizhiLongPressTip',
+            btnShare: 'btnLizhiShare',
+            qrWrap: 'lizhiQrWrap',
+            unlockBadge: 'lizhiUnlockBadge',
+            pdfTip: 'lizhiPdfTip',
+            quickCompany: 'lizhiQuickCompany',
+            payBtn: 'btnLizhiPay',
+            payTitle: 'lizhiPayTitle',
+            heroDesc: 'lizhiHeroDesc',
+            generateBtn: 'btnLizhiGenerate',
+            quickBtn: 'btnLizhiQuick',
+            prefillBtn: 'btnLizhiPrefill',
+            openPdfBtn: 'btnLizhiOpenPdf',
+            desktopDlBtn: 'btnLizhiDesktopDl'
+        },
+        fields: {
+            name: 'lzName',
+            id: 'lzId',
+            company: 'lzCompany',
+            department: 'lzDepartment',
+            position: 'lzPosition',
+            gender: 'lzGender',
+            hire: 'lzHire',
+            issue: 'lzIssue'
+        }
+    });
+})();
+    </script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+{
+  "id": "purchase",
+  "title": "开通套餐",
+  "page": "purchase.html",
+  "phase": 1,
+  "status": "live_partial",
+  "admin": "analytics-purchase",
+  "trigger": {
+    "type": "exit",
+    "once_per_user": true,
+    "session_snooze": true
+  },
+  "price": {
+    "enabled": true,
+    "seen_note": "以页面当前最低档为准",
+    "question": "您觉得现在的开通价格",
+    "options": [
+      { "id": "expensive", "label": "偏贵" },
+      { "id": "fair", "label": "合适" },
+      { "id": "cheap", "label": "偏便宜" }
+    ],
+    "chips_expensive": [50, 98, 148, 198],
+    "chips_cheap": [148, 198, 258, 298]
+  },
+  "usage": {
+    "satisfaction_question": "支付页好不好找、好不好付",
+    "satisfaction": [
+      { "id": "good", "label": "好用" },
+      { "id": "ok", "label": "一般" },
+      { "id": "bad", "label": "不好用" }
+    ],
+    "improve_question": "最想优化",
+    "improve": [
+      { "id": "sku", "label": "套餐说明" },
+      { "id": "pay", "label": "付款开通" },
+      { "id": "code", "label": "激活码" },
+      { "id": "share", "label": "分享优惠" },
+      { "id": "faq", "label": "常见问题" },
+      { "id": "other", "label": "其他" }
+    ]
+  },
+  "concerns": [
+    {
+      "id": "not_official",
+      "label": "怕不是官方收费",
+      "explain": "本页是演示产品开通费，由本平台收款，不是税务机关收费。正式申报、缴税请只走个人所得税 APP 或电子税务局。"
+    },
+    {
+      "id": "when_active",
+      "label": "怕付了不开通",
+      "explain": "支付宝到账后一般几秒内自动开通，请先留在本页。若已扣款仍未开通，再点一次付款按钮刷新状态，或带付款截图联系客服。"
+    },
+    {
+      "id": "sku_confuse",
+      "label": "搞不清套餐差别",
+      "explain": "各档权益相同，主要差在可用时长。默认已选最低价；续费可叠加时长。激活码开通后的演示权益与直接付款一致。"
+    },
+    {
+      "id": "lizhi_extra",
+      "label": "怕还要再付证明费",
+      "explain": "主套餐开通不等于离职/在职证明。证明是独立的 ¥50 去水印服务，不买也能生成带「演示样例」水印的版本。"
+    },
+    {
+      "id": "refund",
+      "label": "怕付错退不了",
+      "explain": "付错或重复付，请保留订单号和截图联系客服核对。未开通成功的订单不要反复新开多笔，先刷新本页状态。"
+    }
+  ],
+  "suggestion": {
+    "enabled": true,
+    "max": 500,
+    "placeholder": "价格或付款过程还有哪里不放心，可以写一句"
+  }
+}

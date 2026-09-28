@@ -6,7 +6,7 @@
     var FAB_MANUAL_HIDDEN_KEY = 'h5_user_font_fab_manual_hidden';
     var FAB_CAPTURE_AUTO_KEY = 'h5_user_font_capture_auto_hide';
     var STYLE_ID = 'ufs-dynamic-rules';
-    var CONFIG_VERSION = 5;
+    var CONFIG_VERSION = 6;
 
     var PRESETS = {
         size: [
@@ -57,16 +57,21 @@
     var ROLES_RESULT = [
         { id: 'all', label: '全局', selectors: null },
         {
-            id: 'header',
-            label: '顶栏',
-            selectors:
-                '.top-fixed .header-title, .top-fixed .back-btn, .top-fixed .back-btn span, .top-fixed .header-right'
+            id: 'headerTitle',
+            label: '顶栏标题',
+            selectors: '.top-fixed .header-title'
+        },
+        {
+            id: 'headerActions',
+            label: '左右操作',
+            selectors: '.top-fixed .back-btn, .top-fixed .back-btn span, .top-fixed .header-right'
         },
         {
             id: 'summary',
             label: '汇总区',
+            /* 不选 .summary-label 本身，避免字号/字重继承到顶部「?」圆标导致变形 */
             selectors:
-                '.top-fixed .summary .summary-label, .top-fixed .summary .summary-value, ' +
+                '.top-fixed .summary .summary-value, ' +
                 '.top-fixed .summary .summary-label-text, .top-fixed .summary .summary-colon'
         },
         {
@@ -85,9 +90,14 @@
     var ROLES_DETAIL = [
         { id: 'all', label: '全局', selectors: null },
         {
-            id: 'header',
-            label: '顶栏',
-            selectors: '.header-title, .back-btn, .back-btn span, .header-right'
+            id: 'headerTitle',
+            label: '顶栏标题',
+            selectors: '.header-title'
+        },
+        {
+            id: 'headerActions',
+            label: '左右操作',
+            selectors: '.back-btn, .back-btn span, .header-right'
         },
         { id: 'section', label: '区块标题', selectors: '.section-title' },
         { id: 'infoLabel', label: '信息标签', selectors: '.info-label' },
@@ -136,13 +146,21 @@
             );
         }
         return (
-            '先点区域再调字号/字间距/行高等。仅改「汇总区」时只影响顶栏下汇总两行；「全局」为各区域默认，可被分区覆盖。'
+            '先点区域再调字号/字间距/行高等。「顶栏标题」只改中间文字，「左右操作」单独控制返回和批量申诉；「全局」为各区域默认。'
         );
     }
 
     function migrateLegacyTargets(targets) {
         if (!targets || typeof targets !== 'object') return targets || {};
         var next = Object.assign({}, targets);
+        /*
+         * v5 及以前「顶栏」同时控制标题和左右操作。升级后旧设置只迁到标题，
+         * 避免放大「收入纳税明细」时返回/批量申诉也一起变化。
+         */
+        if (next.header) {
+            if (!next.headerTitle) next.headerTitle = Object.assign({}, next.header);
+            delete next.header;
+        }
         if (next.info && !next.infoLabel && !next.infoValue) {
             next.infoLabel = Object.assign({}, next.info);
             next.infoValue = Object.assign({}, next.info);
@@ -158,6 +176,7 @@
     }
 
     function migrateLegacyActiveTarget(activeTarget) {
+        if (activeTarget === 'header') return 'headerTitle';
         if (activeTarget === 'info') return 'infoLabel';
         if (activeTarget === 'detail') return 'detailLabel';
         return activeTarget || 'all';
@@ -216,7 +235,8 @@
     function saveConfig(cfg) {
         try {
             cfg = normalizeConfig(cfg);
-            if (configIsEmpty(cfg)) {
+            /* 无样式时仍保留 activeTarget，避免切分区后重开面板又回到「全局」 */
+            if (configIsEmpty(cfg) && (cfg.activeTarget || 'all') === 'all') {
                 localStorage.removeItem(STORAGE_KEY);
             } else {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
@@ -283,10 +303,14 @@
                 refreshPanelUi(panelHost, runtimeCfg);
             }
         }
-        if (configIsEmpty(runtimeCfg) && panelHost) {
-            panelHost.classList.remove('is-open');
-        }
+        /* 勿因「尚无自定义样式」自动收起：切分区标签只改 activeTarget，此前会立刻关面板导致无法切换 */
         return runtimeCfg;
+    }
+
+    function setActiveTarget(targetId) {
+        var next = normalizeConfig(runtimeCfg);
+        next.activeTarget = migrateLegacyActiveTarget(targetId || 'all');
+        return commitConfig(next, { refreshPanel: true });
     }
 
     function toggleProp(cfg, targetId, key, value) {
@@ -388,7 +412,7 @@
     }
 
     function buildSelectorList(role) {
-        var scope = '[data-ufs-target]';
+        var scope = 'html.user-font-custom [data-ufs-target]';
         if (role.id === 'all' || !role.selectors) {
             return [];
         }
@@ -412,8 +436,37 @@
         }
         if (t.weight) decl.push('font-weight:' + t.weight + ' !important');
         if (t.spacing) decl.push('letter-spacing:' + t.spacing + ' !important');
-        if (t.color) decl.push('color:' + t.color + ' !important');
+        if (t.color) {
+            decl.push('color:' + t.color + ' !important');
+            /* iOS：机型页用 -webkit-text-fill-color 锁灰，只改 color 不会变色 */
+            decl.push('-webkit-text-fill-color:' + t.color + ' !important');
+        }
         return decl;
+    }
+
+    function syncListBodyColorVar(cfg) {
+        var color = '';
+        if (cfg && !configIsEmpty(cfg)) {
+            var regional = getTargetState(cfg, 'listBody');
+            var global = getTargetState(cfg, 'all');
+            color = (regional && regional.color) || (global && global.color) || '';
+        }
+        var html = document.documentElement;
+        if (html) {
+            if (color) html.style.setProperty('--ufs-list-body-color', color);
+            else html.style.removeProperty('--ufs-list-body-color');
+        }
+        var scope = document.querySelector('[data-ufs-target]');
+        if (scope) {
+            if (color) scope.style.setProperty('--ufs-list-body-color', color);
+            else scope.style.removeProperty('--ufs-list-body-color');
+        }
+    }
+
+    function placeStyleEl(styleEl) {
+        var parent = document.body || document.head;
+        if (!parent) return;
+        parent.appendChild(styleEl);
     }
 
     function applyConfig(cfg) {
@@ -423,12 +476,13 @@
         if (!styleEl) {
             styleEl = document.createElement('style');
             styleEl.id = STYLE_ID;
-            document.head.appendChild(styleEl);
         }
+        placeStyleEl(styleEl);
 
         if (configIsEmpty(cfg)) {
             html.classList.remove('user-font-custom');
             styleEl.textContent = '';
+            syncListBodyColorVar(null);
             return;
         }
 
@@ -461,6 +515,7 @@
         });
 
         styleEl.textContent = css.join('\n\n');
+        syncListBodyColorVar(cfg);
     }
 
     function bindLongPress(el, ms, onFire) {
@@ -529,6 +584,7 @@
             var chip = document.createElement('button');
             chip.type = 'button';
             chip.className = 'ufs-target-chip';
+            chip.setAttribute('data-ufs-target-id', role.id);
             if (role.id === active) chip.classList.add('is-active');
             var hasCustom =
                 role.id === 'all'
@@ -536,13 +592,8 @@
                     : targetHasStyle(getEffectiveStyle(cfg, role.id));
             if (hasCustom) chip.classList.add('has-custom');
             chip.textContent = role.label;
-            chip.addEventListener('click', function (e) {
-                e.preventDefault();
-                e.stopPropagation();
-                runtimeCfg.activeTarget = role.id;
-                commitConfig(runtimeCfg, { refreshPanel: true });
-            });
             panelUi.chips.appendChild(chip);
+            bindChip(chip);
         });
 
         refreshPresetButtons(host, cfg);
@@ -566,24 +617,74 @@
         });
     }
 
+    function bindChipTargetSwitch(chips) {
+        var lastTs = 0;
+        function onPick(e) {
+            var t = e.target;
+            if (!t || typeof t.closest !== 'function') return;
+            var chip = t.closest('.ufs-target-chip');
+            if (!chip || !chips.contains(chip)) return;
+            e.preventDefault();
+            e.stopPropagation();
+            var now = Date.now();
+            if (now - lastTs < 320) return;
+            lastTs = now;
+            setActiveTarget(chip.getAttribute('data-ufs-target-id') || 'all');
+        }
+        /* iOS：scroll 容器内 click 易丢，touchend + click 双保险 */
+        chips.addEventListener('click', onPick);
+        chips.addEventListener(
+            'touchend',
+            function (e) {
+                if (e.touches && e.touches.length) return;
+                onPick(e);
+            },
+            { passive: false }
+        );
+    }
+
+    function bindChip(chip) {
+        /* 事件直接绑在按钮上，避免 WKWebView 在动态 DOM + 滚动容器中
+         * 将委托事件的 target 错判为容器，导致分区 TAB 看得到但切不动。 */
+        var lastTs = 0;
+        function pick(e) {
+            var now = Date.now();
+            if (now - lastTs < 320) return;
+            lastTs = now;
+            e.preventDefault();
+            e.stopPropagation();
+            setActiveTarget(chip.getAttribute('data-ufs-target-id') || 'all');
+        }
+        chip.addEventListener('pointerup', pick);
+        chip.addEventListener('click', pick);
+    }
+
     function buildPanel(host) {
         var panel = document.createElement('div');
         panel.className = 'ufs-panel';
         panel.setAttribute('role', 'dialog');
         panel.setAttribute('aria-label', '字体设置');
 
+        var head = document.createElement('div');
+        head.className = 'ufs-panel-head';
+
         var title = document.createElement('div');
         title.className = 'ufs-panel-title';
         title.textContent = '字体设置';
-        panel.appendChild(title);
+        head.appendChild(title);
 
         var chips = document.createElement('div');
         chips.className = 'ufs-target-chips';
-        panel.appendChild(chips);
+        head.appendChild(chips);
 
         var editingLabel = document.createElement('div');
         editingLabel.className = 'ufs-editing-label';
-        panel.appendChild(editingLabel);
+        head.appendChild(editingLabel);
+
+        panel.appendChild(head);
+
+        var body = document.createElement('div');
+        body.className = 'ufs-panel-body';
 
         function addPresetGroup(label, key, isColor) {
             var group = document.createElement('div');
@@ -613,7 +714,7 @@
                 opts.appendChild(btn);
             });
             group.appendChild(opts);
-            panel.appendChild(group);
+            body.appendChild(group);
         }
 
         addPresetGroup('字号', 'size', false);
@@ -635,7 +736,7 @@
             delete next.targets[tid];
             commitConfig(next);
         });
-        panel.appendChild(clearTargetBtn);
+        body.appendChild(clearTargetBtn);
 
         var closePanelBtn = document.createElement('button');
         closePanelBtn.type = 'button';
@@ -645,7 +746,7 @@
             e.stopPropagation();
             host.classList.remove('is-open');
         });
-        panel.appendChild(closePanelBtn);
+        body.appendChild(closePanelBtn);
 
         var actions = document.createElement('div');
         actions.className = 'ufs-row-actions';
@@ -661,7 +762,7 @@
             showToast('已隐藏；点击右上角「' + getRestoreLinkLabel() + '」可恢复');
         });
         actions.appendChild(hideNowBtn);
-        panel.appendChild(actions);
+        body.appendChild(actions);
 
         var resetBtn = document.createElement('button');
         resetBtn.type = 'button';
@@ -673,12 +774,14 @@
             commitConfig(runtimeCfg);
             host.classList.remove('is-open');
         });
-        panel.appendChild(resetBtn);
+        body.appendChild(resetBtn);
 
         var hint = document.createElement('div');
         hint.className = 'ufs-hint';
         hint.textContent = getPanelHint();
-        panel.appendChild(hint);
+        body.appendChild(hint);
+
+        panel.appendChild(body);
 
         panelUi = {
             chips: chips,
@@ -690,7 +793,7 @@
         }
         panel.addEventListener('click', stopPanelEvent);
         panel.addEventListener('touchstart', stopPanelEvent, { passive: true });
-        panel.addEventListener('pointerdown', stopPanelEvent);
+        panel.addEventListener('touchend', stopPanelEvent, { passive: true });
 
         host.appendChild(panel);
         refreshPanelUi(host, runtimeCfg);
@@ -701,9 +804,20 @@
         if (panelHost) panelHost.classList.remove('is-open');
     }
 
-    function bindPanelOutsideClose(host) {
+    function bindPanelOutsideClose(host, backdrop) {
         if (host.getAttribute('data-ufs-outside-bound') === '1') return;
         host.setAttribute('data-ufs-outside-bound', '1');
+
+        function onBackdrop(e) {
+            if (!host.classList.contains('is-open')) return;
+            e.preventDefault();
+            e.stopPropagation();
+            closeFontPanel();
+        }
+        if (backdrop) {
+            backdrop.addEventListener('click', onBackdrop);
+            backdrop.addEventListener('touchend', onBackdrop, { passive: false });
+        }
 
         document.addEventListener('click', function (e) {
             if (!host.classList.contains('is-open')) return;
@@ -742,6 +856,11 @@
         host.className = 'ufs-host';
         panelHost = host;
 
+        var backdrop = document.createElement('div');
+        backdrop.className = 'ufs-backdrop';
+        backdrop.setAttribute('aria-hidden', 'true');
+        host.appendChild(backdrop);
+
         var fab = document.createElement('button');
         fab.type = 'button';
         fab.className = 'ufs-fab';
@@ -757,6 +876,7 @@
         buildPanel(host);
 
         fab.addEventListener('click', function (e) {
+            e.preventDefault();
             e.stopPropagation();
             host.classList.toggle('is-open');
             if (host.classList.contains('is-open')) {
@@ -765,19 +885,12 @@
             }
         });
 
-        host.addEventListener('click', function (e) {
-            e.stopPropagation();
-        });
-        host.addEventListener('touchstart', function (e) {
-            e.stopPropagation();
-        }, { passive: true });
-
         host.appendChild(fab);
         document.body.appendChild(host);
         markScope();
         syncFabVisibility();
         bindHeaderRightRestore();
-        bindPanelOutsideClose(host);
+        bindPanelOutsideClose(host, backdrop);
 
         if (!captureHideButtonsBound) {
             captureHideButtonsBound = true;

@@ -2,7 +2,40 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260722-fetch-timeout"></script>
+    <script>
+        (function () {
+            try {
+                var u = typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '';
+                try { u += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (eModel) {}
+                try { u += ' ' + String(localStorage.getItem('tax_device_ua_v1') || ''); } catch (eUa) {}
+                if (/Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(u)) return;
+                if (!/Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u)) return;
+                document.documentElement.classList.add('app-android-client');
+                document.documentElement.classList.add('app-android-huawei-mate60');
+                document.documentElement.classList.add('app-android-immersive-white-top');
+                document.documentElement.style.setProperty('--app-shell-statusbar-top', '52px');
+                document.documentElement.style.setProperty('--safe-t', '52px');
+                if (!document.querySelector('style[data-mate60-personal-info-firstpaint]')) {
+                    var st = document.createElement('style');
+                    st.setAttribute('data-mate60-personal-info-firstpaint', '1');
+                    st.textContent =
+                        'html.app-android-huawei-mate60 body.page-gerenxinxi > .header{' +
+                        'position:relative !important;top:0 !important;' +
+                        'padding-top:66px !important;padding-bottom:14px !important;' +
+                        'box-sizing:border-box !important;height:auto !important;min-height:0 !important;' +
+                        'background:#fff !important;z-index:100 !important;}' +
+                        'html.app-android-huawei-mate60 body.page-gerenxinxi > .header .back-btn{' +
+                        'top:66px !important;height:24px !important;display:flex !important;align-items:center !important;}' +
+                        'html.app-android-huawei-mate60 #arkWhiteTopShield{background:#fff !important;}' +
+                        'html.app-android-huawei-mate60{color-scheme:light;}';
+                    (document.head || document.documentElement).appendChild(st);
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <script src="/js/auth-boot.js?v=20260923-bs4s-restore"></script>
+    <script src="/js/email-suffix.js?v=20260907-email-sfx" data-email-suffix="1"></script>
+    <script src="/js/auth.js?v=20260909-android-aug1-blue" defer fetchpriority="low"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人信息</title>
     <style>
@@ -39,6 +72,22 @@
             top: 0;
             z-index: 100;
             border-bottom: 1px solid #f0f0f0;
+        }
+
+        html.app-android-huawei-mate60 body.page-gerenxinxi > .header {
+            position: relative;
+            top: 0;
+            padding-top: 66px;
+            padding-bottom: 14px;
+            box-sizing: border-box;
+            height: auto;
+            min-height: 0;
+        }
+        html.app-android-huawei-mate60 body.page-gerenxinxi > .header .back-btn {
+            top: 66px;
+            height: 24px;
+            display: flex;
+            align-items: center;
         }
 
         .back-btn {
@@ -283,6 +332,23 @@
             font-family: inherit;
             box-sizing: border-box;
         }
+        .email-suffix-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 8px 0 0;
+        }
+        .email-suffix-chip {
+            border: 1px solid #dbeafe;
+            background: #eff6ff;
+            color: #1d4ed8;
+            border-radius: 999px;
+            padding: 6px 12px;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+        }
 
         .sheet-title {
             font-size: 15px;
@@ -293,7 +359,7 @@
         }
     </style>
 </head>
-<body>
+<body class="page-gerenxinxi">
     <div class="header">
         <a href="personal_info.html" class="back-btn">
             <img src="/jt.png" alt="" style="width: 9px; vertical-align: middle;">
@@ -508,13 +574,45 @@
             </div>
             <div class="address-sheet-body">
                 <label for="emailInput">常用邮箱</label>
-                <input type="email" id="emailInput" class="email-input" maxlength="255" placeholder="例如 name@example.com" autocomplete="email" inputmode="email">
+                <input type="email" id="emailInput" class="email-input" maxlength="255" placeholder="填 QQ 号或用户名，再点下方后缀" autocomplete="email" inputmode="email">
+                <div class="email-suffix-chips" id="emailSuffixChips">
+                    <button type="button" class="email-suffix-chip" data-email-suffix="@qq.com">@qq.com</button>
+                    <button type="button" class="email-suffix-chip" data-email-suffix="@163.com">@163.com</button>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
         var lastTaxId = '';
+
+        /** 勿用裸 authFetch：部分 WebView 下未挂到全局会报 ReferenceError，导致改不了资料 */
+        function profileAuthFetch(url, opts) {
+            opts = opts || {};
+            if (typeof window.authFetch === 'function') {
+                return window.authFetch(url, opts);
+            }
+            var headers = { 'Content-Type': 'application/json' };
+            try {
+                if (typeof window.authHeaders === 'function') {
+                    headers = Object.assign(headers, window.authHeaders());
+                }
+            } catch (eHdr) {}
+            if (!headers.Authorization && !headers.authorization) {
+                var t = '';
+                try {
+                    t = String(localStorage.getItem('token') || '').trim();
+                } catch (eTok) {}
+                if (t) headers.Authorization = 'Bearer ' + t;
+            }
+            return fetch(
+                url,
+                Object.assign({}, opts, {
+                    headers: Object.assign({}, headers, opts.headers || {}),
+                    credentials: opts.credentials || 'same-origin'
+                })
+            );
+        }
 
         function requireProfileEdit() {
             if (
@@ -649,9 +747,9 @@
         }
 
         function openRealNameEditor() {
-            authFetch('api/user?action=info')
+            profileAuthFetch('api/user?action=info')
                 .then(function (r) {
-                    return r.json();
+                    return (window.authParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (data) {
                     var cur = '';
@@ -690,9 +788,9 @@
 
         function openBirthDateEditor() {
             if (!requireProfileEdit()) return;
-            authFetch('api/user?action=info')
+            profileAuthFetch('api/user?action=info')
                 .then(function (r) {
-                    return r.json();
+                    return (window.authParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (data) {
                     var cur = '';
@@ -792,13 +890,16 @@
             return 'contact_detail';
         }
 
-        function formatRegionLabel(province, city, district) {
+        function formatRegionLabel(province, city, district, street) {
             var parts = [province];
             if (city && city !== '市辖区' && city !== '县') {
                 parts.push(city);
             }
             if (district) {
                 parts.push(district);
+            }
+            if (street) {
+                parts.push(street);
             }
             return parts.join(' ');
         }
@@ -807,12 +908,13 @@
             if (__pcaData) {
                 return Promise.resolve(__pcaData);
             }
-            return fetch('/js/pca.json')
+            /* 四级：省 / 市 / 区县 / 街道乡镇（pcas） */
+            return fetch('/js/pcas.json?v=20260901-street')
                 .then(function (r) {
                     if (!r.ok) {
                         throw new Error('加载地区数据失败');
                     }
-                    return r.json();
+                    return (window.authParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (data) {
                     __pcaData = data;
@@ -822,7 +924,14 @@
 
         function openRegionPicker(target) {
             if (!requireProfileEdit()) return;
-            __regionCtx = { target: target, province: '', city: '', district: '', tab: 0 };
+            __regionCtx = {
+                target: target,
+                province: '',
+                city: '',
+                district: '',
+                street: '',
+                tab: 0
+            };
             var mask = document.getElementById('regionSheetMask');
             loadPca()
                 .then(function () {
@@ -830,7 +939,7 @@
                     renderRegionUi();
                 })
                 .catch(function (e) {
-                    alert(e.message || '无法加载省市区数据');
+                    alert(e.message || '无法加载省市区街道数据');
                 });
         }
 
@@ -849,16 +958,26 @@
             renderRegionUi();
         }
 
+        function districtStreets(prov, city, district) {
+            var pca = __pcaData;
+            if (!pca || !prov || !city || !district) return [];
+            var node = pca[prov] && pca[prov][city] && pca[prov][city][district];
+            if (Array.isArray(node)) return node.slice();
+            return [];
+        }
+
         function renderRegionTabs() {
             var tabs = document.getElementById('regionTabs');
             var p = __regionCtx.province || '请选择省份';
             var c = __regionCtx.city || '请选择城市';
             var d = __regionCtx.district || '请选择区县';
+            var s = __regionCtx.street || '请选择街道';
             var t = __regionCtx.tab;
             var html = '';
             html += '<span class="region-tab' + (t === 0 ? ' active' : '') + '" onclick="setRegionTab(0)">' + p + '</span>';
             html += '<span class="region-tab' + (t === 1 ? ' active' : '') + '" onclick="setRegionTab(1)">' + c + '</span>';
             html += '<span class="region-tab' + (t === 2 ? ' active' : '') + '" onclick="setRegionTab(2)">' + d + '</span>';
+            html += '<span class="region-tab' + (t === 3 ? ' active' : '') + '" onclick="setRegionTab(3)">' + s + '</span>';
             tabs.innerHTML = html;
         }
 
@@ -869,6 +988,7 @@
             var tab = __regionCtx.tab;
             var prov = __regionCtx.province;
             var city = __regionCtx.city;
+            var district = __regionCtx.district;
             var items = [];
             var i;
             if (tab === 0) {
@@ -879,19 +999,21 @@
                 } else {
                     items = Object.keys(pca[prov]).sort();
                 }
-            } else {
+            } else if (tab === 2) {
                 if (!prov || !city || !pca[prov] || !pca[prov][city]) {
                     items = [];
                 } else {
-                    items = pca[prov][city].slice().sort();
+                    items = Object.keys(pca[prov][city]).sort();
                 }
+            } else {
+                items = districtStreets(prov, city, district).sort();
             }
             if (items.length === 0) {
                 var empty = document.createElement('div');
                 empty.className = 'region-item';
                 empty.style.color = '#999';
                 empty.style.cursor = 'default';
-                empty.textContent = '请先选择上一级';
+                empty.textContent = tab === 3 ? '该区县暂无街道数据，可直接确定' : '请先选择上一级';
                 list.appendChild(empty);
                 return;
             }
@@ -914,13 +1036,20 @@
                 __regionCtx.province = name;
                 __regionCtx.city = '';
                 __regionCtx.district = '';
+                __regionCtx.street = '';
                 __regionCtx.tab = 1;
             } else if (tab === 1) {
                 __regionCtx.city = name;
                 __regionCtx.district = '';
+                __regionCtx.street = '';
                 __regionCtx.tab = 2;
-            } else {
+            } else if (tab === 2) {
                 __regionCtx.district = name;
+                __regionCtx.street = '';
+                var streets = districtStreets(__regionCtx.province, __regionCtx.city, name);
+                __regionCtx.tab = streets.length ? 3 : 2;
+            } else {
+                __regionCtx.street = name;
             }
             renderRegionUi();
         }
@@ -934,6 +1063,7 @@
             var p = __regionCtx.province;
             var c = __regionCtx.city;
             var d = __regionCtx.district;
+            var s = __regionCtx.street;
             if (!p) {
                 alert('请选择省份');
                 return;
@@ -946,7 +1076,14 @@
                 alert('请选择区县');
                 return;
             }
-            var label = formatRegionLabel(p, c, d);
+            var streets = districtStreets(p, c, d);
+            if (streets.length && !s) {
+                alert('请选择街道 / 乡镇');
+                __regionCtx.tab = 3;
+                renderRegionUi();
+                return;
+            }
+            var label = formatRegionLabel(p, c, d, s);
             var key = regionAreaKey(__regionCtx.target);
             var payload = { action: 'save_profile' };
             payload[key] = label;
@@ -961,13 +1098,13 @@
 
         function saveProfileFields(payload, onOk) {
             if (!requireProfileEdit()) return;
-            authFetch('api/user', {
+            profileAuthFetch('api/user', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             })
                 .then(function (r) {
-                    return r.json().then(function (data) {
+                    return (window.authParseJson||function(r){return r.json();})(r).then(function (data) {
                         return { http: r.status, data: data };
                     });
                 })
@@ -976,7 +1113,7 @@
                     if (pack.http === 402 || data.code === 402) {
                         alert(
                             (data.msg || '改名需支付费用') +
-                                '\n请到「我的」页修改姓名，按提示完成 ¥10 支付后再保存。'
+                                '\n请到「我的」页修改姓名，按提示完成支付后再保存。'
                         );
                         return;
                     }
@@ -1001,9 +1138,9 @@
             var titles = { huji: '户籍详细地址', living: '经常居住地详细地址', contact: '联系地址详细地址' };
             document.getElementById('addressSheetTitle').textContent = titles[target] || '详细地址';
             var cur = '';
-            authFetch('api/user?action=info')
+            profileAuthFetch('api/user?action=info')
                 .then(function (r) {
-                    return r.json();
+                    return (window.authParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (data) {
                     if (data.code === 200 && data.data) {
@@ -1092,11 +1229,32 @@
             }
         }
 
+        function bindProfileEmailSuffix() {
+            var input = document.getElementById('emailInput');
+            var chips = document.getElementById('emailSuffixChips');
+            if (!input || !chips) return;
+            if (window.EmailSuffix && typeof window.EmailSuffix.wireEmailSuffixChips === 'function') {
+                window.EmailSuffix.wireEmailSuffixChips(chips, input);
+                return;
+            }
+            if (chips.getAttribute('data-email-suffix-bound') === '1') return;
+            chips.setAttribute('data-email-suffix-bound', '1');
+            chips.addEventListener('click', function (ev) {
+                var t = ev.target;
+                var suf = t && t.getAttribute ? t.getAttribute('data-email-suffix') : '';
+                if (!suf) return;
+                ev.preventDefault();
+                var cur = String(input.value || '').trim();
+                var at = cur.indexOf('@');
+                input.value = (at >= 0 ? cur.slice(0, at) : cur) + suf;
+            });
+        }
+
         function openEmailEditor() {
             if (!requireProfileEdit()) return;
-            authFetch('api/user?action=info')
+            profileAuthFetch('api/user?action=info')
                 .then(function (r) {
-                    return r.json();
+                    return (window.authParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (data) {
                     var cur = '';
@@ -1104,6 +1262,7 @@
                         cur = data.data.email || '';
                     }
                     document.getElementById('emailInput').value = cur;
+                    bindProfileEmailSuffix();
                     document.getElementById('emailSheetMask').classList.add('show');
                     setTimeout(function () {
                         var inp = document.getElementById('emailInput');
@@ -1114,6 +1273,7 @@
                 })
                 .catch(function () {
                     document.getElementById('emailInput').value = '';
+                    bindProfileEmailSuffix();
                     document.getElementById('emailSheetMask').classList.add('show');
                 });
         }
@@ -1128,10 +1288,56 @@
             }
         }
 
+        function isValidProfileEmail(raw) {
+            var s = raw == null ? '' : String(raw).trim();
+            if (!s || s.length > 255) return false;
+            if (/\s/.test(s) || s.indexOf('..') >= 0) return false;
+            var at = s.lastIndexOf('@');
+            if (at <= 0 || at !== s.indexOf('@')) return false;
+            var local = s.slice(0, at);
+            var domain = s.slice(at + 1);
+            if (local.length < 1 || local.length > 64) return false;
+            if (domain.length < 4 || domain.length > 253) return false;
+            if (local.length === 1) {
+                if (!/^[A-Za-z0-9]$/.test(local)) return false;
+            } else if (!/^[A-Za-z0-9][A-Za-z0-9._%+-]{0,62}[A-Za-z0-9]$/.test(local)) {
+                return false;
+            }
+            var labels = domain.split('.');
+            if (labels.length < 2) return false;
+            for (var i = 0; i < labels.length; i++) {
+                var lab = labels[i];
+                if (!lab || lab.length > 63) return false;
+                if (i === labels.length - 1) {
+                    if (!/^[A-Za-z]{2,24}$/.test(lab)) return false;
+                } else if (lab.length === 1) {
+                    if (!/^[A-Za-z0-9]$/.test(lab)) return false;
+                } else if (!/^[A-Za-z0-9][A-Za-z0-9-]{0,61}[A-Za-z0-9]$/.test(lab)) {
+                    return false;
+                }
+            }
+            var localKey = local.toLowerCase();
+            var domainKey = domain.toLowerCase();
+            var blockLocal = {
+                test: 1, asdf: 1, qwer: 1, abc: 1, abcd: 1, aaa: 1, aaaa: 1,
+                xxx: 1, xxxx: 1, email: 1, mail: 1, none: 1, null: 1, undefined: 1,
+                '123': 1, '1234': 1, '12345': 1, '123456': 1
+            };
+            var blockDomain = {
+                'example.com': 1, 'example.org': 1, 'example.net': 1,
+                'test.com': 1, 'test.cn': 1, 'test.org': 1,
+                'asdf.com': 1, 'aaa.com': 1, 'xxx.com': 1,
+                localhost: 1, invalid: 1, localdomain: 1
+            };
+            if (blockLocal[localKey] || blockDomain[domainKey]) return false;
+            if (localKey.length <= 3 && labels[0].toLowerCase() === localKey) return false;
+            return true;
+        }
+
         function confirmEmailInput() {
             var val = document.getElementById('emailInput').value.trim();
-            if (val && val.indexOf('@') === -1) {
-                alert('请输入有效的电子邮箱地址');
+            if (val && !isValidProfileEmail(val)) {
+                alert('请填写有效邮箱，例如 name@qq.com（勿乱填）');
                 return;
             }
             saveProfileFields({ action: 'save_profile', email: val }, function () {
@@ -1146,9 +1352,9 @@
                 return;
             }
 
-            authFetch('api/user?action=info')
+            profileAuthFetch('api/user?action=info')
                 .then(function (response) {
-                    return response.json();
+                    return (window.authParseJson||function(response){return response.json();})(response);
                 })
                 .then(function (data) {
                     if (data.code !== 200 || !data.data) {
@@ -1216,6 +1422,6 @@
 
         loadUserInfo();
     </script>
-    <script src="/js/watermark.js?v=20260722-wm-redder"></script>
+    <script src="/js/watermark.js?v=20260831-m60home"></script>
 </body>
 </html>

@@ -1,0 +1,601 @@
+/**
+ * 底栏 Tab 单页壳（由 auth.js 动态注入）：
+ * 主 Tab 切换走 iframe 缓存，避免整页重载（Android / Cordova 卡顿根因）。
+ * 嵌入页带 ?tab_embed=1，隐藏子页底栏，不在 iframe 内再套壳。
+ * 子页逃逸见 tab-shell-escape.js；与 TaxAppNav 高亮互补。
+ */
+(function (global) {
+  if (typeof document === 'undefined') return;
+  if (document.documentElement.getAttribute('data-tab-shell-js') === '1') return;
+  document.documentElement.setAttribute('data-tab-shell-js', '1');
+
+  // === Tab 路由表 / 子页白名单 ===
+  var TAB_BY_FILE = {
+    'shouye.html': 'shouye',
+    'daiban.html': 'daiban',
+    'bancha.html': 'bancha',
+    'message.html': 'message',
+    'mine.html': 'mine'
+  };
+  var FILE_BY_KEY = {
+    shouye: 'shouye.html',
+    daiban: 'daiban.html',
+    bancha: 'bancha.html',
+    message: 'message.html',
+    mine: 'mine.html'
+  };
+  var SUB_PAGE_FILES = {
+    'shuiming.html': true,
+    'shuiming_result.html': true,
+    'xiangqing.html': true
+  };
+
+  function currentPageFile() {
+    try {
+      var p = String(global.location.pathname || '');
+      var parts = p.split('/');
+      return (parts[parts.length - 1] || 'index.html').toLowerCase();
+    } catch (e) {
+      return 'index.html';
+    }
+  }
+
+  function isTabEmbedded() {
+    try {
+      if (new URLSearchParams(global.location.search).get('tab_embed') === '1') return true;
+    } catch (e0) {}
+    try {
+      var fe = global.frameElement;
+      if (fe && fe.classList && fe.classList.contains('tab-shell-iframe')) return true;
+    } catch (e1) {}
+    /* iOS WKWebView 常拿不到 frameElement：用父页 data-tab-shell 兜底 */
+    try {
+      if (global.parent && global.parent !== global) {
+        var pdoc = global.parent.document;
+        if (pdoc && pdoc.documentElement.getAttribute('data-tab-shell') === '1') return true;
+      }
+    } catch (e2) {}
+    return false;
+  }
+
+  function scrubIframeBottomNav(iframe) {
+    if (!iframe || iframe.__tabEmbedScrubbing) return;
+    iframe.__tabEmbedScrubbing = true;
+    try {
+      var doc = iframe.contentDocument;
+      if (!doc) return;
+      try {
+        doc.documentElement.classList.add('tab-embed-mode');
+      } catch (eCls) {}
+      if (!doc.querySelector('style[data-tab-embed-host-scrub]')) {
+        var st = doc.createElement('style');
+        st.setAttribute('data-tab-embed-host-scrub', '1');
+        st.textContent =
+          'html.tab-embed-mode .bottom-nav,html.tab-embed-mode body > .bottom-nav,' +
+          'html.tab-embed-mode body.page-shouye > .bottom-nav,html.tab-embed-mode body.page-daiban > .bottom-nav,' +
+          'html.tab-embed-mode body.page-bancha > .bottom-nav,html.tab-embed-mode body.page-message > .bottom-nav,' +
+          'html.tab-embed-mode body.page-mine > .bottom-nav,html.tab-embed-mode body .bottom-nav.ios-device,' +
+          'html.app-ios-client.tab-embed-mode .bottom-nav,html.app-ios-iphone16pro.tab-embed-mode .bottom-nav,' +
+          'html.app-ios-iphone16pro.tab-embed-mode body.page-daiban > .bottom-nav,' +
+          'html.app-ios-iphone16pro.tab-embed-mode body.page-bancha > .bottom-nav,' +
+          'html.app-ios-iphone16pro.tab-embed-mode body.page-message > .bottom-nav,' +
+          'html.app-ios-iphone16pro.tab-embed-mode body.page-daiban > .bottom-nav.ios-device,' +
+          'html.app-ios-iphone16pro.tab-embed-mode body.page-bancha > .bottom-nav.ios-device,' +
+          'html.app-ios-iphone16pro.tab-embed-mode body.page-message > .bottom-nav.ios-device{' +
+          'display:none!important;visibility:hidden!important;pointer-events:none!important;' +
+          'height:0!important;min-height:0!important;max-height:0!important;opacity:0!important;z-index:-1!important;}';
+        (doc.head || doc.documentElement).appendChild(st);
+      }
+      var nodes = doc.querySelectorAll('.bottom-nav');
+      for (var i = 0; i < nodes.length; i++) {
+        var el = nodes[i];
+        if (!el) continue;
+        try {
+          el.style.setProperty('display', 'none', 'important');
+          el.style.setProperty('visibility', 'hidden', 'important');
+          el.style.setProperty('height', '0', 'important');
+          el.style.setProperty('opacity', '0', 'important');
+          el.style.setProperty('pointer-events', 'none', 'important');
+        } catch (eInline) {}
+        if (el.parentNode) el.parentNode.removeChild(el);
+      }
+      if (iframe.getAttribute('data-tab-embed-mo') !== '1') {
+        iframe.setAttribute('data-tab-embed-mo', '1');
+        try {
+          if (doc.body && typeof MutationObserver !== 'undefined') {
+            var mo = new MutationObserver(function () {
+              scrubIframeBottomNav(iframe);
+            });
+            mo.observe(doc.body, { childList: true, subtree: true });
+            global.setTimeout(function () {
+              try {
+                mo.disconnect();
+              } catch (eD) {}
+            }, 15000);
+          }
+        } catch (eMo) {}
+      }
+    } catch (e0) {
+    } finally {
+      iframe.__tabEmbedScrubbing = false;
+    }
+  }
+
+  function scrubAllIframeBottomNavs() {
+    Object.keys(iframes).forEach(function (k) {
+      scrubIframeBottomNav(iframes[k]);
+    });
+  }
+
+  function isShellDisabled() {
+    try {
+      if (new URLSearchParams(global.location.search).get('tab_shell') === '0') return true;
+    } catch (e0) {}
+    try {
+      if (global.localStorage && global.localStorage.getItem('tax_tab_shell_off') === '1') return true;
+    } catch (e1) {}
+    return false;
+  }
+
+  function normalizeTabHref(href) {
+    if (!href) return '';
+    var s = String(href).trim();
+    if (!s || s.charAt(0) === '#' || /^javascript:/i.test(s)) return '';
+    try {
+      var u = new URL(s, global.location.href);
+      if (u.origin !== global.location.origin) return '';
+      var name = (u.pathname.split('/').pop() || '').toLowerCase();
+      if (!TAB_BY_FILE[name]) return '';
+      return name;
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function injectStyles() {
+    if (document.querySelector('style[data-tab-shell-css]')) return;
+    var st = document.createElement('style');
+    st.setAttribute('data-tab-shell-css', '1');
+    st.textContent =
+      'html[data-tab-shell="1"] .tab-shell-pane:not(.tab-shell-pane-active){display:none!important}' +
+      'html[data-tab-shell="1"] #tab-shell-stage{display:none}' +
+      'html[data-tab-shell="1"] #tab-shell-stage.tab-shell-stage-active{' +
+      'display:block;position:fixed;top:0;left:0;right:0;bottom:var(--bottom-nav-clearance,70px);z-index:9000;background:#fff}' +
+      /* 14 Pro Max：切 Tab 时舞台/iframe 勿铺白，系统栏跟各页头图蓝 */
+      'html.app-ios-iphone14promax[data-tab-shell="1"] #tab-shell-stage.tab-shell-stage-active{background:#1677ff}' +
+      'html.app-ios-iphone14promax[data-tab-shell="1"] .tab-shell-iframe{background:transparent}' +
+      'html[data-tab-shell-subpage="1"] .bottom-nav{display:none!important}' +
+      'html[data-tab-shell-subpage="1"] #tab-shell-stage.tab-shell-stage-active{bottom:0!important}' +
+      'html[data-tab-shell="1"] .tab-shell-iframe{width:100%;height:100%;border:0;display:block;background:#fff}' +
+      'html.tab-embed-mode .bottom-nav,' +
+      'html.tab-embed-mode body > .bottom-nav,' +
+      'html.tab-embed-mode body.page-shouye > .bottom-nav,' +
+      'html.tab-embed-mode body.page-daiban > .bottom-nav,' +
+      'html.tab-embed-mode body.page-bancha > .bottom-nav,' +
+      'html.tab-embed-mode body.page-message > .bottom-nav,' +
+      'html.tab-embed-mode body.page-mine > .bottom-nav,' +
+      'html.tab-embed-mode body .bottom-nav.ios-device{' +
+      'display:none!important;visibility:hidden!important;pointer-events:none!important;}' +
+      'html.tab-embed-mode body.has-bottom-nav,' +
+      'html.tab-embed-mode body.page-daiban,' +
+      'html.tab-embed-mode body.page-bancha,' +
+      'html.tab-embed-mode body.page-message{' +
+      '--bottom-nav-clearance:0px!important;padding-bottom:0!important}' +
+      /* 安卓：切走 Tab 勿 display:none，否则 WebView 丢掉合成层，马上回来要整页重绘 */
+      'html[data-tab-shell-keep-layer="1"] .tab-shell-pane:not(.tab-shell-pane-active){' +
+      'display:block!important;visibility:hidden;pointer-events:none;' +
+      'position:fixed;top:0;left:0;right:0;bottom:var(--bottom-nav-clearance,70px);z-index:8998;overflow:hidden}' +
+      'html[data-tab-shell-keep-layer="1"] #tab-shell-native{transform:translateZ(0)}' +
+      'html[data-tab-shell-keep-layer="1"] #tab-shell-stage{display:block!important;visibility:hidden;pointer-events:none}' +
+      'html[data-tab-shell-keep-layer="1"] #tab-shell-stage.tab-shell-stage-active{visibility:visible;pointer-events:auto}' +
+      'html[data-tab-shell-keep-layer="1"] .tab-shell-iframe{position:absolute;inset:0}';
+    document.head.appendChild(st);
+  }
+
+  function refreshNavIcons() {
+    if (global.TaxAppNav && typeof global.TaxAppNav.hydrateBottomNavByKey === 'function') {
+      global.TaxAppNav.hydrateBottomNavByKey(null, activeKey);
+    } else if (global.TaxAppNav && typeof global.TaxAppNav.hydrateBottomNav === 'function') {
+      global.TaxAppNav.hydrateBottomNav();
+    }
+    var navItems = document.querySelectorAll('.bottom-nav .nav-item');
+    for (var i = 0; i < navItems.length; i++) {
+      var item = navItems[i];
+      var icon = item.getAttribute('data-icon');
+      var img = item.querySelector('.nav-icon img');
+      if (!img || !icon) continue;
+      img.src = item.classList.contains('active')
+        ? 'caidan/' + icon + '1.png'
+        : 'caidan/' + icon + '2.png';
+    }
+    if (typeof global.__refreshNavFromMineUi === 'function') {
+      global.__refreshNavFromMineUi();
+    }
+  }
+
+  var nativeKey = '';
+  var activeKey = '';
+  var stageEl = null;
+  var nativeEl = null;
+  var iframes = Object.create(null);
+  var switching = false;
+  var TAB_TOP_BLUE = {
+    shouye: '#4f90f3',
+    daiban: '#2b81f2',
+    bancha: '#2b81f2',
+    message: '#1e8fff',
+    mine: '#1677ff'
+  };
+
+  function paint14pmStage(key) {
+    try {
+      if (!document.documentElement.classList.contains('app-ios-iphone14promax')) return;
+      if (!stageEl) return;
+      stageEl.style.background = TAB_TOP_BLUE[key] || '#1677ff';
+    } catch (e14stg) {}
+  }
+
+  function isIframeShowing(fr) {
+    if (!fr) return false;
+    if (fr.classList.contains('tab-shell-iframe-active')) return true;
+    if (fr.style.visibility === 'hidden') return false;
+    return fr.style.display !== 'none';
+  }
+
+  function applyIframeShown(iframe, shown) {
+    if (!iframe) return;
+    iframe.classList.toggle('tab-shell-iframe-active', !!shown);
+    if (isAndroidLike()) {
+      iframe.style.display = 'block';
+      iframe.style.visibility = shown ? 'visible' : 'hidden';
+      iframe.style.pointerEvents = shown ? 'auto' : 'none';
+    } else {
+      iframe.style.display = shown ? 'block' : 'none';
+      iframe.style.visibility = '';
+      iframe.style.pointerEvents = '';
+    }
+  }
+
+  function applyNativeShown(shown) {
+    if (!nativeEl) return;
+    if (shown) {
+      nativeEl.classList.add('tab-shell-pane-active');
+      nativeEl.hidden = false;
+      nativeEl.removeAttribute('hidden');
+      if (isAndroidLike()) {
+        nativeEl.style.visibility = 'visible';
+        nativeEl.style.pointerEvents = '';
+      }
+    } else {
+      nativeEl.classList.remove('tab-shell-pane-active');
+      if (isAndroidLike()) {
+        nativeEl.hidden = false;
+        nativeEl.removeAttribute('hidden');
+        nativeEl.style.visibility = 'hidden';
+        nativeEl.style.pointerEvents = 'none';
+      } else {
+        nativeEl.hidden = true;
+      }
+    }
+  }
+
+  function applyStageShown(shown) {
+    if (!stageEl) return;
+    if (shown) {
+      stageEl.classList.add('tab-shell-stage-active');
+      stageEl.hidden = false;
+      stageEl.removeAttribute('hidden');
+      if (isAndroidLike()) {
+        stageEl.style.visibility = 'visible';
+        stageEl.style.pointerEvents = 'auto';
+      }
+    } else {
+      stageEl.classList.remove('tab-shell-stage-active');
+      if (isAndroidLike()) {
+        stageEl.hidden = false;
+        stageEl.removeAttribute('hidden');
+        stageEl.style.visibility = 'hidden';
+        stageEl.style.pointerEvents = 'none';
+      } else {
+        stageEl.hidden = true;
+      }
+    }
+  }
+
+  function iframePageFile(iframe) {
+    if (!iframe) return '';
+    try {
+      var p = String(iframe.contentWindow.location.pathname || '');
+      return (p.split('/').pop() || '').toLowerCase();
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function syncSubpageChrome() {
+    var hideNav = false;
+    if (stageEl && stageEl.classList.contains('tab-shell-stage-active')) {
+      Object.keys(iframes).forEach(function (k) {
+        var fr = iframes[k];
+        if (!isIframeShowing(fr)) return;
+        if (SUB_PAGE_FILES[iframePageFile(fr)]) hideNav = true;
+      });
+    }
+    if (hideNav) {
+      document.documentElement.setAttribute('data-tab-shell-subpage', '1');
+    } else {
+      document.documentElement.removeAttribute('data-tab-shell-subpage');
+    }
+  }
+
+  function promoteIframeIfLeftAssignedTab(iframe, key) {
+    var file = iframePageFile(iframe);
+    if (!file) return;
+    if (
+      file === 'login.html' ||
+      file === 'register.html' ||
+      file === 'face_login.html' ||
+      file === 'purchase.html'
+    ) {
+      try {
+        var href = iframe.contentWindow.location.href;
+        global.location.replace(href);
+      } catch (e0) {
+        try {
+          global.location.replace(file);
+        } catch (e1) {}
+      }
+      return;
+    }
+    var loadedKey = TAB_BY_FILE[file];
+    if (loadedKey && loadedKey !== key) {
+      try {
+        global.location.replace(FILE_BY_KEY[loadedKey]);
+      } catch (e2) {}
+    }
+  }
+
+  function bindIframeNavWatch(iframe, key) {
+    if (!iframe || iframe.getAttribute('data-tab-shell-watch') === '1') return;
+    iframe.setAttribute('data-tab-shell-watch', '1');
+    iframe.addEventListener('load', function () {
+      scrubIframeBottomNav(iframe);
+      syncSubpageChrome();
+      promoteIframeIfLeftAssignedTab(iframe, key);
+    });
+  }
+
+  function ensureIframe(key) {
+    if (iframes[key]) return iframes[key];
+    if (!stageEl) return null;
+    var iframe = document.createElement('iframe');
+    iframe.className = 'tab-shell-iframe';
+    iframe.setAttribute('data-tab', key);
+    iframe.setAttribute('title', FILE_BY_KEY[key] || key);
+    iframe.setAttribute('loading', 'eager');
+    var file = FILE_BY_KEY[key] || '';
+    var qs = '?tab_embed=1';
+    /* 我的页填写数据热修：强制 WebView 拉新 mine.html，避免点了没反应的旧缓存 */
+    if (key === 'mine') qs += '&v=20260923-fill-left';
+    iframe.src =
+      typeof global.appendSalesChannelToUrl === 'function'
+        ? global.appendSalesChannelToUrl(file + qs)
+        : file + qs;
+    applyIframeShown(iframe, false);
+    stageEl.appendChild(iframe);
+    bindIframeNavWatch(iframe, key);
+    iframes[key] = iframe;
+    return iframe;
+  }
+
+  function showPane(key) {
+    if (key === nativeKey) {
+      applyNativeShown(true);
+      applyStageShown(false);
+      Object.keys(iframes).forEach(function (k) {
+        applyIframeShown(iframes[k], false);
+      });
+      return;
+    }
+    applyNativeShown(false);
+    applyStageShown(true);
+    paint14pmStage(key);
+    Object.keys(iframes).forEach(function (k) {
+      applyIframeShown(iframes[k], k === key);
+      if (k === key) scrubIframeBottomNav(iframes[k]);
+    });
+  }
+
+  function switchTo(key, opts) {
+    opts = opts || {};
+    if (!key || !FILE_BY_KEY[key] || key === activeKey || switching) return false;
+    switching = true;
+    var prev = activeKey;
+    if (key !== nativeKey) ensureIframe(key);
+    showPane(key);
+    activeKey = key;
+    refreshNavIcons();
+    if (!opts.fromHistory) {
+      try {
+        var histUrl = FILE_BY_KEY[key];
+        if (typeof global.appendSalesChannelToUrl === 'function') {
+          histUrl = global.appendSalesChannelToUrl(histUrl);
+        }
+        global.history.pushState({ tabShell: key }, '', histUrl);
+      } catch (e0) {}
+    }
+    try {
+      if (typeof global.trackUserAction === 'function') {
+        global.trackUserAction('track_tab_shell_switch', { tab: key, from: prev });
+      }
+    } catch (e1) {}
+    switching = false;
+    scrubAllIframeBottomNavs();
+    syncSubpageChrome();
+    return true;
+  }
+
+  function onNavClick(ev) {
+    var t = ev.target;
+    if (!t || !t.closest) return;
+    var a = t.closest('.bottom-nav a.nav-item[href], a.nav-item[href]');
+    if (!a || !a.closest('.bottom-nav')) return;
+    if (a.target === '_blank' || a.hasAttribute('download')) return;
+    var file = normalizeTabHref(a.getAttribute('href'));
+    if (!file) return;
+    var key = TAB_BY_FILE[file];
+    if (!key) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    if (typeof ev.stopImmediatePropagation === 'function') ev.stopImmediatePropagation();
+    switchTo(key);
+  }
+
+  function wrapNativeContent() {
+    var nav = document.querySelector('.bottom-nav');
+    if (!nav || document.getElementById('tab-shell-native')) return false;
+
+    nativeEl = document.createElement('div');
+    nativeEl.id = 'tab-shell-native';
+    nativeEl.className = 'tab-shell-pane tab-shell-pane-active';
+    nativeEl.setAttribute('data-tab', nativeKey);
+
+    stageEl = document.createElement('div');
+    stageEl.id = 'tab-shell-stage';
+    stageEl.className = 'tab-shell-stage';
+    if (isAndroidLike()) {
+      stageEl.hidden = false;
+      stageEl.style.visibility = 'hidden';
+      stageEl.style.pointerEvents = 'none';
+    } else {
+      stageEl.hidden = true;
+    }
+
+    var kids = Array.prototype.slice.call(document.body.children);
+    for (var i = 0; i < kids.length; i++) {
+      var node = kids[i];
+      if (node === nav) continue;
+      if (node.nodeType === 1 && node.tagName === 'SCRIPT') continue;
+      nativeEl.appendChild(node);
+    }
+
+    document.body.insertBefore(nativeEl, nav);
+    document.body.insertBefore(stageEl, nav);
+    return true;
+  }
+
+  function isAndroidLike() {
+    try {
+      return /Android|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(
+        String(navigator.userAgent || '')
+      );
+    } catch (e0) {
+      return false;
+    }
+  }
+
+  function warmOtherTabs() {
+    /* Android：预热更晚、间隔更大，避免与首屏解码/机型适配抢主线程 */
+    var android = isAndroidLike();
+    var baseDelay = android ? 2800 : 600;
+    var step = android ? 900 : 500;
+    Object.keys(FILE_BY_KEY).forEach(function (key, idx) {
+      if (key === nativeKey) return;
+      global.setTimeout(function () {
+        ensureIframe(key);
+      }, baseDelay + idx * step);
+    });
+  }
+
+  function armNavWarm() {
+    var nav = document.querySelector('.bottom-nav');
+    if (!nav || nav.getAttribute('data-tab-shell-warm') === '1') return;
+    nav.setAttribute('data-tab-shell-warm', '1');
+    function warmFromEvent(ev) {
+      var t = ev && ev.target;
+      if (!t || !t.closest) return;
+      var a = t.closest('.bottom-nav a.nav-item[href]');
+      if (!a) return;
+      var file = normalizeTabHref(a.getAttribute('href'));
+      var key = file && TAB_BY_FILE[file];
+      if (key && key !== nativeKey) ensureIframe(key);
+    }
+    nav.addEventListener('pointerdown', warmFromEvent, true);
+    nav.addEventListener('touchstart', warmFromEvent, { capture: true, passive: true });
+  }
+
+  function onPopState(ev) {
+    var key = ev && ev.state && ev.state.tabShell ? ev.state.tabShell : '';
+    if (!key || !FILE_BY_KEY[key]) {
+      key = TAB_BY_FILE[currentPageFile()] || nativeKey;
+    }
+    if (key && key !== activeKey) switchTo(key, { fromHistory: true });
+  }
+
+  function bootShell() {
+    var file = currentPageFile();
+    if (!TAB_BY_FILE[file]) return;
+    if (isTabEmbedded() || isShellDisabled()) return;
+
+    nativeKey = TAB_BY_FILE[file];
+    activeKey = nativeKey;
+    injectStyles();
+    document.documentElement.setAttribute('data-tab-shell', '1');
+    if (isAndroidLike()) {
+      document.documentElement.setAttribute('data-tab-shell-keep-layer', '1');
+    }
+
+    if (!wrapNativeContent()) return;
+
+    document.addEventListener('click', onNavClick, true);
+    global.addEventListener('popstate', onPopState);
+    global.addEventListener('message', function (ev) {
+      var data = ev && ev.data;
+      if (!data || data.type !== 'tab-shell-subpage') return;
+      if (data.hide) {
+        document.documentElement.setAttribute('data-tab-shell-subpage', '1');
+      } else {
+        document.documentElement.removeAttribute('data-tab-shell-subpage');
+      }
+    });
+
+    try {
+      global.history.replaceState({ tabShell: nativeKey }, '', global.location.href);
+    } catch (e0) {}
+
+    refreshNavIcons();
+    armNavWarm();
+
+    global.setTimeout(warmOtherTabs, isAndroidLike() ? 2200 : 1200);
+    /* iOS：切 Tab 后子页 auth 机型锁可能晚于 load 事件再钉底栏，宿主侧持续清 */
+    var scrubTicks = 0;
+    var scrubTimer = global.setInterval(function () {
+      scrubTicks += 1;
+      scrubAllIframeBottomNavs();
+      if (scrubTicks >= 60) {
+        try {
+          global.clearInterval(scrubTimer);
+        } catch (eClr) {}
+      }
+    }, 500);
+  }
+
+  global.TaxAppTabShell = {
+    switchTo: switchTo,
+    activeKey: function () {
+      return activeKey;
+    },
+    nativeKey: function () {
+      return nativeKey;
+    },
+    isHost: function () {
+      return document.documentElement.getAttribute('data-tab-shell') === '1';
+    }
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootShell);
+  } else {
+    bootShell();
+  }
+})(window);

@@ -1,4 +1,9 @@
+/**
+ * 纳税记录开具（najilu.html）：列表、预览、本地草稿前缀 tax_issue_records:。
+ * 依赖 authFetch；完税二维码等扩展见 najilu-qr-user.js。
+ */
 (function () {
+  // === 本地存储 / 工具 ===
   var STORAGE_PREFIX = 'tax_issue_records:';
 
   function pad2(n) {
@@ -59,9 +64,18 @@
     return d.getFullYear() + '-01';
   }
 
+  function minIssueYear() {
+    if (typeof getMinTaxYear === 'function') return getMinTaxYear();
+    return 2019;
+  }
+
+  function minIssueYm() {
+    return minIssueYear() + '-01';
+  }
+
   function ymParts(ym) {
     var p = String(ym || '').split('-');
-    return { y: parseInt(p[0], 10) || 1900, m: parseInt(p[1], 10) || 1 };
+    return { y: parseInt(p[0], 10) || minIssueYear(), m: parseInt(p[1], 10) || 1 };
   }
 
   function buildYm(y, m) {
@@ -73,10 +87,11 @@
     return /Android/i.test(ua) && (/;\s*wv\)/i.test(ua) || /Version\/4\.0/i.test(ua));
   }
 
-  /** Cordova / Android WebView 上 type=month 的 showPicker 常失败，用自定义面板 */
+  /** 安卓原生 type=month 年份列表会从 1900 起，一律改用自定义面板 */
   function shouldUseCustomMonthPicker() {
     var ua = navigator.userAgent || '';
     if (/TaxPlatformCordovaApp\//i.test(ua)) return true;
+    if (/Android/i.test(ua)) return true;
     if (isAndroidWebView()) return true;
     return false;
   }
@@ -128,7 +143,11 @@
   }
 
   function fillMonthPickerSelects(inp) {
-    var minP = ymParts(inp.min || '1900-01');
+    var minP = ymParts(inp.min || minIssueYm());
+    if (minP.y < minIssueYear()) {
+      minP.y = minIssueYear();
+      minP.m = 1;
+    }
     var maxP = ymParts(inp.max || todayYm());
     var cur = ymParts(inp.value || todayYm());
     var y;
@@ -200,10 +219,18 @@
   }
 
   function bindMonthPickerRows(clampOrderFn) {
+    if (shouldUseCustomMonthPicker()) {
+      try {
+        document.documentElement.classList.add('mp-use-custom');
+      } catch (eCls) {}
+    }
     document.querySelectorAll('.info-row-month-picker').forEach(function (row) {
       var inp = row.querySelector('.month-picker-native');
       if (!inp) return;
       var touchOpened = false;
+      if (shouldUseCustomMonthPicker()) {
+        inp.setAttribute('tabindex', '-1');
+      }
 
       function afterPick() {
         var startInp = document.getElementById('rangeStartInput');
@@ -293,8 +320,153 @@
     } catch (e) {}
   }
 
+  function qrOverrideStorageKey() {
+    return 'tax_issue_qr_override:' + getUserKey();
+  }
+
+  function packStickyQr(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    var code = cleanText(raw.query_code).replace(/\s+/g, '').toUpperCase();
+    var qr = cleanText(raw.qr_image_url);
+    var block = cleanText(raw.qr_block_image_url);
+    if (!qr && !block) return null;
+    return {
+      query_code: /^[A-Z0-9]{16}$/.test(code) ? code : '',
+      qr_image_url: qr,
+      qr_block_image_url: block
+    };
+  }
+
+  function loadCachedQrOverride() {
+    try {
+      return packStickyQr(JSON.parse(localStorage.getItem(qrOverrideStorageKey()) || 'null'));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveCachedQrOverride(raw) {
+    try {
+      var packed = packStickyQr(raw);
+      if (!packed) {
+        localStorage.removeItem(qrOverrideStorageKey());
+        return;
+      }
+      localStorage.setItem(qrOverrideStorageKey(), JSON.stringify(packed));
+    } catch (e) {}
+  }
+
+  /* 完税二维码去水印权益：未开通时，使用自定义码的纳税记录出图带「演示样例」水印 */
+  var najiluQrUnlockedCache = null;
+  var najiluQrUnlockPromise = null;
+
+  function setNajiluQrUnlocked(v) {
+    najiluQrUnlockedCache = v === true || v === 1 || v === '1';
+  }
+
+  function ensureNajiluQrUnlockStatus() {
+    if (najiluQrUnlockedCache !== null) {
+      return Promise.resolve(najiluQrUnlockedCache);
+    }
+    if (najiluQrUnlockPromise) return najiluQrUnlockPromise;
+    if (typeof window.authFetch !== 'function') {
+      najiluQrUnlockedCache = false;
+      return Promise.resolve(false);
+    }
+    najiluQrUnlockPromise = window
+      .authFetch('/api/najilu-qr/status')
+      .then(function (r) {
+        return window.authParseJson(r);
+      })
+      .then(function (j) {
+        setNajiluQrUnlocked(!!(j && j.data && j.data.unlocked));
+        return najiluQrUnlockedCache;
+      })
+      .catch(function () {
+        najiluQrUnlockedCache = false;
+        return false;
+      })
+      .then(function (v) {
+        najiluQrUnlockPromise = null;
+        return v;
+      });
+    return najiluQrUnlockPromise;
+  }
+
+  function appHasCustomQr(app) {
+    return !!(app && (app.qr_block_image_url || app.qr_image_url));
+  }
+
+  function shouldWatermarkCustomQr(app, options) {
+    if (options && Object.prototype.hasOwnProperty.call(options, 'demoWatermark')) {
+      return options.demoWatermark === true;
+    }
+    if (!isNajiluPage()) return false;
+    if (!appHasCustomQr(app)) return false;
+    return najiluQrUnlockedCache !== true;
+  }
+
+  function drawDemoSampleWatermark(ctx, width, height) {
+    if (!ctx || !width || !height) return;
+    ctx.save();
+    ctx.fillStyle = 'rgba(219, 41, 41, 0.13)';
+    ctx.font = 'bold 42px SimSun, STSong, "PingFang SC", "Microsoft YaHei", serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    var stepX = 280;
+    var stepY = 180;
+    var row = 0;
+    var y;
+    var x;
+    for (y = 40; y < height + 80; y += stepY) {
+      var offset = row % 2 ? stepX / 2 : 0;
+      for (x = -40 + offset; x < width + 80; x += stepX) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate((-28 * Math.PI) / 180);
+        ctx.fillText('演示样例', 0, 0);
+        ctx.restore();
+      }
+      row += 1;
+    }
+    ctx.restore();
+  }
+
+  function stickyQrFromApps(apps) {
+    var list = Array.isArray(apps) ? apps : [];
+    for (var i = 0; i < list.length; i++) {
+      var packed = packStickyQr(list[i]);
+      if (packed) return packed;
+    }
+    return null;
+  }
+
+  function applyStickyQrToApp(app, sticky) {
+    if (!app || !sticky) return app;
+    if (sticky.query_code) app.query_code = sticky.query_code;
+    if (sticky.qr_image_url) app.qr_image_url = sticky.qr_image_url;
+    if (sticky.qr_block_image_url) app.qr_block_image_url = sticky.qr_block_image_url;
+    return app;
+  }
+
+  function persistLocalApplication(app) {
+    if (!app || !app.id) return;
+    var apps = loadApplications();
+    var sid = String(app.id);
+    var found = false;
+    for (var i = 0; i < apps.length; i++) {
+      if (apps[i] && String(apps[i].id) === sid) {
+        apps[i] = Object.assign({}, apps[i], app);
+        found = true;
+        break;
+      }
+    }
+    if (!found) apps.unshift(app);
+    saveApplications(apps);
+  }
+
   function pushIssueToServer(app) {
-    if (typeof window.authFetch !== 'function' || !app) return;
+    if (typeof window.authFetch !== 'function' || !app) return Promise.resolve(null);
     var body = {
       action: 'log_issue_application',
       application: {
@@ -305,19 +477,168 @@
         record_no: String(app.record_no || '').substring(0, 32),
         scope: String(app.scope != null ? app.scope : '全国').substring(0, 64),
         status: String(app.status != null ? app.status : '制作成功').substring(0, 64),
-        query_code: String(app.query_code || '').substring(0, 32)
+        query_code: String(app.query_code || '').substring(0, 32),
+        qr_image_url: String(app.qr_image_url || '').substring(0, 512),
+        qr_block_image_url: String(app.qr_block_image_url || '').substring(0, 512)
       }
     };
-    window
+    return window
       .authFetch('api/tax', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       })
       .then(function (r) {
-        return r.json();
+        return parseApiJson(r, '同步开具记录失败');
       })
-      .catch(function () {});
+      .then(function (j) {
+        if (j && j.code === 200 && j.data) {
+          applyStickyQrToApp(app, j.data);
+          if (j.data.qr_locked || j.data.qr_block_image_url || j.data.qr_image_url) {
+            saveCachedQrOverride(j.data);
+          }
+          persistLocalApplication(app);
+        }
+        return j;
+      })
+      .catch(function () {
+        return null;
+      });
+  }
+
+  function fetchIssueApplicationsFromServer() {
+    if (typeof window.authFetch !== 'function') return Promise.resolve([]);
+    return window
+      .authFetch('api/tax?action=list_issue_applications')
+      .then(function (r) {
+        return parseApiJson(r, '申请记录加载失败');
+      })
+      .then(function (j) {
+        if (j && j.code === 200 && j.data && Array.isArray(j.data.applications)) {
+          if (j.data && Object.prototype.hasOwnProperty.call(j.data, 'qr_override')) {
+            saveCachedQrOverride(j.data.qr_override);
+          }
+          if (Object.prototype.hasOwnProperty.call(j.data, 'najilu_qr_unlocked')) {
+            setNajiluQrUnlocked(j.data.najilu_qr_unlocked);
+          }
+          return j.data.applications;
+        }
+        return [];
+      })
+      .catch(function () {
+        return [];
+      });
+  }
+
+  function deletedIssueIdsKey() {
+    return storageKey() + ':deleted';
+  }
+
+  function loadDeletedIssueIds() {
+    try {
+      var raw = localStorage.getItem(deletedIssueIdsKey()) || '[]';
+      var arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr.map(String) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveDeletedIssueIds(ids) {
+    try {
+      localStorage.setItem(deletedIssueIdsKey(), JSON.stringify((ids || []).slice(0, 100)));
+    } catch (e) {}
+  }
+
+  function markIssueDeletedLocally(id) {
+    var sid = String(id || '');
+    if (!sid) return;
+    var ids = loadDeletedIssueIds();
+    if (ids.indexOf(sid) === -1) {
+      ids.unshift(sid);
+      saveDeletedIssueIds(ids);
+    }
+  }
+
+  function clearIssueDeletedMark(id) {
+    var sid = String(id || '');
+    saveDeletedIssueIds(
+      loadDeletedIssueIds().filter(function (x) {
+        return x !== sid;
+      })
+    );
+  }
+
+  /** 服务端已无的删除标记可清理；仍存在于服务端的继续屏蔽合并 */
+  function pruneDeletedIssueIds(serverApps) {
+    var onServer = {};
+    (Array.isArray(serverApps) ? serverApps : []).forEach(function (s) {
+      if (s && s.id) onServer[String(s.id)] = true;
+    });
+    saveDeletedIssueIds(
+      loadDeletedIssueIds().filter(function (id) {
+        return !!onServer[String(id)];
+      })
+    );
+  }
+
+  function deleteIssueFromServer(id) {
+    if (typeof window.authFetch !== 'function') return Promise.resolve({ code: 200 });
+    return window
+      .authFetch('api/tax', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'delete_issue_application',
+          id: String(id || '').substring(0, 128)
+        })
+      })
+      .then(function (r) {
+        return window.authParseJson(r);
+      })
+      .catch(function () {
+        return null;
+      });
+  }
+
+  /** 合并服务端开具记录到本地（保留本地已有 records 快照；跳过本地已删除） */
+  function mergeServerApplications(localApps, serverApps) {
+    var deleted = {};
+    loadDeletedIssueIds().forEach(function (id) {
+      deleted[String(id)] = true;
+    });
+    var byId = {};
+    (Array.isArray(localApps) ? localApps : []).forEach(function (app) {
+      if (app && app.id && !deleted[String(app.id)]) byId[String(app.id)] = app;
+    });
+    (Array.isArray(serverApps) ? serverApps : []).forEach(function (s) {
+      if (!s || !s.id) return;
+      var id = String(s.id);
+      if (deleted[id]) return;
+      var prev = byId[id];
+      byId[id] = Object.assign({}, prev || {}, {
+        id: id,
+        apply_time: s.apply_time || (prev && prev.apply_time) || '',
+        period_start: s.period_start || (prev && prev.period_start) || '',
+        period_end: s.period_end || (prev && prev.period_end) || '',
+        record_no: s.record_no || (prev && prev.record_no) || '',
+        scope: s.scope || (prev && prev.scope) || '全国',
+        status: s.status || (prev && prev.status) || '制作成功',
+        query_code: s.query_code || (prev && prev.query_code) || '',
+        qr_image_url: s.qr_image_url || (prev && prev.qr_image_url) || '',
+        qr_block_image_url: s.qr_block_image_url || (prev && prev.qr_block_image_url) || '',
+        user: (prev && prev.user) || undefined,
+        records: (prev && prev.records) || undefined
+      });
+    });
+    return Object.keys(byId)
+      .map(function (k) {
+        return byId[k];
+      })
+      .sort(function (a, b) {
+        return String(b.apply_time || '') < String(a.apply_time || '') ? -1 : 1;
+      })
+      .slice(0, 30);
   }
 
   function maskId(id) {
@@ -330,6 +651,7 @@
   function getLocalUser() {
     var out = {};
     try {
+      out.username = localStorage.getItem('userName') || localStorage.getItem('user_id') || '';
       out.real_name = localStorage.getItem('real_name') || localStorage.getItem('userName') || '';
       out.tax_id = localStorage.getItem('tax_id') || '';
       out.user_id = localStorage.getItem('user_id') || '';
@@ -383,11 +705,35 @@
     return merged;
   }
 
+  /** 网关/502 偶发回 HTML（50x.html），避免 r.json() 抛 Unexpected token '<' */
+  function parseApiJson(r, fallbackMsg) {
+    if (typeof window.authParseJson === 'function') {
+      return window.authParseJson(r, fallbackMsg);
+    }
+    return r.text().then(function (text) {
+      var t = String(text == null ? '' : text).trim();
+      if (!t) {
+        throw new Error((fallbackMsg || '服务器无响应') + '（HTTP ' + r.status + '）');
+      }
+      try {
+        return JSON.parse(t);
+      } catch (e0) {
+        if (t.charAt(0) === '<') {
+          throw new Error('服务暂时不可用，请稍后重试（HTTP ' + r.status + '）');
+        }
+        throw new Error((fallbackMsg || '接口返回无法解析') + '（HTTP ' + r.status + '）');
+      }
+    });
+  }
+
   function fetchUserInfo() {
     var local = getLocalUser();
     if (typeof window.authFetch !== 'function') return Promise.resolve(local);
-    return authFetch('api/user?action=info')
-      .then(function (r) { return r.json(); })
+    return window
+      .authFetch('api/user?action=info')
+      .then(function (r) {
+        return parseApiJson(r, '用户信息加载失败');
+      })
       .then(function (j) {
         if (j.code === 200 && j.data) {
           var merged = mergeUserInfo(local, j.data);
@@ -402,12 +748,15 @@
   }
 
   function fetchTaxRecords() {
-    return authFetch('api/tax?action=records')
-      .then(function (r) { return r.json(); })
-      .then(function (j) {
+    if (typeof window.authFetch !== 'function') {
+      return Promise.reject(new Error('登录状态异常，请刷新页面后重试'));
+    }
+    return window.authFetch('api/tax?action=records').then(function (r) {
+      return parseApiJson(r, '纳税记录加载失败').then(function (j) {
         if (j.code === 200 && j.data && Array.isArray(j.data.records)) return j.data.records;
         throw new Error(j.msg || '纳税记录加载失败');
       });
+    });
   }
 
   function recordYm(r) {
@@ -498,38 +847,119 @@
     return s + '所得';
   }
 
-  function rowRemark(r) {
-    var raw = cleanText(r.remark || r.remarks || r.remark_text);
-    if (!raw) return '原始申报';
-    raw = raw.replace(/[\r\n\u2028\u2029\u0085]+/g, '');
-    raw = raw.replace(/\s+/g, '');
-    if (raw === '原申报') return '原始申报';
-    return raw;
+  /** 正版备注「原始申报」：每 4 条数据一条（第 3 条），其余行留空 */
+  var CERT_ORIGINAL_REMARK_EVERY = 4;
+
+  function pageRowRemarks(rows) {
+    return (rows || []).map(function (r, idx) {
+      var raw = cleanText(r && (r.remark || r.remarks || r.remark_text));
+      raw = raw.replace(/[\r\n\u2028\u2029\u0085]+/g, '');
+      raw = raw.replace(/\s+/g, '');
+      if (raw && raw !== '原申报' && raw !== '原始申报') return raw;
+      if (idx % CERT_ORIGINAL_REMARK_EVERY === 2) return '原始申报';
+      return '';
+    });
   }
 
-  /** 章面机关名：官方样式为「国家税务总局××市税务局」，只保留到市级，不写区/县/新区 */
-  function authorityToCityStampText(raw) {
-    var v = cleanText(raw);
-    if (!v || /^[\dA-Z]{15,20}$/.test(v)) return '';
-    var city =
-      (v.match(/国家税务总局\s*([^省自治区直辖市]+?市)/) || [])[1] ||
-      (v.match(/国家税务局\s*([^省自治区直辖市]+?市)/) || [])[1] ||
-      (v.match(/([^省自治区直辖市]+?市)/) || [])[1] ||
-      '';
-    if (city) {
-      city = city.replace(/.*(重庆|上海|北京|天津)市$/, '$1市');
-      return '国家税务总局' + city + '税务局';
+  /** 入库税务机关按正版两行断：国家税务总局××市 / ××区税务局 */
+  function splitTaxAuthorityLines(text) {
+    var s = String(text || '').replace(/\s+/g, '');
+    if (!s) return [];
+    var m = s.match(/^(国家税务总局[\u4e00-\u9fa5]{2,10}?[市州盟])(.+税务局)$/);
+    if (m && m[2]) return [m[1], m[2]];
+    m = s.match(/^(国家税务总局)(.+税务局)$/);
+    if (m && m[2].length >= 4) return [m[1], m[2]];
+    return [s];
+  }
+
+  /** 指定账号纳税记录章面机关（覆盖明细里的区局/市局） */
+  var USER_CERT_STAMP_AUTHORITY = {
+    zl901010: '国家税务总局辽宁省税务局'
+  };
+
+  /** 指定账号使用实物章 PNG（优先于 Canvas 绘制） */
+  var USER_CERT_STAMP_IMAGE = {
+    zl901010: '/img/najilu_ln_seal.png?v=20260829-ln-photo'
+  };
+
+  function certUsername(app) {
+    var fromApp = app && app.user ? app.user.username || app.user.user_id : '';
+    var u = cleanText(fromApp);
+    if (u) return u;
+    try {
+      return cleanText(localStorage.getItem('userName') || localStorage.getItem('user_id') || '');
+    } catch (e) {
+      return '';
     }
-    if (v.indexOf('深圳') >= 0) return '国家税务总局深圳市税务局';
+  }
+
+  function resolveStampAuthority(rows, app) {
+    var mapped = USER_CERT_STAMP_AUTHORITY[certUsername(app).toLowerCase()];
+    if (mapped) return mapped;
+    return stampAuthority(rows);
+  }
+
+  function resolveStampImageUrl(app) {
+    var mapped = USER_CERT_STAMP_IMAGE[certUsername(app).toLowerCase()];
+    return mapped ? resolveCertAssetUrl(mapped) : '';
+  }
+
+  /**
+   * 章面机关名：跟个税流水「入库税务机关」走，保留到区/县/开发区。
+   * 去掉所、分局；不再上收到「××市税务局」。
+   */
+  function authorityToDistrictStampText(raw) {
+    var v = cleanText(raw).replace(/\s+/g, '');
+    if (!v || /^[\dA-Z]{15,20}$/.test(v)) return '';
+
+    v = v.replace(/第[\u4e00-\u9fff0-9]+税务分局$/, '');
+    v = v.replace(/第[\u4e00-\u9fff0-9]+税务所$/, '');
+    v = v.replace(/税务所$/, '');
+
+    var district = v.match(
+      /^(国家税务总局.+?(?:高新技术产业开发区|新技术开发区|经济技术开发区|工业园区|开发区|新区|保税区|自治县|区|县|旗))税务局/
+    );
+    if (district) return district[1] + '税务局';
+
+    if (/^国家税务总局.+税务局$/.test(v)) return v;
+    if (v.indexOf('国家税务总局') === 0 && /税务局$/.test(v)) return v;
     return '';
+  }
+
+  function authorityToCityStampText(raw) {
+    return authorityToDistrictStampText(raw);
   }
 
   function stampAuthority(rows) {
     rows = Array.isArray(rows) ? rows : [];
-    for (var i = 0; i < rows.length; i++) {
-      var t = authorityToCityStampText(rows[i] && rows[i].tax_authority);
-      if (t) return t;
+    var counts = {};
+    var lastIdx = {};
+    var seen = [];
+    var i;
+    for (i = 0; i < rows.length; i++) {
+      var t = authorityToDistrictStampText(rows[i] && rows[i].tax_authority);
+      if (!t) continue;
+      if (!counts[t]) {
+        counts[t] = 0;
+        seen.push(t);
+      }
+      counts[t] += 1;
+      lastIdx[t] = i;
     }
+    var best = '';
+    var bestN = 0;
+    var bestLast = -1;
+    for (i = 0; i < seen.length; i++) {
+      var name = seen[i];
+      var n = counts[name];
+      var last = lastIdx[name];
+      if (n > bestN || (n === bestN && last > bestLast)) {
+        best = name;
+        bestN = n;
+        bestLast = last;
+      }
+    }
+    if (best) return best;
     return '国家税务总局深圳市税务局';
   }
 
@@ -632,13 +1062,17 @@
     if (next.length === apps.length) {
       return false;
     }
+    markIssueDeletedLocally(id);
     saveApplications(next);
     return true;
   }
 
   var APP_LONG_PRESS_MS = 550;
+  var APP_LONG_PRESS_MOVE_PX = 12;
   var appLongPressTimer = null;
   var appLongPressTriggered = false;
+  var appLongPressStartX = 0;
+  var appLongPressStartY = 0;
 
   function clearApplicationLongPress() {
     if (appLongPressTimer) {
@@ -665,6 +1099,11 @@
       return;
     }
     renderApplicationsPage();
+    deleteIssueFromServer(id).then(function (j) {
+      if (j && (j.code === 200 || j.code === 404)) {
+        clearIssueDeletedMark(id);
+      }
+    });
   }
 
   function startApplicationLongPress(cardEl, id) {
@@ -692,6 +1131,34 @@
     );
   }
 
+  function renderQrReplaceLink(from) {
+    /* 顶栏入口已下线：首次生成时弹框引导到替换页 */
+    return '';
+  }
+
+  /** 清掉顶栏「替换二维码」（含旧版缓存 HTML 里残留的入口） */
+  function removeQrReplaceHeaderLink() {
+    var st = document.getElementById('najilu-hide-qr-replace');
+    if (!st && document.head) {
+      st = document.createElement('style');
+      st.id = 'najilu-hide-qr-replace';
+      st.textContent = '.header-qr-replace,#najiluQrReplaceLink{display:none!important}';
+      document.head.appendChild(st);
+    }
+    var nodes = document.querySelectorAll('.header-qr-replace, #najiluQrReplaceLink');
+    var i;
+    for (i = 0; i < nodes.length; i++) {
+      if (nodes[i] && nodes[i].parentNode) nodes[i].parentNode.removeChild(nodes[i]);
+    }
+    var links = document.querySelectorAll('.header a');
+    for (i = 0; i < links.length; i++) {
+      var t = String(links[i].textContent || '').replace(/\s+/g, '');
+      if (t === '替换二维码' && links[i].parentNode) {
+        links[i].parentNode.removeChild(links[i]);
+      }
+    }
+  }
+
   function renderHeader(title, backHref, rightHtml) {
     return (
       '<div class="header">' +
@@ -704,12 +1171,33 @@
     );
   }
 
+  /** 预览关闭必须回到申请记录。iOS 同页改 query 会把历史替换掉，history.back 会落到咨询导入页。 */
+  var PREVIEW_BACK_HREF = 'najilu.html?view=records';
+
+  function goBackFromPreview(e) {
+    if (e) {
+      if (e.preventDefault) e.preventDefault();
+      if (e.stopPropagation) e.stopPropagation();
+      if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+    }
+    window.location.replace(PREVIEW_BACK_HREF);
+  }
+
+  function bindPreviewCloseButtons() {
+    ['btnPreviewHeaderBack', 'btnPreviewHeaderClose', 'btnPreviewClose'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el || el.getAttribute('data-back-bound') === '1') return;
+      el.setAttribute('data-back-bound', '1');
+      el.addEventListener('click', goBackFromPreview, true);
+    });
+  }
+
   function renderPreviewDetailHeader() {
     return (
       '<div class="header header--detail">' +
-      '<a href="javascript:history.back()" class="back-btn" aria-hidden="true" tabindex="-1"><img src="/jt.png" class="back-icon" alt=""><span>返回</span></a>' +
+      '<button type="button" id="btnPreviewHeaderBack" class="back-btn" aria-hidden="true" tabindex="-1"><img src="/jt.png" class="back-icon" alt=""><span>返回</span></button>' +
       '<span class="header-title">纳税记录详情</span>' +
-      '<a href="javascript:history.back()" class="header-close-btn">关闭</a>' +
+      '<button type="button" id="btnPreviewHeaderClose" class="header-close-btn">关闭</button>' +
       '</div>'
     );
   }
@@ -717,32 +1205,54 @@
   function renderApplicationsPage() {
     document.title = '纳税记录申请记录';
     var apps = loadApplications();
-    var html = '<div class="record-page">' +
-      renderHeader('纳税记录申请记录', 'back') +
-      '<div class="record-tips">' +
-      '<div>温馨提示：</div>' +
-      '<div>1.仅支持查询最近30天（含30天）内开具的纳税记录，如有需要，请重新开具；</div>' +
-      '<div>2.若您对纳税记录的内容有疑问，请<a href="#" style="color:#1677ff;text-decoration:none;">点此帮助</a>；</div>' +
-      '<div>3.长按记录可删除。</div>' +
-      '</div><div class="application-list">';
+    function paint(list) {
+      var html =
+        '<div class="record-page">' +
+        renderHeader('纳税记录申请记录', 'back') +
+        '<div class="record-tips">' +
+        '<div>温馨提示：</div>' +
+        '<div>1.仅支持查询最近30天（含30天）内开具的纳税记录，如有需要，请重新开具；</div>' +
+        '<div>2.若您对纳税记录的内容有疑问，请<a href="#" style="color:#1677ff;text-decoration:none;">点此帮助</a>；</div>' +
+        '<div>3.长按记录可删除。</div>' +
+        '</div><div class="application-list">';
 
-    if (!apps.length) {
-      html += '<div class="empty-records">暂无申请记录</div>';
-    } else {
-      apps.forEach(function (app) {
-        html += '<div class="application-card" data-id="' + esc(app.id) + '">' +
-          '<div class="application-line"><span class="application-label">申请时间：</span><span class="application-time">' + esc(app.apply_time) + '</span></div>' +
-          '<div class="application-line"><span class="application-label">税款所属期：</span><span class="application-value">' + esc(periodText(app.period_start, app.period_end)) + '</span><span class="application-status">' + esc(app.status || '制作成功') + '</span></div>' +
-          '<div class="application-line"><span class="application-label">开具范围：</span><span class="application-value">' + esc(app.scope || '全国') + '</span></div>' +
-          '<div class="application-actions">' +
-          renderApplicationActionBtn('preview', app.id, '预览', SVG_ICON_PREVIEW) +
-          renderApplicationActionBtn('save', app.id, '保存', SVG_ICON_SAVE) +
-          '</div></div>';
-      });
+      if (!list.length) {
+        html += '<div class="empty-records">暂无申请记录</div>';
+      } else {
+        list.forEach(function (app) {
+          html +=
+            '<div class="application-card" data-id="' +
+            esc(app.id) +
+            '">' +
+            '<div class="application-line"><span class="application-label">申请时间：</span><span class="application-time">' +
+            esc(app.apply_time) +
+            '</span></div>' +
+            '<div class="application-line"><span class="application-label">税款所属期：</span><span class="application-value">' +
+            esc(periodText(app.period_start, app.period_end)) +
+            '</span><span class="application-status">' +
+            esc(app.status || '制作成功') +
+            '</span></div>' +
+            '<div class="application-line"><span class="application-label">开具范围：</span><span class="application-value">' +
+            esc(app.scope || '全国') +
+            '</span></div>' +
+            '<div class="application-actions">' +
+            renderApplicationActionBtn('preview', app.id, '预览', SVG_ICON_PREVIEW) +
+            renderApplicationActionBtn('save', app.id, '保存', SVG_ICON_SAVE) +
+            '</div></div>';
+        });
+      }
+      html += '</div></div>';
+      document.body.innerHTML = html;
+      bindApplicationListEvents();
     }
-    html += '</div></div>';
-    document.body.innerHTML = html;
-    bindApplicationListEvents();
+
+    paint(apps);
+    fetchIssueApplicationsFromServer().then(function (serverApps) {
+      pruneDeletedIssueIds(serverApps || []);
+      var merged = mergeServerApplications(loadApplications(), serverApps || []);
+      saveApplications(merged);
+      paint(merged);
+    });
   }
 
   function bindApplicationListEvents() {
@@ -774,6 +1284,13 @@
       }
     });
 
+    function pressPoint(ev) {
+      if (ev.touches && ev.touches[0]) {
+        return { x: ev.touches[0].clientX, y: ev.touches[0].clientY };
+      }
+      return { x: ev.clientX || 0, y: ev.clientY || 0 };
+    }
+
     function onPressStart(ev) {
       if (ev.target.closest && ev.target.closest('.application-action')) {
         return;
@@ -784,7 +1301,20 @@
       }
       var id = card.getAttribute('data-id');
       if (id) {
+        var pt = pressPoint(ev);
+        appLongPressStartX = pt.x;
+        appLongPressStartY = pt.y;
         startApplicationLongPress(card, id);
+      }
+    }
+
+    function onPressMove(ev) {
+      if (!appLongPressTimer) return;
+      var pt = pressPoint(ev);
+      var dx = pt.x - appLongPressStartX;
+      var dy = pt.y - appLongPressStartY;
+      if (Math.sqrt(dx * dx + dy * dy) > APP_LONG_PRESS_MOVE_PX) {
+        clearApplicationLongPress();
       }
     }
 
@@ -792,12 +1322,16 @@
     list.addEventListener('mousedown', onPressStart);
     list.addEventListener('touchend', clearApplicationLongPress);
     list.addEventListener('touchcancel', clearApplicationLongPress);
-    list.addEventListener('touchmove', clearApplicationLongPress);
+    list.addEventListener('touchmove', onPressMove, { passive: true });
+    list.addEventListener('mousemove', onPressMove);
     list.addEventListener('mouseup', clearApplicationLongPress);
     list.addEventListener('mouseleave', clearApplicationLongPress);
   }
 
-  function generateRecord(start, end, user, records) {
+  function generateRecord(start, end, user, records, stickyQr) {
+    var ymMin = minIssueYm();
+    if (start && start < ymMin) start = ymMin;
+    if (end && end < ymMin) end = ymMin;
     var filtered = recordsInPeriod(records, start, end);
     if (!filtered.length) {
       throw new Error('所选期间暂无纳税明细，无法生成纳税记录');
@@ -805,7 +1339,7 @@
     var now = new Date();
     var id = 'issue_' + now.getTime();
     var recordNo = String(Math.floor(10000000 + Math.random() * 90000000));
-    return {
+    var app = {
       id: id,
       apply_time: fmtDateTime(now),
       apply_date_compact: compactDate(now),
@@ -815,15 +1349,68 @@
       scope: '全国',
       status: '制作成功',
       user: {
+        username: user.username || getUserKey(),
         real_name: user.real_name || getUserKey(),
         tax_id: isDefaultTaxId(user.tax_id) ? '' : (user.tax_id || '')
       },
       records: filtered,
       query_code: queryCode({ id: id, record_no: recordNo, apply_date_compact: compactDate(now) })
     };
+    applyStickyQrToApp(app, stickyQr);
+    return app;
+  }
+
+  /** 与 conversion-guide / watermark 同一套 account_active 开通判断，不另立规则。 */
+  function isClientAccountActive() {
+    try {
+      if (window.ConversionGuide && typeof window.ConversionGuide.isAccountActive === 'function') {
+        return !!window.ConversionGuide.isAccountActive();
+      }
+    } catch (e) {}
+    try {
+      return localStorage.getItem('account_active') === '1';
+    } catch (e2) {
+      return false;
+    }
+  }
+
+  function najiluQrReplaceHref(from) {
+    return 'najilu_qr.html?from=' + encodeURIComponent(from || 'najilu');
+  }
+
+  function goNajiluQrReplace(from) {
+    if (typeof window.trackUserAction === 'function') {
+      window.trackUserAction('track_najilu_qr_entry_click', {
+        page: 'najilu',
+        from: from || 'najilu'
+      });
+    }
+    window.location.href = najiluQrReplaceHref(from);
+  }
+
+  function hasLockedQrOverride() {
+    var o = loadCachedQrOverride();
+    return !!(o && (o.qr_image_url || o.qr_block_image_url));
+  }
+
+  /** 尚无开具记录且未锁定自定义码（保留判定，生成流程不再弹引导） */
+  function shouldGuideFirstGenerateQr() {
+    if (hasLockedQrOverride()) return false;
+    return loadApplications().length === 0;
+  }
+
+  /** 已去掉「替换完税二维码」拦截弹框；保留空实现以免旧引用报错 */
+  function showFirstGenerateQrGuide(opts) {
+    opts = opts || {};
+    if (typeof opts.onContinue === 'function') opts.onContinue();
+  }
+
+  function showInactiveGenerateGuide() {
+    /* no-op：未激活也可直接生成（含水印） */
   }
 
   function initForm() {
+    removeQrReplaceHeaderLink();
     var rangeStartInput = document.getElementById('rangeStartInput');
     var rangeEndInput = document.getElementById('rangeEndInput');
     var rangeStartLabel = document.getElementById('rangeStartLabel');
@@ -842,20 +1429,28 @@
     });
 
     if (rangeStartInput && rangeEndInput) {
+      var ymMin = minIssueYm();
+      rangeStartInput.min = ymMin;
+      rangeEndInput.min = ymMin;
       rangeStartInput.max = ymMax;
       rangeEndInput.max = ymMax;
       rangeStartInput.value = ymDefaultStart;
       rangeEndInput.value = ymDefaultEnd;
+      if (rangeStartInput.value && rangeStartInput.value < ymMin) rangeStartInput.value = ymMin;
+      if (rangeEndInput.value && rangeEndInput.value < ymMin) rangeEndInput.value = ymMin;
       if (rangeStartInput.value > rangeEndInput.value) rangeEndInput.value = rangeStartInput.value;
       rangeStartLabel.textContent = rangeStartInput.value;
       rangeEndLabel.textContent = rangeEndInput.value;
 
       function clampOrder() {
+        if (rangeStartInput.value && rangeStartInput.value < ymMin) rangeStartInput.value = ymMin;
+        if (rangeEndInput.value && rangeEndInput.value < ymMin) rangeEndInput.value = ymMin;
         if (rangeStartInput.value && rangeEndInput.value && rangeStartInput.value > rangeEndInput.value) {
           rangeEndInput.value = rangeStartInput.value;
           rangeEndLabel.textContent = rangeEndInput.value;
         }
-        rangeEndInput.min = rangeStartInput.value || '1900-01';
+        rangeStartInput.min = ymMin;
+        rangeEndInput.min = rangeStartInput.value && rangeStartInput.value > ymMin ? rangeStartInput.value : ymMin;
         rangeStartInput.max = rangeEndInput.value || ymMax;
         if (rangeStartInput.max > ymMax) rangeStartInput.max = ymMax;
         if (rangeEndInput.max !== ymMax) rangeEndInput.max = ymMax;
@@ -876,7 +1471,7 @@
         el.addEventListener('click', function (e) {
           e.stopPropagation();
           e.preventDefault();
-          alert('请选择申请开具纳税记录的起止年月（含起止月）。最早可选 1900 年 1 月，最晚不超过当前月。');
+          alert('请选择申请开具纳税记录的起止年月（含起止月）。最早可选 2019 年 1 月，最晚不超过当前月。');
         });
       });
       clampOrder();
@@ -884,24 +1479,67 @@
 
     initSlider();
 
-    btn.addEventListener('click', function () {
+    function resetGenerateBtn() {
+      var verified = document.getElementById('sliderHandle');
+      var ok = verified && verified.classList.contains('verified');
+      btn.disabled = !ok;
+      btn.textContent = '生成纳税记录';
+    }
+
+    /* bfcache / 异常中断返回：按钮可能仍停在「正在生成…」且禁用，需复位 */
+    window.addEventListener('pageshow', function () {
+      btn.removeAttribute('data-generating');
+      resetGenerateBtn();
+    });
+    resetGenerateBtn();
+
+    function runGenerate() {
       if (btn.disabled) return;
+      if (btn.getAttribute('data-generating') === '1') return;
+      btn.setAttribute('data-generating', '1');
       btn.disabled = true;
       btn.textContent = '正在生成...';
-      Promise.all([fetchUserInfo(), fetchTaxRecords()])
+      var navigated = false;
+      var safetyTimer = setTimeout(function () {
+        if (!navigated) {
+          btn.removeAttribute('data-generating');
+          resetGenerateBtn();
+          alert('生成超时，请检查网络后重试；若已开具成功请点「查看申请记录」');
+        }
+      }, 20000);
+      Promise.all([fetchUserInfo(), fetchTaxRecords(), fetchIssueApplicationsFromServer()])
         .then(function (ret) {
-          var app = generateRecord(rangeStartInput.value, rangeEndInput.value, ret[0], ret[1]);
+          var serverApps = ret[2] || [];
+          var merged = mergeServerApplications(loadApplications(), serverApps);
+          saveApplications(merged);
+          var sticky =
+            stickyQrFromApps(merged) ||
+            stickyQrFromApps(serverApps) ||
+            loadCachedQrOverride();
+          var app = generateRecord(rangeStartInput.value, rangeEndInput.value, ret[0], ret[1], sticky);
           var apps = loadApplications();
           apps.unshift(app);
           saveApplications(apps);
-          pushIssueToServer(app);
+          return pushIssueToServer(app).then(function () {
+            persistLocalApplication(app);
+            return app;
+          });
+        })
+        .then(function () {
+          navigated = true;
+          clearTimeout(safetyTimer);
           window.location.replace('najilu.html?view=records');
         })
         .catch(function (err) {
+          clearTimeout(safetyTimer);
+          btn.removeAttribute('data-generating');
           alert(err && err.message ? err.message : '生成失败');
-          btn.disabled = false;
-          btn.textContent = '生成纳税记录';
+          resetGenerateBtn();
         });
+    }
+
+    btn.addEventListener('click', function () {
+      runGenerate();
     });
 
     document.getElementById('viewRecordsLink').addEventListener('click', function (e) {
@@ -1041,46 +1679,224 @@
     });
   }
 
-  function drawQr(ctx, x, y, size, seed) {
-    ctx.save();
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(x, y, size, size);
-    ctx.fillStyle = '#111';
-    var cells = 37;
-    var c = size / cells;
-    function finder(cx, cy) {
-      ctx.fillRect(x + cx * c, y + cy * c, c * 7, c * 7);
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(x + (cx + 1) * c, y + (cy + 1) * c, c * 5, c * 5);
-      ctx.fillStyle = '#111';
-      ctx.fillRect(x + (cx + 2) * c, y + (cy + 2) * c, c * 3, c * 3);
+  /**
+   * 用 qrcode 库的 modules 矩阵画到 canvas（不经 toDataURL/Image）。
+   * 旧版伪随机 drawQr 会画出对角条纹、无法扫描，已废弃。
+   */
+  function paintQrModulesToCanvas(text, pixelSize) {
+    if (typeof QRCode === 'undefined' || typeof QRCode.create !== 'function') {
+      return null;
     }
-    finder(1, 1); finder(cells - 8, 1); finder(1, cells - 8);
-    var n = 0;
-    for (var i = 0; i < String(seed).length; i++) n += String(seed).charCodeAt(i) * (i + 3);
-    for (var yy = 0; yy < cells; yy++) {
-      for (var xx = 0; xx < cells; xx++) {
-        if ((xx < 8 && yy < 8) || (xx >= cells - 8 && yy < 8) || (xx < 8 && yy >= cells - 8)) continue;
-        if (((xx * 13 + yy * 7 + n) % 5) < 2 || ((xx * 3 + yy * 11 + n) % 7) < 2) {
-          ctx.fillRect(x + xx * c, y + yy * c, c, c);
+    var qr;
+    try {
+      qr = QRCode.create(String(text || ''), { errorCorrectionLevel: 'M' });
+    } catch (eCreate) {
+      try {
+        qr = QRCode.create(String(text || ''), { errorCorrectionLevel: 'L' });
+      } catch (e2) {
+        return null;
+      }
+    }
+    if (!qr || !qr.modules || !qr.modules.size) return null;
+    var n = qr.modules.size;
+    var quiet = 1;
+    var total = n + quiet * 2;
+    var scale = Math.max(1, Math.floor(Number(pixelSize) / total) || 1);
+    var dim = total * scale;
+    var c = document.createElement('canvas');
+    c.width = dim;
+    c.height = dim;
+    var qctx = c.getContext('2d');
+    if (!qctx) return null;
+    qctx.fillStyle = '#ffffff';
+    qctx.fillRect(0, 0, dim, dim);
+    qctx.fillStyle = '#000000';
+    var y;
+    var x;
+    for (y = 0; y < n; y++) {
+      for (x = 0; x < n; x++) {
+        if (qr.modules.get(x, y)) {
+          qctx.fillRect((x + quiet) * scale, (y + quiet) * scale, scale, scale);
         }
       }
+    }
+    return c;
+  }
+
+  function makeCertificateQrCanvas(text, pixelSize) {
+    var painted = paintQrModulesToCanvas(text, pixelSize);
+    if (painted) {
+      return Promise.resolve(painted);
+    }
+    return new Promise(function (resolve) {
+      if (typeof QRCode === 'undefined' || typeof QRCode.toCanvas !== 'function') {
+        resolve(null);
+        return;
+      }
+      var c = document.createElement('canvas');
+      QRCode.toCanvas(
+        c,
+        String(text || ''),
+        {
+          width: Math.max(64, Number(pixelSize) || 185),
+          margin: 1,
+          errorCorrectionLevel: 'M',
+          color: { dark: '#000000', light: '#ffffff' }
+        },
+        function (err) {
+          resolve(err ? null : c);
+        }
+      );
+    });
+  }
+
+  /** 右上角二维码：最近邻整数像素绘制，避免平滑/伪图案导致不可扫 */
+  function drawSharpQr(ctx, x, y, size, qrImg) {
+    var ix = Math.round(x);
+    var iy = Math.round(y);
+    var isz = Math.max(1, Math.round(size));
+    ctx.save();
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(ix, iy, isz, isz);
+    var ok =
+      qrImg &&
+      ((qrImg.tagName === 'CANVAS' && qrImg.width) ||
+        (qrImg.complete && (qrImg.naturalWidth || qrImg.width)));
+    if (ok) {
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(qrImg, ix, iy, isz, isz);
     }
     ctx.restore();
   }
 
-  /** 右上角二维码：清晰绘制，保证手机可扫 */
-  function drawSharpQr(ctx, x, y, size, qrImg, seed) {
+  /** 去掉替换图四周大块白边，避免二维码被缩到扫不出来 */
+  function trimQrBlockImage(img, padPx) {
+    var nw = img.naturalWidth || img.width || 0;
+    var nh = img.naturalHeight || img.height || 0;
+    if (!nw || !nh) return null;
+    var src = document.createElement('canvas');
+    src.width = nw;
+    src.height = nh;
+    var sctx = src.getContext('2d');
+    if (!sctx) return img;
+    sctx.fillStyle = '#fff';
+    sctx.fillRect(0, 0, nw, nh);
+    sctx.drawImage(img, 0, 0);
+    var data;
+    try {
+      data = sctx.getImageData(0, 0, nw, nh).data;
+    } catch (eTrim) {
+      return img;
+    }
+    var minX = nw;
+    var minY = nh;
+    var maxX = -1;
+    var maxY = -1;
+    var x;
+    var y;
+    var i;
+    for (y = 0; y < nh; y++) {
+      for (x = 0; x < nw; x++) {
+        i = (y * nw + x) * 4;
+        if (data[i] < 240 || data[i + 1] < 240 || data[i + 2] < 240) {
+          if (x < minX) minX = x;
+          if (y < minY) minY = y;
+          if (x > maxX) maxX = x;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+    if (maxX < 0) return null;
+    padPx = padPx == null ? 8 : padPx;
+    minX = Math.max(0, minX - padPx);
+    minY = Math.max(0, minY - padPx);
+    maxX = Math.min(nw - 1, maxX + padPx);
+    maxY = Math.min(nh - 1, maxY + padPx);
+    var tw = maxX - minX + 1;
+    var th = maxY - minY + 1;
+    if (tw >= nw * 0.92 && th >= nh * 0.92) return img;
+    var out = document.createElement('canvas');
+    out.width = tw;
+    out.height = th;
+    var octx = out.getContext('2d');
+    if (!octx) return img;
+    octx.fillStyle = '#fff';
+    octx.fillRect(0, 0, tw, th);
+    octx.drawImage(src, minX, minY, tw, th, 0, 0, tw, th);
+    return out;
+  }
+
+  /** 管理后台整块替换：二维码 +「查询验证码」+ 验证码文字 */
+  function drawQrVerifyBlock(ctx, x, y, width, blockImg) {
+    if (!blockImg || !blockImg.complete || !blockImg.naturalWidth) return false;
+    var src = trimQrBlockImage(blockImg, 8) || blockImg;
+    var nw = src.naturalWidth || src.width;
+    var nh = src.naturalHeight || src.height;
+    if (!nw || !nh) return false;
+    var h = Math.max(1, Math.round((width * nh) / nw));
     ctx.save();
     ctx.fillStyle = '#fff';
-    ctx.fillRect(x, y, size, size);
-    ctx.imageSmoothingEnabled = false;
-    if (qrImg && qrImg.complete && qrImg.naturalWidth) {
-      ctx.drawImage(qrImg, x, y, size, size);
-    } else {
-      drawQr(ctx, x, y, size, seed);
+    ctx.fillRect(x, y, width, h);
+    ctx.imageSmoothingEnabled = true;
+    if (typeof ctx.imageSmoothingQuality === 'string') {
+      ctx.imageSmoothingQuality = 'high';
     }
+    ctx.drawImage(src, x, y, width, h);
     ctx.restore();
+    return true;
+  }
+
+  /** 自定义替换图若是纯白，视为无效，回退去生成可扫码 */
+  function imageHasInk(img) {
+    if (!img || !(img.naturalWidth || img.width)) return false;
+    try {
+      var w = Math.max(1, Math.min(160, img.naturalWidth || img.width));
+      var h = Math.max(1, Math.min(160, img.naturalHeight || img.height));
+      var c = document.createElement('canvas');
+      c.width = w;
+      c.height = h;
+      var ctx = c.getContext('2d');
+      if (!ctx) return true;
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      var data = ctx.getImageData(0, 0, w, h).data;
+      var ink = 0;
+      var n = w * h;
+      var i;
+      for (i = 0; i < data.length; i += 4) {
+        if (data[i] < 240 || data[i + 1] < 240 || data[i + 2] < 240) ink++;
+      }
+      return ink / n >= 0.015;
+    } catch (eInk) {
+      return true;
+    }
+  }
+
+  function loadImageUrl(src) {
+    return new Promise(function (resolve) {
+      var url = cleanText(src);
+      if (!url) {
+        resolve(null);
+        return;
+      }
+      var img = new Image();
+      img.onload = function () {
+        resolve(img);
+      };
+      img.onerror = function () {
+        resolve(null);
+      };
+      img.src = url;
+    });
+  }
+
+  function resolveCertAssetUrl(raw) {
+    var s = cleanText(raw);
+    if (!s) return '';
+    if (/^https?:\/\//i.test(s) || s.indexOf('data:') === 0) return s;
+    if (s.charAt(0) === '/') return s;
+    return '/' + s.replace(/^\/+/, '');
   }
 
   function certificatePublicOrigin() {
@@ -1101,24 +1917,17 @@
 
   function buildCertificateVerifyUrl(app) {
     var code = queryCode(app);
+    /* 首页扫一扫 parseTaxQrPayload 识别本 URL / 16 位 code；只带验证码，缩短 payload → 更少模块 */
     try {
       var u = new URL('najilu.html', certificatePublicOrigin() + '/');
       u.searchParams.set('view', 'verify');
       u.searchParams.set('code', code);
-      if (app && app.id) {
-        u.searchParams.set('id', String(app.id));
-      }
-      if (app && app.record_no) {
-        u.searchParams.set('record', String(app.record_no));
-      }
       return u.href;
     } catch (e1) {
       return (
         certificatePublicOrigin() +
         '/najilu.html?view=verify&code=' +
-        encodeURIComponent(code) +
-        (app && app.id ? '&id=' + encodeURIComponent(String(app.id)) : '') +
-        (app && app.record_no ? '&record=' + encodeURIComponent(String(app.record_no)) : '')
+        encodeURIComponent(code)
       );
     }
   }
@@ -1167,25 +1976,120 @@
     return h;
   }
 
-  function drawCertificateTitleFallback(ctx, centerX, certTitleFont) {
+  function drawCertificateTitleFallback(ctx, centerX, certTitleFont, isContinuation) {
     drawText(ctx, '◉', centerX, 72, { size: 40, color: '#b92828', align: 'center' });
     drawText(ctx, '中华人民共和国', centerX, 138, { size: 26, align: 'center', font: certTitleFont });
-    drawText(ctx, '个人所得税纳税记录', centerX, 166, { size: 30, align: 'center', font: certTitleFont });
-    drawText(ctx, '（原《税收完税证明》）', centerX, 188, { size: 16, align: 'center', font: certTitleFont });
-    return 188;
+    drawText(
+      ctx,
+      isContinuation ? '个人所得税纳税记录（续）' : '个人所得税纳税记录',
+      centerX,
+      166,
+      { size: 30, align: 'center', font: certTitleFont }
+    );
+    if (!isContinuation) {
+      drawText(ctx, '（原《税收完税证明》）', centerX, 188, { size: 16, align: 'center', font: certTitleFont });
+      return 188;
+    }
+    return 166;
+  }
+
+  /**
+   * 续页页眉：国徽仍用首页素材顶部，标题改为「…（续）」，无「原完税证明」副标题。
+   * 纳税人信息区与表头列与首页一致；右上角不放二维码。
+   */
+  function drawTaxRecordContinuationHeader(ctx, headerImg, centerX, topY, targetW) {
+    var certTitleFont = CERT_BODY_FONT;
+    if (!headerImg || !headerImg.complete || !headerImg.naturalWidth) {
+      return drawCertificateTitleFallback(ctx, centerX, certTitleFont, true);
+    }
+    var maxW = headerImg.naturalWidth * CERT_RENDER_SCALE;
+    var w = Math.min(targetW || headerImg.naturalWidth, maxW);
+    /* 原图约 305×177：上半为国徽，约 48% 高度 */
+    var emblemRatio = 0.48;
+    var srcH = headerImg.naturalHeight * emblemRatio;
+    var emblemH = (w / headerImg.naturalWidth) * srcH;
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    if (typeof ctx.imageSmoothingQuality === 'string') {
+      ctx.imageSmoothingQuality = 'high';
+    }
+    ctx.drawImage(
+      headerImg,
+      0,
+      0,
+      headerImg.naturalWidth,
+      srcH,
+      centerX - w / 2,
+      topY,
+      w,
+      emblemH
+    );
+    ctx.restore();
+    var textY0 = topY + emblemH + 10;
+    drawText(ctx, '中华人民共和国', centerX, textY0, {
+      size: 26,
+      align: 'center',
+      font: certTitleFont
+    });
+    drawText(ctx, '个人所得税纳税记录（续）', centerX, textY0 + 32, {
+      size: 30,
+      align: 'center',
+      font: certTitleFont
+    });
+    return textY0 + 32 - topY;
   }
 
   /** 单页最多显示纳税明细条数（按月份计，超过则分页） */
   var CERT_MAX_ROWS_PER_PAGE = 16;
-  /** 每页表格固定行位（数据不足也占满，版式与满页一致） */
+  /** 每页最多行位；实际高度按本页数据行收缩，合计紧贴末行 */
   var CERT_TABLE_BODY_SLOTS = 16;
   var CERT_TABLE_HEADER_H = 44;
   var CERT_TABLE_TOTAL_ROW_H = 40;
   var CERT_TABLE_ROW_H = 56;
-  var CERT_FOOTER_BLOCK_H = 292;
+  var CERT_FOOTER_BLOCK_H = 236;
+  /** 金额合计与说明之间的最小空白（正版合计下先留白，说明贴页底） */
+  var CERT_EXPLAIN_GAP_MIN = 168;
+  /** 短表时整页最小高度，避免说明紧贴合计 */
+  var CERT_PAGE_MIN_H = 1754;
   var CERT_BODY_FONT = 'SimSun, STSong, serif';
   /** 导出倍率：2x 画布提升文字、表格线与公章锐度（逻辑坐标不变） */
   var CERT_RENDER_SCALE = 2;
+  var CERT_TABLE_LINE = '#333';
+  var CERT_TABLE_LINE_W = 1;
+
+  function strokeCertLine(ctx, x1, y1, x2, y2) {
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
+
+  /** 表头格子 + 整表最外框（明细行不画内格） */
+  function drawCertTableFrame(ctx, x0, y0, tableW, headerH, cols, tableBottom) {
+    if (!(tableBottom > y0) || !(tableW > 0)) return;
+    ctx.save();
+    ctx.strokeStyle = CERT_TABLE_LINE;
+    ctx.lineWidth = CERT_TABLE_LINE_W;
+    ctx.strokeRect(x0, y0, tableW, tableBottom - y0);
+    strokeCertLine(ctx, x0, y0 + headerH, x0 + tableW, y0 + headerH);
+    var x = x0;
+    var i;
+    for (i = 0; i < cols.length - 1; i++) {
+      x += cols[i];
+      strokeCertLine(ctx, x, y0, x, y0 + headerH);
+    }
+    ctx.restore();
+  }
+
+  /** 金额合计行顶线；左右底边由最外框承担 */
+  function drawCertTotalRowLines(ctx, x0, footY, tableW, tableBottom) {
+    if (!(tableBottom > footY) || !(tableW > 0)) return;
+    ctx.save();
+    ctx.strokeStyle = CERT_TABLE_LINE;
+    ctx.lineWidth = CERT_TABLE_LINE_W;
+    strokeCertLine(ctx, x0, footY, x0 + tableW, footY);
+    ctx.restore();
+  }
 
   function createCertCanvas(logicalWidth, logicalHeight) {
     var scale = CERT_RENDER_SCALE;
@@ -1225,16 +2129,40 @@
     var showStamp = Object.prototype.hasOwnProperty.call(options, 'showStamp')
       ? options.showStamp === true
       : shouldShowClientStamp();
+    if (options.query_code) {
+      app = Object.assign({}, app, { query_code: options.query_code });
+    }
+    var needUnlock =
+      isNajiluPage() &&
+      appHasCustomQr(app) &&
+      !Object.prototype.hasOwnProperty.call(options, 'demoWatermark') &&
+      najiluQrUnlockedCache === null;
+    var unlockReady = needUnlock ? ensureNajiluQrUnlockStatus() : Promise.resolve();
+    return unlockReady.then(function () {
+      return renderCertificateDataUrlAfterUnlock(app, options, showStamp);
+    });
+  }
+
+  function renderCertificateDataUrlAfterUnlock(app, options, showStamp) {
+    var demoWatermark = shouldWatermarkCustomQr(app, options);
     var verifyCode = queryCode(app);
     var verifyUrl = buildCertificateVerifyUrl(app);
+    var qrBlockUrl = resolveCertAssetUrl(
+      options.qr_block_image_url || options.qrBlockImageUrl || (app && app.qr_block_image_url) || ''
+    );
+    var qrOnlyUrl = resolveCertAssetUrl(
+      options.qr_image_url || options.qrImageUrl || (app && app.qr_image_url) || ''
+    );
 
-    function paintCertificatePage(pageRows, pageNum, pageCount, allRows, qrImg, headerImg) {
+    function paintCertificatePage(pageRows, pageNum, pageCount, allRows, qrImg, headerImg, qrBlockImg, stampImg) {
       var isLastPage = pageNum === pageCount;
+      var isFirstPage = pageNum === 1;
       var rows = pageRows;
       var width = 1240;
       var rowH = CERT_TABLE_ROW_H;
       var certTitleFont = CERT_BODY_FONT;
       var certHeaderTop = 8;
+      /* 续页与首页共用同一表头占位高度，纳税人信息/表格列起点与首页一致 */
       var headerBlockH = taxRecordHeaderDisplayHeight(headerImg, CERT_HEADER_DISPLAY_W);
       var certInfoY0 = headerBlockH
         ? certHeaderTop + headerBlockH + 12
@@ -1243,14 +2171,17 @@
       var x0 = 72;
       var y0 = certInfoY0 + certInfoLine * 2 + 28;
       var tableW = width - x0 * 2;
-      var tableBodySlots = CERT_TABLE_BODY_SLOTS;
+      var tableBodySlots = Math.max(1, Math.min(CERT_TABLE_BODY_SLOTS, rows.length));
       var tableBodyH = tableBodySlots * rowH;
       var tableFootH = isLastPage ? CERT_TABLE_TOTAL_ROW_H : 0;
       var tableTotalH = CERT_TABLE_HEADER_H + tableBodyH + tableFootH;
       var footY = y0 + CERT_TABLE_HEADER_H + tableBodyH;
-      var explainY = y0 + tableTotalH + 48;
-      var height = explainY + CERT_FOOTER_BLOCK_H;
-      var dataRowsOnPage = rows.length;
+      var tableBottom = y0 + tableTotalH;
+      var explainY = Math.max(
+        tableBottom + CERT_EXPLAIN_GAP_MIN,
+        CERT_PAGE_MIN_H - CERT_FOOTER_BLOCK_H
+      );
+      var height = Math.max(explainY + CERT_FOOTER_BLOCK_H, CERT_PAGE_MIN_H);
       var renderScale = CERT_RENDER_SCALE;
       var canvas = document.createElement('canvas');
       canvas.width = Math.round(width * renderScale);
@@ -1270,23 +2201,37 @@
         size: 16,
         font: certTitleFont
       });
-      if (!drawTaxRecordHeader(ctx, headerImg, width / 2, certHeaderTop, CERT_HEADER_DISPLAY_W)) {
-        drawCertificateTitleFallback(ctx, width / 2, certTitleFont);
+      if (isFirstPage) {
+        if (!drawTaxRecordHeader(ctx, headerImg, width / 2, certHeaderTop, CERT_HEADER_DISPLAY_W)) {
+          drawCertificateTitleFallback(ctx, width / 2, certTitleFont, false);
+        }
+        /* 仅首页右上角二维码 + 查询验证码；续页不画码，表头字段与首页一致 */
+        var usedBlock = drawQrVerifyBlock(ctx, width - 257, 42, 185, qrBlockImg);
+        if (!usedBlock) {
+          drawSharpQr(ctx, width - 257, 42, 185, qrImg);
+          drawText(ctx, '查询验证码', width - 164, 248, { size: 22, align: 'center', color: '#555' });
+          drawText(ctx, queryCodeLine(verifyCode, 0, 3), width - 164, 288, {
+            size: 26,
+            align: 'center',
+            color: '#222',
+            font: 'sans-serif'
+          });
+          drawText(ctx, queryCodeLine(verifyCode, 12, 1), width - 164, 328, {
+            size: 26,
+            align: 'center',
+            color: '#222',
+            font: 'sans-serif'
+          });
+        }
+      } else {
+        drawTaxRecordContinuationHeader(
+          ctx,
+          headerImg,
+          width / 2,
+          certHeaderTop,
+          CERT_HEADER_DISPLAY_W
+        );
       }
-      drawSharpQr(ctx, width - 257, 42, 185, qrImg, app.id + verifyCode);
-      drawText(ctx, '查询验证码', width - 164, 248, { size: 22, align: 'center', color: '#555' });
-      drawText(ctx, queryCodeLine(verifyCode, 0, 3), width - 164, 288, {
-        size: 26,
-        align: 'center',
-        color: '#222',
-        font: 'sans-serif'
-      });
-      drawText(ctx, queryCodeLine(verifyCode, 12, 1), width - 164, 328, {
-        size: 26,
-        align: 'center',
-        color: '#222',
-        font: 'sans-serif'
-      });
 
       var name = app.user && app.user.real_name ? app.user.real_name : '';
       var rawTaxId = app.user && app.user.tax_id ? app.user.tax_id : '';
@@ -1314,29 +2259,18 @@
 
       var cols = [145, 145, 145, 170, 150, 220, 85];
       var heads = ['申报日期', '实缴(退)金额', '入(退)库日期', '所得项目', '税款所属期', '入库税务机关', '备注'];
+      var headerTextY = y0 + Math.round(CERT_TABLE_HEADER_H / 2) + 6;
       var xx = x0;
       heads.forEach(function (h, i) {
-        drawText(ctx, h, xx + cols[i] / 2, y0 + 28, { size: 16, align: 'center', color: '#333' });
+        drawText(ctx, h, xx + cols[i] / 2, headerTextY, { size: 16, align: 'center', color: '#333' });
         xx += cols[i];
       });
+      var cellMidY = function (rowTop) {
+        return rowTop + Math.round(rowH / 2) + 6;
+      };
 
       var remarkColW = cols[6];
-      var remarkColX = x0;
-      for (var ci = 0; ci < 6; ci++) remarkColX += cols[ci];
-      var remarks = rows.map(rowRemark);
-      var mergedRemark = null;
-      if (remarks.length > 0) {
-        var remarkFirst = remarks[0];
-        var remarksAllSame = true;
-        for (var ri = 1; ri < remarks.length; ri++) {
-          if (remarks[ri] !== remarkFirst) {
-            remarksAllSame = false;
-            break;
-          }
-        }
-        if (remarksAllSame) mergedRemark = remarkFirst;
-      }
-
+      var pageRemarks = pageRowRemarks(rows);
       function drawRemarkCell(remark, cellX, cellY) {
         var cellPad = 8;
         var maxW = Math.max(24, remarkColW - cellPad);
@@ -1353,7 +2287,8 @@
       }
 
       rows.forEach(function (r, idx) {
-        var y = y0 + 44 + idx * rowH;
+        var y = y0 + CERT_TABLE_HEADER_H + idx * rowH;
+        var midY = cellMidY(y);
         var vals = [
           displayReportDateFromRecord(r),
           money(r.tax_reported),
@@ -1361,100 +2296,139 @@
           displayIncomeTypeForCert(r),
           displayTaxPeriodFromRecord(r),
           r.tax_authority || '',
-          rowRemark(r)
+          pageRemarks[idx] || ''
         ];
         var cx = x0;
         vals.forEach(function (v, i) {
           if (i === 5) {
+            var lines = splitTaxAuthorityLines(v);
             ctx.font = '16px serif';
-            wrapText(ctx, v, cx + 10, y + 25, cols[i] - 18, 22, { size: 16, color: '#333', maxLines: 2 });
-          } else if (i === 6) {
-            if (mergedRemark == null) {
-              drawRemarkCell(v, cx, y + 42);
+            if (lines.length <= 1 && ctx.measureText(String(v || '')).width <= cols[i] - 12) {
+              drawText(ctx, v, cx + cols[i] / 2, midY, { size: 16, align: 'center', color: '#333' });
+            } else {
+              if (lines.length < 2) {
+                wrapText(ctx, v, cx + cols[i] / 2, y + 22, cols[i] - 16, 20, {
+                  size: 15,
+                  color: '#333',
+                  maxLines: 2,
+                  align: 'center'
+                });
+              } else {
+                drawText(ctx, lines[0], cx + cols[i] / 2, y + 22, {
+                  size: 15,
+                  align: 'center',
+                  color: '#333'
+                });
+                drawText(ctx, lines[1], cx + cols[i] / 2, y + 42, {
+                  size: 15,
+                  align: 'center',
+                  color: '#333'
+                });
+              }
             }
+          } else if (i === 6) {
+            drawRemarkCell(v, cx, midY);
           } else {
-            drawText(ctx, v, cx + cols[i] / 2, y + 42, { size: 16, align: 'center', color: '#333' });
+            drawText(ctx, v, cx + cols[i] / 2, midY, { size: 16, align: 'center', color: '#333' });
           }
           cx += cols[i];
         });
       });
 
-      if (mergedRemark != null && dataRowsOnPage > 0) {
-        var dataBodyMidY = y0 + CERT_TABLE_HEADER_H + (dataRowsOnPage * rowH) / 2 + 10;
-        drawRemarkCell(mergedRemark, remarkColX, dataBodyMidY);
-      }
-
-      ctx.strokeRect(x0, y0, tableW, tableTotalH);
+      drawCertTableFrame(ctx, x0, y0, tableW, CERT_TABLE_HEADER_H, cols, tableBottom);
       if (isLastPage) {
         var total = allRows.reduce(function (sum, r) {
           return sum + Number(r.tax_reported || 0);
         }, 0);
+        drawCertTotalRowLines(ctx, x0, footY, tableW, tableBottom);
         drawText(ctx, '金额合计', x0 + cols[0] / 2, footY + 26, { size: 16, align: 'center' });
         drawText(ctx, rmbUpper(total), x0 + cols[0] + 28, footY + 26, { size: 16 });
       }
 
       ctx.beginPath();
-      ctx.moveTo(x0, explainY - 28);
-      ctx.lineTo(width - x0, explainY - 28);
+      ctx.moveTo(x0, explainY - 18);
+      ctx.lineTo(width - x0, explainY - 18);
       ctx.stroke();
-      drawText(ctx, '说明：', 90, explainY, { size: 18, color: '#555' });
-      drawText(ctx, '1.本记录涉及纳税人敏感信息，请妥善保存。', 90, explainY + 42, { size: 16, color: '#999' });
-      drawText(ctx, '2.您可以通过以下方式对本记录进行验证：', 90, explainY + 76, { size: 16, color: '#999' });
-      drawText(ctx, '（1）通过手机App扫描右上角二维码进行验证；', 112, explainY + 110, { size: 16, color: '#999' });
-      drawText(ctx, '（2）通过自然人电子税务局输入右上角查询验证码进行验证；', 112, explainY + 144, { size: 16, color: '#999' });
-      drawText(ctx, '3.不同打印设备造成的色差不影响使用效力。', 90, explainY + 178, { size: 16, color: '#999' });
-      drawText(ctx, '本凭证不作为纳税人记账、抵扣凭证', 90, explainY + 232, { size: 20, color: '#555' });
-      drawText(ctx, '开具机关（盖章）', width - 430, explainY + 138, { size: 20, color: '#555' });
-      drawText(ctx, '开具时间： ' + formatDateCn(app.apply_time, app.period_end), width - 430, explainY + 212, { size: 20, color: '#555' });
-      drawText(ctx, '当前第' + pageNum + '页，共' + pageCount + '页', width - 230, explainY + 268, {
-        size: 18,
+      drawText(ctx, '说明：', 90, explainY, { size: 17, color: '#444' });
+      drawText(ctx, '1.本记录涉及纳税人敏感信息，请妥善保存。', 90, explainY + 28, { size: 15, color: '#666' });
+      drawText(ctx, '2.您可以通过以下方式对本记录进行验证：', 90, explainY + 52, { size: 15, color: '#666' });
+      drawText(ctx, '（1）通过手机App扫描右上角二维码进行验证；', 112, explainY + 76, { size: 15, color: '#666' });
+      drawText(ctx, '（2）通过自然人电子税务局输入右上角查询验证码进行验证；', 112, explainY + 100, { size: 15, color: '#666' });
+      drawText(ctx, '3.不同打印设备造成的色差不影响使用效力。', 90, explainY + 124, { size: 15, color: '#666' });
+      drawText(ctx, '本凭证不作为纳税人记账、抵扣凭证。', 90, explainY + 162, { size: 18, color: '#444' });
+      drawText(ctx, '开具机关（盖章）', width - 430, explainY + 96, { size: 18, color: '#444' });
+      drawText(ctx, '开具时间： ' + formatDateCn(app.apply_time, app.period_end), width - 430, explainY + 168, { size: 18, color: '#444' });
+      drawText(ctx, '当前第' + pageNum + '页，共' + pageCount + '页', width - 230, explainY + 210, {
+        size: 17,
         color: '#555'
       });
       if (showStamp) {
-        /* 压住「盖章」，底缘贴近开具时间，对齐官方电子章 */
-        drawStamp(ctx, width - 238, explainY + 122, stampAuthority(allRows));
+        /* 压住「开具机关（盖章）」与开具时间：单圈 + 上弧机关名 + 业务专用章 */
+        drawStamp(
+          ctx,
+          width - 300,
+          explainY + 100,
+          resolveStampAuthority(allRows, app),
+          stampImg
+        );
+      }
+      if (demoWatermark) {
+        drawDemoSampleWatermark(ctx, width, height);
       }
       return canvas.toDataURL('image/png');
     }
 
-    function paintAllPages(qrImg, headerImg) {
+    function paintAllPages(qrImg, headerImg, qrBlockImg, stampImg) {
       var allRows = normalizeRecords(app.records || []);
       var pageChunks = chunkRecords(allRows, CERT_MAX_ROWS_PER_PAGE);
       return pageChunks.map(function (pageRows, idx) {
-        return paintCertificatePage(pageRows, idx + 1, pageChunks.length, allRows, qrImg, headerImg);
+        return paintCertificatePage(
+          pageRows,
+          idx + 1,
+          pageChunks.length,
+          allRows,
+          qrImg,
+          headerImg,
+          qrBlockImg,
+          stampImg
+        );
       });
     }
 
     return loadTaxRecordHeader().then(function (headerImg) {
-      if (typeof QRCode === 'undefined' || typeof QRCode.toDataURL !== 'function') {
-        return paintAllPages(null, headerImg);
+      function finishWithQr(qrImg, qrBlockImg) {
+        var stampUrl = showStamp ? resolveStampImageUrl(app) : '';
+        function paint(stampImg) {
+          var urls = paintAllPages(qrImg, headerImg, qrBlockImg, stampImg || null);
+          return urls.length === 1 ? urls[0] : urls;
+        }
+        if (!stampUrl) return Promise.resolve(paint(null));
+        return loadImageUrl(stampUrl).then(function (stampImg) {
+          return paint(stampImg);
+        });
       }
-      return new Promise(function (resolve) {
-        QRCode.toDataURL(
-          verifyUrl,
-          {
-            width: 185 * CERT_RENDER_SCALE,
-            margin: 1,
-            errorCorrectionLevel: 'H',
-            color: { dark: '#000000', light: '#ffffff' }
-          },
-          function (err, dataUrl) {
-            if (err || !dataUrl) {
-              resolve(paintAllPages(null, headerImg));
-              return;
-            }
-            var img = new Image();
-            img.onload = function () {
-              resolve(paintAllPages(img, headerImg));
-            };
-            img.onerror = function () {
-              resolve(paintAllPages(null, headerImg));
-            };
-            img.src = dataUrl;
-          }
-        );
-      }).then(function (urls) {
-        return urls.length === 1 ? urls[0] : urls;
+
+      if (qrBlockUrl) {
+        return loadImageUrl(qrBlockUrl).then(function (blockImg) {
+          if (blockImg && imageHasInk(blockImg)) return finishWithQr(null, blockImg);
+          /* 整块素材加载失败或纯白时改生成可扫二维码，避免右上角空白 */
+          return makeCertificateQrCanvas(verifyUrl, 185 * CERT_RENDER_SCALE).then(function (qrCanvas) {
+            return finishWithQr(qrCanvas, null);
+          });
+        });
+      }
+
+      if (qrOnlyUrl) {
+        return loadImageUrl(qrOnlyUrl).then(function (customQr) {
+          if (customQr && imageHasInk(customQr)) return finishWithQr(customQr, null);
+          return makeCertificateQrCanvas(verifyUrl, 185 * CERT_RENDER_SCALE).then(function (qrCanvas) {
+            return finishWithQr(qrCanvas, null);
+          });
+        });
+      }
+
+      return makeCertificateQrCanvas(verifyUrl, 185 * CERT_RENDER_SCALE).then(function (qrCanvas) {
+        return finishWithQr(qrCanvas, null);
       });
     });
   }
@@ -1536,7 +2510,7 @@
     function paintAtAngle(angle, ch) {
       ctx.save();
       ctx.translate(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius);
-      ctx.rotate(angle + Math.PI / 2);
+      ctx.rotate(opt.bottomArc ? angle - Math.PI / 2 : angle + Math.PI / 2);
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(ch, 0, 0);
@@ -1585,14 +2559,31 @@
     ctx.restore();
   }
 
-  /** 纳税记录右下角章（标准单圈：细红圆框、上弧机关名、正中「业务专用章」） */
-  function drawStamp(ctx, cx, cy, authority) {
-    var name = authorityToCityStampText(authority) || '国家税务总局深圳市税务局';
-    var stampRed = '#e53935';
-    var radius = 90;
+  /** 纳税记录右下角章：优先叠指定账号实物章图，否则 Canvas 绘制（单圈+上弧机关名+业务专用章） */
+  function drawStamp(ctx, cx, cy, authority, stampImg) {
+    if (stampImg && stampImg.complete && stampImg.naturalWidth) {
+      var size = 188;
+      ctx.save();
+      ctx.globalAlpha = 0.86;
+      if (ctx.globalCompositeOperation) {
+        try {
+          ctx.globalCompositeOperation = 'multiply';
+        } catch (eMul) {}
+      }
+      ctx.drawImage(stampImg, cx - size / 2, cy - size / 2, size, size);
+      ctx.restore();
+      return;
+    }
+    var name =
+      authorityToDistrictStampText(authority) ||
+      cleanText(authority) ||
+      '国家税务总局深圳市税务局';
+    /* 对照官方纳税记录红章：朱红单圈、无星、无底弧编号 */
+    var stampRed = '#d32f2f';
+    var radius = 94;
     var font = 'STSong, SimSun, "Songti SC", "Noto Serif CJK SC", serif';
     ctx.save();
-    ctx.globalAlpha = 0.92;
+    ctx.globalAlpha = 0.76;
     if (ctx.globalCompositeOperation) {
       try {
         ctx.globalCompositeOperation = 'multiply';
@@ -1606,24 +2597,24 @@
     ctx.stroke();
 
     var arcR = radius - 15;
-    var arcSize = name.length > 14 ? 15.5 : name.length >= 13 ? 16.5 : 17.5;
-    var arcGap = name.length > 14 ? 2.4 : name.length >= 13 ? 2.0 : 2.4;
-    drawArcText(ctx, name, cx, cy, arcR, Math.PI * 1.12, Math.PI * 1.88, {
+    var arcSize = name.length > 18 ? 14 : name.length > 14 ? 15.5 : 17;
+    var arcGap = name.length > 18 ? 5.4 : name.length > 14 ? 6.4 : name.length >= 13 ? 9 : 10.5;
+    drawArcText(ctx, name, cx, cy, arcR, Math.PI * 0.95, Math.PI * 2.05, {
       size: arcSize,
       weight: 'bold',
       color: stampRed,
-      strokeWidth: 0.5,
+      strokeWidth: 0.4,
       font: font,
       arcLetterGap: arcGap,
-      maxSpanRad: Math.PI * 0.92
+      maxSpanRad: Math.PI * 1.35
     });
 
-    drawSpacedText(ctx, '业务专用章', cx, cy + 8, {
-      size: 18,
+    drawSpacedText(ctx, '业务专用章', cx, cy + 32, {
+      size: 16.5,
       weight: 'bold',
       color: stampRed,
-      letterGap: 5,
-      strokeWidth: 0.4,
+      letterGap: 7.5,
+      strokeWidth: 0.35,
       font: font,
       baseline: 'middle'
     });
@@ -1651,6 +2642,7 @@
       }
       var freshApp = Object.assign({}, app, {
         user: {
+          username: user.username || getUserKey(),
           real_name: user.real_name || getUserKey(),
           tax_id: isDefaultTaxId(user.tax_id) ? '' : (user.tax_id || '')
         },
@@ -1667,13 +2659,34 @@
     if (!app) {
       document.body.innerHTML =
         renderPreviewDetailHeader() + '<div class="empty-records">申请记录不存在</div>';
+      bindPreviewCloseButtons();
       return;
     }
+    var previewUrls = [];
+    var previewApp = null;
     document.body.innerHTML =
       '<div class="preview-page">' +
       renderPreviewDetailHeader() +
-      '<div class="preview-wrap"><div class="empty-records" id="previewLoading">正在生成预览...</div><img id="certificatePreview" class="preview-img" alt="纳税记录" style="display:none;"></div>' +
-      '</div>';
+      '<div class="preview-body">' +
+      '<div class="preview-wrap"><div class="empty-records" id="previewLoading">正在生成预览...</div></div>' +
+      '<div class="preview-pager" id="previewPager" hidden></div>' +
+      '</div>' +
+      '<div class="preview-footer preview-footer--split">' +
+      '<button type="button" class="preview-album-btn" id="btnAddToAlbum">添加到相册</button>' +
+      '<button type="button" class="preview-close-btn" id="btnPreviewClose">关闭</button>' +
+      '</div></div>';
+    bindPreviewCloseButtons();
+    var btnAlbum = document.getElementById('btnAddToAlbum');
+    if (btnAlbum) {
+      btnAlbum.onclick = function (e) {
+        e.preventDefault();
+        if (!previewUrls.length || !previewApp) {
+          shareCertificateImages([], null);
+          return;
+        }
+        shareCertificateImages(previewUrls, previewApp);
+      };
+    }
     applicationWithCurrentData(app)
       .then(function (freshApp) {
         return renderCertificateDataUrl(freshApp).then(function (url) {
@@ -1684,10 +2697,18 @@
         var wrap = document.querySelector('.preview-wrap');
         var loading = document.getElementById('previewLoading');
         if (loading) loading.style.display = 'none';
+        previewUrls = Array.isArray(ret.url) ? ret.url : [ret.url];
+        previewApp = ret.app;
         if (wrap) {
-          var urls = Array.isArray(ret.url) ? ret.url : [ret.url];
-          wrap.innerHTML = certificateImageHtml(urls[0], 'preview-img', '纳税记录');
+          wrap.innerHTML = certificateImageHtml(previewUrls, 'preview-img', '纳税记录');
         }
+        var pager = document.getElementById('previewPager');
+        if (pager && previewUrls.length) {
+          pager.hidden = false;
+          pager.textContent =
+            previewUrls.length === 1 ? '1 / 1' : '共 ' + previewUrls.length + ' 页';
+        }
+        if (btnAlbum) btnAlbum.disabled = false;
       })
       .catch(function (err) {
         var loading = document.getElementById('previewLoading');
@@ -1724,7 +2745,7 @@
     }
     fetch('api/tax?' + qs)
       .then(function (r) {
-        return r.json();
+        return window.authParseJson(r);
       })
       .then(function (j) {
         var mount = document.getElementById('verifyMount');
@@ -1951,6 +2972,8 @@
       id: issue.id ? String(issue.id) : 'admin_' + String(user.username || 'user'),
       record_no: issue.record_no ? String(issue.record_no) : '',
       query_code: issue.query_code ? String(issue.query_code) : '',
+      qr_image_url: issue.qr_image_url ? String(issue.qr_image_url) : '',
+      qr_block_image_url: issue.qr_block_image_url ? String(issue.qr_block_image_url) : '',
       apply_time: applyTime,
       apply_date_compact: compactDate(new Date(applyTime.replace(/-/g, '/') || Date.now())),
       period_start: periodStart,
@@ -1958,6 +2981,7 @@
       scope: issue.scope ? String(issue.scope) : '全国',
       status: issue.status ? String(issue.status) : '制作成功',
       user: {
+        username: user.username || '',
         real_name: user.real_name || user.username || '',
         tax_id: user.user_tax_id || user.tax_id || ''
       },
@@ -1972,10 +2996,23 @@
 
   window.TaxIssueCertificate = {
     renderDataUrl: renderCertificateDataUrl,
-    buildAppFromAdminDetail: buildAppFromAdminDetail
+    buildAppFromAdminDetail: buildAppFromAdminDetail,
+    isClientAccountActive: isClientAccountActive,
+    shouldGuideInactiveGenerate: function () {
+      return !isClientAccountActive();
+    },
+    shouldGuideFirstGenerateQr: shouldGuideFirstGenerateQr,
+    najiluQrReplaceHref: najiluQrReplaceHref,
+    showInactiveGenerateGuide: showInactiveGenerateGuide,
+    showFirstGenerateQrGuide: showFirstGenerateQrGuide,
+    imageHasInk: imageHasInk,
+    authorityToDistrictStampText: authorityToDistrictStampText,
+    stampAuthority: stampAuthority
   };
 
   if (isNajiluPage()) {
+    removeQrReplaceHeaderLink();
+    ensureNajiluQrUnlockStatus();
     var view = getParam('view');
     if (view === 'records') {
       renderApplicationsPage();

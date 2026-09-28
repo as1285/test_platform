@@ -35,7 +35,7 @@ function maxPerFpDay() {
 
 /** 每分钟注册突发上限 */
 function burstPerMinute() {
-  return envInt('REGISTER_BURST_PER_MINUTE', 8, 60);
+  return envInt('REGISTER_BURST_PER_MINUTE', 5, 60);
 }
 
 /** 注册失败退避基准毫秒 */
@@ -122,16 +122,14 @@ function isDistributorCordovaUserAgent(req) {
   return CORDOVA_UA_RE.test(ua) && DISTRIBUTOR_UA_RE.test(ua);
 }
 
-/** 拦截分发端非法注册 */
+/**
+ * 代理版 / 分发端 App 注册门禁（已关闭）。
+ * 历史：带 TaxPlatformDistributor UA 的 Cordova 壳曾禁止 App 内自助注册。
+ * 现允许代理渠道 App 与普通端一样走注册接口；函数保留以便调用方兼容。
+ */
 function checkRegisterDistributorBlock(req) {
-  if (!isDistributorCordovaUserAgent(req)) {
-    return { ok: true };
-  }
-  return {
-    ok: false,
-    reason: 'register_fail:distributor_app',
-    msg: '代理版 App 不支持自助注册，请使用代理提供的注册链接在浏览器中注册，或联系代理开通账号'
-  };
+  void req;
+  return { ok: true };
 }
 
 /** 校验：AppSignHeader */
@@ -281,8 +279,7 @@ function failReasonLabel(reason) {
     'register_fail:rate_ip_day': '本 IP 今日注册已达上限',
     'register_fail:rate_fp_day': '本设备今日注册已达上限',
     'register_fail:backoff': '失败冷却中',
-    'register_fail:invalid_client': '非官方客户端',
-    'register_fail:distributor_app': '代理版 App 不支持自助注册'
+    'register_fail:invalid_client': '非官方客户端'
   };
   return map[r] || '';
 }
@@ -445,19 +442,69 @@ async function countBotPurgeCandidates(conn, criteria) {
 
 /** 删除用户及其关联业务数据 */
 async function deleteUserAndRelated(conn, username) {
-  await conn.execute('DELETE FROM tax_records WHERE user_id = ?', [username]);
-  await conn.execute('DELETE FROM tax_record_change_logs WHERE user_id = ?', [username]);
-  await conn.execute('DELETE FROM user_profile_change_logs WHERE username = ?', [username]);
-  await conn.execute('DELETE FROM tax_issue_applications WHERE user_id = ?', [username]);
-  await conn.execute('DELETE FROM employers WHERE user_id = ?', [username]);
-  await conn.execute('DELETE FROM family_members WHERE user_id = ?', [username]);
-  await conn.execute('DELETE FROM bank_cards WHERE user_id = ?', [username]);
-  await conn.execute('DELETE FROM messages WHERE user_id = ?', [username]);
-  await conn.execute('DELETE FROM user_daily_activity WHERE username = ?', [username]);
-  await conn.execute('DELETE FROM user_login_events WHERE username = ?', [username]);
-  await conn.execute('DELETE FROM user_devices WHERE username = ?', [username]);
-  await conn.execute('DELETE FROM user_page_events WHERE username = ?', [username]);
-  await conn.execute('DELETE FROM users WHERE username = ?', [username]);
+  var u = String(username || '').trim();
+  if (!u) return;
+  /* 客服会话：先删消息再删会话 */
+  try {
+    const [convs] = await conn.execute('SELECT id FROM chat_conversations WHERE user_id = ?', [u]);
+    for (var ci = 0; ci < (convs || []).length; ci++) {
+      var cid = convs[ci].id;
+      await conn.execute('DELETE FROM chat_messages WHERE conversation_id = ?', [cid]);
+    }
+    await conn.execute('DELETE FROM chat_conversations WHERE user_id = ?', [u]);
+  } catch (chatErr) {
+    /* 表可能不存在于旧库 */
+  }
+  await conn.execute('DELETE FROM tax_records WHERE user_id = ?', [u]);
+  await conn.execute('DELETE FROM tax_record_change_logs WHERE user_id = ?', [u]);
+  await conn.execute('DELETE FROM user_profile_change_logs WHERE username = ?', [u]);
+  await conn.execute('DELETE FROM tax_issue_applications WHERE user_id = ?', [u]);
+  try {
+    await conn.execute('DELETE FROM special_deduction_records WHERE user_id = ?', [u]);
+  } catch (e1) {}
+  try {
+    await conn.execute('DELETE FROM shenbao_jilu_records WHERE user_id = ?', [u]);
+  } catch (e2) {}
+  await conn.execute('DELETE FROM employers WHERE user_id = ?', [u]);
+  await conn.execute('DELETE FROM family_members WHERE user_id = ?', [u]);
+  await conn.execute('DELETE FROM bank_cards WHERE user_id = ?', [u]);
+  await conn.execute('DELETE FROM messages WHERE user_id = ?', [u]);
+  try {
+    await conn.execute('DELETE FROM user_feedback WHERE user_id = ?', [u]);
+  } catch (e3) {}
+  try {
+    await conn.execute('DELETE FROM user_rename_credits WHERE username = ?', [u]);
+  } catch (e4) {}
+  try {
+    await conn.execute(
+      'DELETE FROM user_invites WHERE invitee_username = ? OR inviter_username = ?',
+      [u, u]
+    );
+  } catch (e5) {}
+  try {
+    await conn.execute('DELETE FROM payment_orders WHERE username = ?', [u]);
+  } catch (e6) {}
+  try {
+    await conn.execute('DELETE FROM pricing_ab_assignments WHERE username = ?', [u]);
+  } catch (e7) {}
+  try {
+    await conn.execute('DELETE FROM activation_grants WHERE username = ?', [u]);
+  } catch (e8) {}
+  try {
+    await conn.execute('DELETE FROM invite_link_clicks WHERE inviter_username = ?', [u]);
+  } catch (e9) {}
+  await conn.execute('DELETE FROM user_daily_activity WHERE username = ?', [u]);
+  await conn.execute('DELETE FROM user_login_events WHERE username = ?', [u]);
+  await conn.execute('DELETE FROM user_devices WHERE username = ?', [u]);
+  await conn.execute('DELETE FROM user_page_events WHERE username = ?', [u]);
+  /* 激活码保留，仅解除「被谁使用」关联 */
+  try {
+    await conn.execute(
+      'UPDATE activation_codes SET used_by_username = NULL WHERE used_by_username = ?',
+      [u]
+    );
+  } catch (e10) {}
+  await conn.execute('DELETE FROM users WHERE username = ?', [u]);
 }
 
 /** 批量清理/封禁疑似机器人用户 */
@@ -514,6 +561,7 @@ module.exports = {
   looksLikeBotUsername: looksLikeBotUsername,
   countBotPurgeCandidates: countBotPurgeCandidates,
   purgeBotUsersBatch: purgeBotUsersBatch,
+  deleteUserAndRelated: deleteUserAndRelated,
   buildBotPurgeWhere: buildBotPurgeWhere,
   CORDOVA_UA_RE: CORDOVA_UA_RE,
   DISTRIBUTOR_UA_RE: DISTRIBUTOR_UA_RE

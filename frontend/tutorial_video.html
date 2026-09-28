@@ -2,7 +2,8 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260722-fetch-timeout"></script>
+    <script src="/js/auth-boot.js?v=20260902-adopt"></script>
+    <script src="/js/auth.js?v=20260902-adopt" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>操作教程</title>
     <style>
@@ -158,11 +159,6 @@
                 s.src = src;
                 s.type = 'video/mp4';
                 v.appendChild(s);
-                v.addEventListener('play', function () {
-                    if (typeof window.trackPublicAction === 'function') {
-                        window.trackPublicAction('track_tutorial_video_play', { page: 'tutorial_video' });
-                    }
-                }, { once: true });
                 var wrap = document.createElement('div');
                 wrap.className = 'video-wrap';
                 wrap.appendChild(v);
@@ -174,7 +170,7 @@
 
         renderVideo('', '暂未配置操作教程视频');
         fetch('/api/public/mine-ui', { credentials: 'same-origin' })
-            .then(function (r) { return r.json(); })
+            .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
             .then(function (body) {
                 if (!body || body.code !== 200 || !body.data) {
                     return;

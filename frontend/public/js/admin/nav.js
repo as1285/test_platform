@@ -3,6 +3,8 @@
  */
 (function (global) {
   var cachedTree = null;
+  var cachedHubs = null;
+  var selectedCommandIndex = 0;
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -12,12 +14,53 @@
       .replace(/"/g, '&quot;');
   }
 
+  function sanitizeMenuTree(tree) {
+    if (!Array.isArray(tree)) return [];
+    return tree
+      .map(function (g) {
+        var items = (Array.isArray(g.items) ? g.items : []).filter(function (it) {
+          return it && String(it.page || '') !== 'analytics-register';
+        });
+        return Object.assign({}, g, { items: items });
+      })
+      .filter(function (g) {
+        return g.items && g.items.length;
+      });
+  }
+
   function setMenuTree(tree) {
-    cachedTree = Array.isArray(tree) ? tree : [];
+    cachedTree = sanitizeMenuTree(tree);
+    if (isCommandOpen()) renderCommandResults();
+  }
+
+  function setHubs(hubs) {
+    cachedHubs = hubs && typeof hubs === 'object' ? hubs : null;
+    if (isCommandOpen()) renderCommandResults();
   }
 
   function getMenuTree() {
     return cachedTree || [];
+  }
+
+  function navItemButton(it, activePage, extraClass) {
+    var page = String(it.page || '');
+    var active = page === activePage ? ' active' : '';
+    return (
+      '<button type="button" class="nav-item' +
+      (extraClass ? ' ' + extraClass : '') +
+      active +
+      '" data-page="' +
+      esc(page) +
+      '" data-title="' +
+      esc(it.label || page) +
+      '" data-module="' +
+      esc(it.module || '') +
+      '"' +
+      (active ? ' aria-current="page"' : '') +
+      '>' +
+      esc(it.label || page) +
+      '</button>'
+    );
   }
 
   function renderSidebar(navEl, tree, activePage) {
@@ -27,32 +70,55 @@
     groups.forEach(function (g) {
       var items = Array.isArray(g.items) ? g.items : [];
       if (!items.length) return;
+      if (items.length === 1) {
+        html += navItemButton(items[0], activePage, 'nav-item--root');
+        return;
+      }
       var gid = String(g.id || 'g');
-      html += '<div class="nav-group" data-nav-group="' + esc(gid) + '">';
+      var hasActive = items.some(function (it) {
+        return String(it.page || '') === activePage;
+      });
+      var collapsed = !hasActive;
+      try {
+        var saved = sessionStorage.getItem('admin_nav_' + gid);
+        if (saved === '1') collapsed = false;
+        if (saved === '0') collapsed = true;
+        if (hasActive) collapsed = false;
+      } catch (e0) {}
       html +=
-        '<button type="button" class="nav-group-label" aria-expanded="true">' +
+        '<div class="nav-group' +
+        (collapsed ? ' is-collapsed' : '') +
+        '" data-nav-group="' +
+        esc(gid) +
+        '">';
+      html +=
+        '<button type="button" class="nav-group-label" aria-expanded="' +
+        (collapsed ? 'false' : 'true') +
+        '">' +
         esc(g.label || gid) +
         '</button>';
       html += '<div class="nav-group-items">';
       items.forEach(function (it) {
-        var page = String(it.page || '');
-        var active = page === activePage ? ' active' : '';
-        html +=
-          '<button type="button" class="nav-item' +
-          active +
-          '" data-page="' +
-          esc(page) +
-          '" data-title="' +
-          esc(it.label || page) +
-          '" data-module="' +
-          esc(it.module || '') +
-          '">' +
-          esc(it.label || page) +
-          '</button>';
+        html += navItemButton(it, activePage);
       });
       html += '</div></div>';
     });
     navEl.innerHTML = html;
+  }
+
+  function goToPage(p) {
+    p = String(p || '').replace(/^#/, '').trim();
+    if (!p) return;
+    if (typeof global.goAdminPage === 'function') {
+      global.goAdminPage(p);
+      return;
+    }
+    var cur = String(location.hash || '').replace(/^#/, '');
+    if (cur === p && typeof global.applyAdminRoute === 'function') {
+      global.applyAdminRoute({ force: true });
+      return;
+    }
+    location.hash = p;
   }
 
   function bindNavClicks(navEl) {
@@ -62,14 +128,424 @@
       var btn = ev.target && ev.target.closest ? ev.target.closest('.nav-item') : null;
       if (!btn || !navEl.contains(btn)) return;
       var p = btn.getAttribute('data-page');
-      if (p) location.hash = p;
+      if (p) {
+        goToPage(p);
+        closeSidebar();
+      }
+    });
+  }
+
+  function flattenTree() {
+    var out = [];
+    var seen = Object.create(null);
+    getMenuTree().forEach(function (group) {
+      (group.items || []).forEach(function (item) {
+        var page = String(item.page || '');
+        if (!page || seen[page]) return;
+        seen[page] = 1;
+        out.push({
+          page: page,
+          label: String(item.label || page),
+          group: String(group.label || ''),
+          groupId: String(group.id || '')
+        });
+      });
+    });
+    var hubs = cachedHubs || {};
+    getMenuTree().forEach(function (group) {
+      (group.items || []).forEach(function (item) {
+        var hubKey = String(item.page || '');
+        var def = hubs[hubKey];
+        if (!def || !Array.isArray(def.tabs)) return;
+        def.tabs.forEach(function (tab) {
+          if (!tab || !tab.id) return;
+          if (
+            typeof global.adminCanSeeHubTab === 'function' &&
+            !global.adminCanSeeHubTab(hubKey, tab.page)
+          ) {
+            return;
+          }
+          var hash = tab.id === def.defaultTab ? hubKey : hubKey + '/' + tab.id;
+          if (seen[hash]) return;
+          seen[hash] = 1;
+          out.push({
+            page: hash,
+            label: String(tab.label || tab.id),
+            group: String(item.label || group.label || ''),
+            groupId: String(group.id || '')
+          });
+        });
+      });
+    });
+    return out;
+  }
+
+  function findPage(page) {
+    var key = String(page || '').replace(/^#/, '');
+    var list = flattenTree();
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].page === key) return list[i];
+    }
+    return null;
+  }
+
+  function setActivePage(page) {
+    var key = String(page || '').replace(/^#/, '');
+    document.querySelectorAll('.nav-item').forEach(function (btn) {
+      var active = btn.getAttribute('data-page') === key;
+      btn.classList.toggle('active', active);
+      if (active) btn.setAttribute('aria-current', 'page');
+      else btn.removeAttribute('aria-current');
+    });
+    var current = findPage(key);
+    var groupLabel = document.getElementById('pageGroupLabel');
+    if (groupLabel) groupLabel.textContent = current ? current.group : '管理后台';
+    renderPageOutline(key);
+  }
+
+  function renderPageOutline(page) {
+    /* 已下线：页内「本页」锚点条占用版面，且会把 hidden 区块算进导航 */
+    document.querySelectorAll('.page-outline').forEach(function (el) {
+      el.remove();
+    });
+    var panel = document.getElementById('page-' + page);
+    if (!panel) return;
+    var sections = Array.prototype.slice.call(panel.children).filter(function (el) {
+      if (el.tagName !== 'SECTION' || !el.querySelector('h2')) return false;
+      if (el.hidden || el.getAttribute('aria-hidden') === 'true') return false;
+      if (el.hasAttribute('hidden')) return false;
+      var style = window.getComputedStyle ? window.getComputedStyle(el) : null;
+      if (style && style.display === 'none') return false;
+      return true;
+    });
+    enhanceSectionDensity(page, sections);
+  }
+
+  function enhanceSectionDensity(page, sections) {
+    /* 旧「转化概览」页已并入运营看板；密度折叠逻辑不再需要 */
+  }
+
+  function isCommandOpen() {
+    var command = document.getElementById('adminCommand');
+    return !!(command && !command.hidden);
+  }
+
+  function commandMatches(item, query) {
+    if (!query) return true;
+    var haystack = (item.label + ' ' + item.group + ' ' + item.page).toLowerCase();
+    return query
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(Boolean)
+      .every(function (word) {
+        return haystack.indexOf(word) >= 0;
+      });
+  }
+
+  var commandUserResults = [];
+  var commandUserTimer = 0;
+  var commandUserSeq = 0;
+
+  function isAccountQuery(query) {
+    var q = String(query || '').trim();
+    if (q.length < 4) return false;
+    if (/^\d{4,}$/.test(q)) return true;
+    return /[0-9]/.test(q) && q.length >= 5;
+  }
+
+  function fetchCommandUsers(query) {
+    var q = String(query || '').trim();
+    if (!isAccountQuery(q) || typeof global.adminFetch !== 'function') {
+      commandUserResults = [];
+      return Promise.resolve([]);
+    }
+    var exact = /^\d{6,}$/.test(q) ? '1' : '0';
+    var seq = ++commandUserSeq;
+    return global
+      .adminFetch(
+        'api/admin/users?username=' +
+          encodeURIComponent(q) +
+          '&exact=' +
+          exact +
+          '&limit=8&page=1'
+      )
+      .then(function (r) {
+        return (global.adminParseJson || function (res) {
+          return res.json();
+        })(r);
+      })
+      .then(function (data) {
+        if (seq !== commandUserSeq) return commandUserResults;
+        var list = (data && data.data && (data.data.users || data.data.list)) || [];
+        commandUserResults = list
+          .map(function (u) {
+            var name = String((u && u.username) || '').trim();
+            return {
+              kind: 'user',
+              username: name,
+              label: name,
+              hint: u && u.account_active ? '已激活' : '未激活',
+              group: '账号'
+            };
+          })
+          .filter(function (it) {
+            return it.username;
+          });
+        return commandUserResults;
+      })
+      .catch(function () {
+        if (seq !== commandUserSeq) return commandUserResults;
+        commandUserResults = [];
+        return [];
+      });
+  }
+
+  function openCommandUser(username) {
+    var name = String(username || '').trim();
+    closeCommand();
+    if (!name) return;
+    if (typeof global.jumpToRegisteredUser === 'function') {
+      global.jumpToRegisteredUser(name);
+      return;
+    }
+    goToPage('users');
+  }
+
+  function renderCommandResults() {
+    var input = document.getElementById('adminCommandInput');
+    var mount = document.getElementById('adminCommandResults');
+    var empty = document.getElementById('adminCommandEmpty');
+    if (!mount) return;
+    var query = input ? input.value.trim() : '';
+    var pages = flattenTree()
+      .filter(function (item) {
+        return commandMatches(item, query);
+      })
+      .map(function (item) {
+        return Object.assign({ kind: 'page' }, item);
+      });
+    var users = query ? commandUserResults.slice() : [];
+    var list = users.concat(pages);
+    if (selectedCommandIndex >= list.length) selectedCommandIndex = Math.max(0, list.length - 1);
+    var lastGroup = null;
+    var html = '';
+    list.forEach(function (item, index) {
+      if (item.group !== lastGroup) {
+        html += '<div class="admin-command-group">' + esc(item.group) + '</div>';
+        lastGroup = item.group;
+      }
+      if (item.kind === 'user') {
+        html +=
+          '<button type="button" class="admin-command-item' +
+          (index === selectedCommandIndex ? ' is-selected' : '') +
+          '" data-command-user="' +
+          esc(item.username) +
+          '" data-command-index="' +
+          index +
+          '"><span>' +
+          esc(item.label) +
+          '</span><small>' +
+          esc(item.hint || '打开') +
+          '</small></button>';
+        return;
+      }
+      html +=
+        '<button type="button" class="admin-command-item' +
+        (index === selectedCommandIndex ? ' is-selected' : '') +
+        '" data-command-page="' +
+        esc(item.page) +
+        '" data-command-index="' +
+        index +
+        '"><span>' +
+        esc(item.label) +
+        '</span><small>进入</small></button>';
+    });
+    mount.innerHTML = html;
+    if (empty) empty.hidden = list.length > 0;
+  }
+
+  function openCommand() {
+    var command = document.getElementById('adminCommand');
+    var input = document.getElementById('adminCommandInput');
+    if (!command || !input) return;
+    selectedCommandIndex = 0;
+    commandUserResults = [];
+    commandUserSeq += 1;
+    command.hidden = false;
+    document.body.classList.add('admin-command-open');
+    input.value = '';
+    renderCommandResults();
+    requestAnimationFrame(function () {
+      input.focus();
+    });
+  }
+
+  function closeCommand() {
+    var command = document.getElementById('adminCommand');
+    if (!command) return;
+    command.hidden = true;
+    document.body.classList.remove('admin-command-open');
+  }
+
+  function navigateCommandSelection() {
+    var selected = document.querySelector('.admin-command-item.is-selected');
+    if (!selected) return;
+    var user = selected.getAttribute('data-command-user');
+    if (user) {
+      openCommandUser(user);
+      return;
+    }
+    var page = selected.getAttribute('data-command-page');
+    closeCommand();
+    if (page) goToPage(page);
+  }
+
+  function openSidebar() {
+    document.body.classList.add('admin-sidebar-open');
+    var toggle = document.getElementById('adminSidebarToggle');
+    if (toggle) toggle.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeSidebar() {
+    document.body.classList.remove('admin-sidebar-open');
+    var toggle = document.getElementById('adminSidebarToggle');
+    if (toggle) toggle.setAttribute('aria-expanded', 'false');
+  }
+
+  function toggleSidebar() {
+    if (global.matchMedia && global.matchMedia('(max-width: 900px)').matches) {
+      if (document.body.classList.contains('admin-sidebar-open')) closeSidebar();
+      else openSidebar();
+      return;
+    }
+    var collapsed = document.body.classList.toggle('admin-sidebar-collapsed');
+    var toggle = document.getElementById('adminSidebarToggle');
+    if (toggle) toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    try {
+      localStorage.setItem('admin_sidebar_collapsed', collapsed ? '1' : '0');
+    } catch (e0) {}
+  }
+
+  function applyAdminIdentity(profile) {
+    var el = document.getElementById('adminIdentity');
+    if (!el || !profile) return;
+    var text = String(profile.full_name || profile.username || '').trim();
+    if (!text) return;
+    el.textContent = text;
+    el.title = text;
+    el.hidden = false;
+  }
+
+  function initShell() {
+    if (initShell.done) return;
+    initShell.done = true;
+    var sidebarToggle = document.getElementById('adminSidebarToggle');
+    var sidebarClose = document.getElementById('adminSidebarClose');
+    var sidebarBackdrop = document.getElementById('adminSidebarBackdrop');
+    var searchButtons = [
+      document.getElementById('adminNavSearchTrigger'),
+      document.getElementById('adminTopSearchTrigger')
+    ];
+    if (sidebarToggle) sidebarToggle.addEventListener('click', toggleSidebar);
+    if (sidebarClose) sidebarClose.addEventListener('click', closeSidebar);
+    if (sidebarBackdrop) sidebarBackdrop.addEventListener('click', closeSidebar);
+    searchButtons.forEach(function (btn) {
+      if (btn) btn.addEventListener('click', openCommand);
+    });
+    try {
+      if (
+        global.matchMedia &&
+        global.matchMedia('(min-width: 901px)').matches &&
+        localStorage.getItem('admin_sidebar_collapsed') === '1'
+      ) {
+        document.body.classList.add('admin-sidebar-collapsed');
+        if (sidebarToggle) sidebarToggle.setAttribute('aria-expanded', 'false');
+      } else if (sidebarToggle && global.matchMedia && global.matchMedia('(min-width: 901px)').matches) {
+        sidebarToggle.setAttribute('aria-expanded', 'true');
+      }
+    } catch (e0) {}
+
+    var command = document.getElementById('adminCommand');
+    var input = document.getElementById('adminCommandInput');
+    if (command) {
+      command.addEventListener('click', function (ev) {
+        var close = ev.target.closest('[data-command-close]');
+        if (close) {
+          closeCommand();
+          return;
+        }
+        var userItem = ev.target.closest('[data-command-user]');
+        if (userItem) {
+          openCommandUser(userItem.getAttribute('data-command-user'));
+          return;
+        }
+        var item = ev.target.closest('[data-command-page]');
+        if (!item) return;
+        closeCommand();
+        goToPage(item.getAttribute('data-command-page'));
+      });
+    }
+    if (input) {
+      input.addEventListener('input', function () {
+        selectedCommandIndex = 0;
+        var query = input.value.trim();
+        if (!isAccountQuery(query)) {
+          commandUserResults = [];
+          commandUserSeq += 1;
+          renderCommandResults();
+          return;
+        }
+        renderCommandResults();
+        if (commandUserTimer) clearTimeout(commandUserTimer);
+        commandUserTimer = setTimeout(function () {
+          fetchCommandUsers(query).then(function () {
+            if (!isCommandOpen()) return;
+            renderCommandResults();
+          });
+        }, 220);
+      });
+      input.addEventListener('keydown', function (ev) {
+        var items = document.querySelectorAll('.admin-command-item');
+        if (ev.key === 'ArrowDown' && items.length) {
+          ev.preventDefault();
+          selectedCommandIndex = (selectedCommandIndex + 1) % items.length;
+          renderCommandResults();
+        } else if (ev.key === 'ArrowUp' && items.length) {
+          ev.preventDefault();
+          selectedCommandIndex = (selectedCommandIndex - 1 + items.length) % items.length;
+          renderCommandResults();
+        } else if (ev.key === 'Enter') {
+          ev.preventDefault();
+          navigateCommandSelection();
+        }
+      });
+    }
+    document.addEventListener('keydown', function (ev) {
+      if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'k') {
+        ev.preventDefault();
+        if (isCommandOpen()) closeCommand();
+        else openCommand();
+      } else if (ev.key === 'Escape') {
+        if (isCommandOpen()) closeCommand();
+        else closeSidebar();
+      }
     });
   }
 
   global.AdminNav = {
     setMenuTree: setMenuTree,
+    setHubs: setHubs,
     getMenuTree: getMenuTree,
     renderSidebar: renderSidebar,
-    bindNavClicks: bindNavClicks
+    bindNavClicks: bindNavClicks,
+    setActivePage: setActivePage,
+    applyAdminIdentity: applyAdminIdentity,
+    initShell: initShell,
+    openCommand: openCommand
   };
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initShell);
+  } else {
+    initShell();
+  }
 })(window);

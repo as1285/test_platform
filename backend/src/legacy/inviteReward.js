@@ -21,6 +21,39 @@ function isUserEffectivelyActive(row) {
   return false;
 }
 
+/**
+ * 管理端列表：试用已过期（account_active 仍为 1，但到期时间已过且非永久）
+ * 占位符 `?` 传入当前时间（与 JS Date.now 对齐）。
+ */
+function userActivationExpiredSql(alias) {
+  var p = alias ? String(alias).replace(/[^\w.]/g, '') + '.' : '';
+  return (
+    p +
+    'account_active = 1 AND IFNULL(' +
+    p +
+    "activation_kind, '') <> 'permanent' AND " +
+    p +
+    'active_until IS NOT NULL AND ' +
+    p +
+    'active_until <= ?'
+  );
+}
+
+/** 管理端列表：当前仍有效激活（已激活且未过期） */
+function userEffectivelyActiveSql(alias) {
+  var p = alias ? String(alias).replace(/[^\w.]/g, '') + '.' : '';
+  return (
+    p +
+    'account_active = 1 AND (IFNULL(' +
+    p +
+    "activation_kind, '') = 'permanent' OR " +
+    p +
+    'active_until IS NULL OR ' +
+    p +
+    'active_until > ?)'
+  );
+}
+
 /** 时效试用已过期（仍记为 trial，但 active_until 已过） */
 function isTrialExpired(row) {
   if (!row) return false;
@@ -74,12 +107,14 @@ function createInviteReward(deps) {
     if (sourceChannel) {
       await conn.execute(
         `UPDATE users SET account_active = 1, activation_kind = 'permanent', active_until = NULL,
+         activation_cancelled_at = NULL, activation_cancelled_by = NULL,
          activation_source_channel = COALESCE(?, activation_source_channel) WHERE username = ?`,
         [sourceChannel, username]
       );
     } else {
       await conn.execute(
-        `UPDATE users SET account_active = 1, activation_kind = 'permanent', active_until = NULL WHERE username = ?`,
+        `UPDATE users SET account_active = 1, activation_kind = 'permanent', active_until = NULL,
+         activation_cancelled_at = NULL, activation_cancelled_by = NULL WHERE username = ?`,
         [username]
       );
     }
@@ -112,7 +147,8 @@ function createInviteReward(deps) {
     var until = new Date(base + d * 86400000 + h * 3600000 + m * 60000);
     var grantDaysLog = d + (h > 0 ? h / 24 : 0) + (m > 0 ? m / 1440 : 0);
     await conn.execute(
-      `UPDATE users SET account_active = 1, activation_kind = 'trial', active_until = ? WHERE username = ?`,
+      `UPDATE users SET account_active = 1, activation_kind = 'trial', active_until = ?,
+       activation_cancelled_at = NULL, activation_cancelled_by = NULL WHERE username = ?`,
       [until, username]
     );
     await conn.execute(
@@ -226,6 +262,7 @@ function createInviteReward(deps) {
     activationFieldsForApi: activationFieldsForApi,
     setUserPermanentInConn: setUserPermanentInConn,
     addTrialDaysInConn: addTrialDaysInConn,
+    addTrialDurationInConn: addTrialDurationInConn,
     applyActivationCodeExtended: applyActivationCodeExtended
   };
 }
@@ -234,5 +271,7 @@ module.exports = {
   createInviteReward: createInviteReward,
   isUserEffectivelyActive: isUserEffectivelyActive,
   isTrialExpired: isTrialExpired,
+  userActivationExpiredSql: userActivationExpiredSql,
+  userEffectivelyActiveSql: userEffectivelyActiveSql,
   activationFieldsForApi: activationFieldsForApi
 };

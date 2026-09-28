@@ -2,10 +2,300 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260722-fetch-timeout"></script>
-    <link rel="stylesheet" href="/css/user-font-settings.css?v=20260622-line-height">
+    <script>
+        (function () {
+            try {
+                var u = String(navigator.userAgent || '');
+                try { u += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (eModel) {}
+                try { u += ' ' + String(localStorage.getItem('tax_device_ua_v1') || ''); } catch (eUa) {}
+                if (/2210132[CGEI]|(?:Xiaomi|Mi|小米)[\s_-]*13[\s_-]*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-xiaomi-13pro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                } else if (
+                    /2211133[CGI]/i.test(u) ||
+                    (/(?:Xiaomi|Mi|小米)[\s_-]*13\b(?![\s_-]*(?:Pro|Ultra|Lite))/i.test(u) && !/2210132/i.test(u))
+                ) {
+                    document.documentElement.classList.add('app-android-xiaomi-13');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
+                if (/23116PN5|23116PN|(?:Xiaomi|Mi|小米)[\s_-]*14[\s_-]*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-xiaomi-14pro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
+                if (
+                    /24129PN74|(?:Xiaomi|Mi|小米)[\s_-]*15(?![\s_-]*(?:Pro|Ultra|S))/i.test(u) &&
+                    !/2410DPN6CC|24101PNB7C|25019PNF3|Xiaomi\s*15\s*Pro|Mi\s*15\s*Pro|Xiaomi\s*15\s*Ultra|Mi\s*15\s*Ultra/i.test(u)
+                ) {
+                    document.documentElement.classList.add('app-android-xiaomi-15');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+                if (/V2302A|V2302B|PD2302|V2307A|iQOO\s*Neo\s*8\s*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-iqoo-neo8pro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
+                if (/V2301A|V2301B|PD2301/i.test(u) || (/iQOO\s*Neo\s*8(?!\s*Pro)/i.test(u))) {
+                    document.documentElement.classList.add('app-android-iqoo-neo8');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
+                if (/Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u)) {
+                    document.documentElement.classList.add('app-android-huawei-mate60');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
+                if (/Mate\s*70|PLA-AL\d{2}|PLR-AL\d{2}|PLU-AL\d{2}/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-huawei-mate70');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
+                /* Hi nova 9 SE：白顶栏沉浸到状态栏下，按 40px 安全区首绘。 */
+                if (/FIO-BD00|PHB-AN00|Hi\s*nova[\s_-]*9[\s_-]*SE|hinova[\s_-]*9[\s_-]*se/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.classList.add('app-android-hinova');
+                    document.documentElement.classList.add('app-android-hinova9se');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+                if (/V2502A|V2502DA|V2514|PD2502|vivo[\s_-]*X300\s*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-vivo-x300pro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
+                if (/2407FPN8E[GR]|2407FRK8EC|XIG06|A402XM|(?:Redmi|Xiaomi)[\s_-]*K70[\s_-]*(?:至尊|Ultra)/i.test(u)) {
+                    document.documentElement.classList.add('app-android-redmi-k70-ultra');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                } else if (
+                    /23113RKC6[CG]|2311DRK48[CGI]/i.test(u) ||
+                    (/(?:Redmi|Xiaomi|REDMI)[\s_-]*K70(?![\s_-]*(?:至尊|Ultra|Pro))/i.test(u) &&
+                        !/2407FPN8E[GR]|2407FRK8EC|XIG06|A402XM/i.test(u))
+                ) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-redmi-k70');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.classList.remove('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+                if (/24122RKC7[CG]|24127RK2CC|(?:Redmi|Xiaomi|REDMI)[\s_-]*K80[\s_-]*Pro|POCO[\s_-]*F7[\s_-]*Ultra/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-redmi-k80pro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+                if (/V2527A|V2527DA|V2527B|PD2527[A-Z]?|\bV2527\b|(?:vivo[\s_-]*)?S50[\s_-]*Pro[\s_-]*[Mm]ini|S50Promini/i.test(u)) {
+                    document.documentElement.classList.add('app-android-vivo-s50promini');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+                if (/V2405A|V2405DA|V2413\b|V2419A|V2419DA|PD2419[A-Z]?|\bV2419\b|(?:vivo[\s_-]*)?X200[\s_-]*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-vivo-x200pro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+                if (/V2241A|V2241EA|PD2241\b|(?:vivo[\s_-]*)?X90\b(?![\s_-]*(?:Pro|[sS]|Plus|\+))/i.test(u)) {
+                    document.documentElement.classList.add('app-android-vivo-x90');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+                if (/V2408A|I2401\b|PD2408\b|iQOO\s*13(?![a-zA-Z0-9])/i.test(u)) {
+                    document.documentElement.classList.add('app-android-iqoo-13');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+                if (/V2505A|I2501\b|PD2505\b|iQOO\s*15(?![a-zA-Z0-9])/i.test(u)) {
+                    document.documentElement.classList.add('app-android-iqoo-15');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+                if (/M391Q|M2392\b|(?:MZ-)?MEIZU[\s_-]*20[\s_-]*Pro|魅族[\s_-]*20[\s_-]*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-meizu-20pro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+                if (/PGP110|CPH2413|CPH2415|CPH2417|(?:OnePlus|一加)[\s_-]*Ace[\s_-]*Pro(?![\s_-]*2)/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-oneplus-acepro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.setProperty('--safe-top', '40px');
+                }
+                if (/PLQ110|(?:OnePlus|一加)[\s_-]*Ace[\s_-]*6(?![\s_-]*Pro)(?!\d)/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-oneplus-ace6');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.setProperty('--safe-top', '40px');
+                }
+                if (/PJD110|CPH2573|CPH2581|CPH2583|(?:OnePlus|一加)[\s_-]*12(?![\s_-]*R)(?![A-Za-z0-9])/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-oneplus-12');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.setProperty('--safe-top', '40px');
+                }
+                if (/SM-S918|Galaxy\s*S23\s*Ultra|S23[\s_-]*Ultra/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('platform-android');
+                    document.documentElement.classList.add('app-android-samsung-s23u');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.setProperty('--safe-top', '40px');
+                }
+                if (/PHW110|CPH2531|CPH2525|PFGM00|A93s/i.test(u) || (/(?:OPPO\s*)?Reno\s*10\s*5G/i.test(u) && !/Reno\s*10\s*Pro/i.test(u))) {
+                    document.documentElement.classList.add('app-android-oppo-reno10');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
+                if (
+                    /V2203A|V2203T|PD2203\b/i.test(u) ||
+                    (/(?:vivo[\s_-]*)?S15\b/i.test(u) && !/S15\s*Pro|S15e|S15[\s_-]*e/i.test(u))
+                ) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-vivo-s15');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+                if (/PGCM10|\bK9x\b/i.test(u)) {
+                    document.documentElement.classList.add('app-android-oppo-k9x');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
+                if (
+                    !/LIO-|Mate\s*30\s*Pro/i.test(u) &&
+                    (/TAS-AL00|TAS-AN00|TAS-TL00|TAS-L29|TAS-LX9|TAS-AL\d{2}|TAS-AN\d{2}|HUAWEITAS/i.test(u) ||
+                        /(?:Huawei|HUAWEI|华为)?[\s_-]*Mate[\s_-]*30(?![\s_-]*Pro)/i.test(u))
+                ) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-huawei-mate30');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+                if (/LIO-|Mate\s*30E?\s*Pro|Mate\s*30\s*E\s*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-huawei-mate30pro');
+                    document.documentElement.classList.add('app-android-huawei-lio-an00');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+                if (/HUAWEIBLK|BLK-AL80|BLK-AL00|BLK-AL\d{2}|BLK-LX9|BLK-L29|HUAWEIMIS|MIS-AL00|MIS-AL80|MIS-AL\d{2}|MIS-LX9|(?:Huawei|HUAWEI|华为)?[\s_-]*nova[\s_-]*13/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.classList.add('app-android-huawei-nova13');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                } else if (/OpenHarmony|ArkWeb|HarmonyOS|HMSCore|Huawei|HUAWEI/i.test(u) && !/ALN-|PLA-AL|PLR-AL|PLU-AL|HBN-|ADY-|CLS-|TAS-|LIO-|MIZ-/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                }
+                if (document.documentElement.classList.contains('app-android-immersive-white-top') ||
+                    document.documentElement.classList.contains('app-android-huawei-nova13')) {
+                    var xqInset = document.createElement('style');
+                    xqInset.setAttribute('data-nova13-xq-firstpaint', '1');
+                    xqInset.textContent =
+                        'html.app-android-immersive-white-top body.page-xiangqing > .header,' +
+                        'html.app-android-huawei-nova13 body.page-xiangqing > .header{padding-top:50px !important;box-sizing:border-box !important;}' +
+                        'html.app-android-immersive-white-top body.page-xiangqing,' +
+                        'html.app-android-huawei-nova13 body.page-xiangqing{padding-top:88px !important;}';
+                    (document.head || document.documentElement).appendChild(xqInset);
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <script>
+        /* iPhone 17 系列：首屏就打 class，避免 auth.js defer 之前详情顶栏按渐隐带撑出空白 */
+        (function () {
+            try {
+                var ua = String(navigator.userAgent || '');
+                try { ua += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (e0) {}
+                try { ua += ' ' + String(localStorage.getItem('tax_device_ua_v1') || ''); } catch (e1) {}
+                if (/iPhone\s*Air\b|iPhone18,4\b/i.test(ua)) return;
+                var root = document.documentElement;
+                if (/iPhone\s*17\s*Pro\s*Max|iPhone18,2\b|iPhone19,2\b/i.test(ua)) {
+                    root.classList.add('app-ios-iphone17promax');
+                    root.classList.add('app-ios-client');
+                } else if (/iPhone\s*17(?:\s*Pro)?\b|iPhone18,1\b|iPhone18,3\b|iPhone19,1\b/i.test(ua)) {
+                    root.classList.add('app-ios-iphone17pro');
+                    root.classList.add('app-ios-client');
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <script>
+        /* 14/15 Pro Max：跳过 ios27；系统占栏时顶距 0（env≈0，不限 iOS 大版本），避免 59px 双顶距 */
+        (function () {
+            try {
+                var ua = String(navigator.userAgent || '');
+                try { ua += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (e0) {}
+                try { ua += ' ' + String(localStorage.getItem('tax_device_ua_v1') || ''); } catch (e1) {}
+                var is15 = /iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone15,5\b/i.test(ua);
+                var is14 = /iPhone\s*14\s*Pro\s*Max|iPhone15,3\b/i.test(ua);
+                var sw = 0, sh = 0;
+                try {
+                    sw = Number((window.screen && window.screen.width) || window.innerWidth || 0);
+                    sh = Number((window.screen && window.screen.height) || window.innerHeight || 0);
+                } catch (e2) {}
+                var shortSide = Math.min(sw, sh);
+                var longSide = Math.max(sw, sh);
+                var vp430 = shortSide >= 428 && shortSide <= 432 && longSide >= 928 && longSide <= 936;
+                if (!is14 && !is15 && !vp430) return;
+                if (/iPhone\s*16\s*Pro\s*Max|iPhone17,2\b|iPhone\s*17\s*Pro\s*Max|iPhone18,2\b/i.test(ua)) return;
+                var root = document.documentElement;
+                if (is15) {
+                    root.classList.add('app-ios-iphone15promax');
+                    root.classList.remove('app-ios-iphone14promax');
+                } else {
+                    root.classList.add('app-ios-iphone14promax');
+                }
+                root.classList.add('app-ios-client');
+                root.classList.remove('app-ios27');
+                root.classList.remove('app-ios-liquid-glass');
+                root.classList.remove('app-ios-unified-chrome');
+                var mIos = ua.match(/OS (\d+)[_.]/i);
+                var iosMajor = mIos ? parseInt(mIos[1], 10) : 0;
+                var safeTop = 0;
+                try {
+                    var probe = document.createElement('div');
+                    probe.style.cssText =
+                        'position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top,0px);';
+                    (document.body || root).appendChild(probe);
+                    safeTop = parseFloat(window.getComputedStyle(probe).paddingTop) || 0;
+                    if (probe.parentNode) probe.parentNode.removeChild(probe);
+                } catch (e3) {}
+                if (safeTop < 20 && !/Cordova|tax-app-shell/i.test(ua)) {
+                    root.classList.remove('app-top-safe-shell');
+                    root.classList.add('app-ios-status-outer');
+                    root.style.setProperty('--app-shell-statusbar-top', '0px', 'important');
+                } else {
+                    root.classList.add('app-top-safe-shell');
+                    root.classList.remove('app-ios-status-outer');
+                    root.style.setProperty('--app-shell-statusbar-top', '59px', 'important');
+                    var meta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+                    if (meta) meta.setAttribute('content', 'black-translucent');
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
+    <script src="/js/auth-boot.js?v=20260923-bs4s-restore"></script>
+    <script src="/js/auth.js?v=20260924-13pm-status" defer fetchpriority="low"></script>
+    <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
-    <script src="/js/user-font-settings.js?v=20260709-edit-mode-fab" data-scope="body.page-xiangqing"></script>
+    <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope="body.page-xiangqing"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细详情</title>
     <style>
@@ -36,9 +326,66 @@
             padding-top: calc(var(--xq-header-core) + var(--app-shell-statusbar-top, 0px));
         }
 
+        /*
+         * 详情页固定白顶栏不需要列表页那条 sticky 顶垫。
+         * 它的高度是顶距 + 56px，负外边距在部分 iOS 上不生效，标题下会空出一块白。
+         */
+        body.page-xiangqing #iosStickyTint {
+            display: none !important;
+            height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        /* iOS27 系统已占状态栏：勿再叠 59px，标题紧贴栏下 */
+        html.app-ios-status-outer body.page-xiangqing {
+            padding-top: var(--xq-header-core);
+        }
+        html.app-ios-status-outer body.page-xiangqing > .header {
+            padding-top: 10px !important;
+            padding-bottom: 10px !important;
+        }
+
         /* 小米 14 / HyperOS 等 Android 15+ 沉浸式状态栏偏高 */
         html.app-android-client.app-top-safe-shell body.page-xiangqing {
             --xq-header-core: 48px;
+        }
+
+        html.app-android-immersive-white-top body.page-xiangqing,
+        html.app-android-huawei-nova13 body.page-xiangqing,
+        html.app-android-immersive-white-top.app-top-safe-shell body.page-xiangqing,
+        html.app-android-huawei-nova13.app-top-safe-shell body.page-xiangqing,
+        html.app-android-xiaomi-13.app-top-safe-shell body.page-xiangqing,
+        html.app-android-xiaomi-13pro.app-top-safe-shell body.page-xiangqing,
+        html.app-android-xiaomi-14pro.app-top-safe-shell body.page-xiangqing,
+        html.app-android-redmi-k70-ultra.app-top-safe-shell body.page-xiangqing,
+        html.app-android-redmi-k80pro.app-top-safe-shell body.page-xiangqing,
+        html.app-android-redmi-12c.app-top-safe-shell body.page-xiangqing {
+            --app-shell-statusbar-top: 40px;
+            padding-top: calc(var(--xq-header-core) + 40px);
+        }
+
+        html.app-android-immersive-white-top body.page-xiangqing > .header,
+        html.app-android-huawei-nova13 body.page-xiangqing > .header,
+        html.app-android-immersive-white-top.app-top-safe-shell body.page-xiangqing > .header,
+        html.app-android-huawei-nova13.app-top-safe-shell body.page-xiangqing > .header,
+        html.app-android-xiaomi-13.app-top-safe-shell body.page-xiangqing > .header,
+        html.app-android-xiaomi-13pro.app-top-safe-shell body.page-xiangqing > .header,
+        html.app-android-xiaomi-14pro.app-top-safe-shell body.page-xiangqing > .header,
+        html.app-android-redmi-k70-ultra.app-top-safe-shell body.page-xiangqing > .header,
+        html.app-android-redmi-k80pro.app-top-safe-shell body.page-xiangqing > .header,
+        html.app-android-redmi-12c.app-top-safe-shell body.page-xiangqing > .header {
+            padding-top: calc(10px + 40px) !important;
+        }
+
+        /* 13 Pro Max 刘海：顶栏下移，露出系统时间和信号 */
+        html.app-ios-client.app-ios-iphone13promax body.page-xiangqing > .header {
+            padding-top: 57px !important;
+            box-sizing: border-box !important;
+        }
+        html.app-ios-client.app-ios-iphone13promax body.page-xiangqing {
+            --app-shell-statusbar-top: 47px;
+            padding-top: calc(48px + 47px) !important;
         }
 
         .header {
@@ -52,7 +399,6 @@
             left: 0;
             right: 0;
             z-index: 100;
-            border-bottom: 1px solid #eee;
             min-height: var(--xq-header-core);
         }
 
@@ -88,10 +434,6 @@
             background: #fff;
         }
 
-        .xq-section:first-of-type {
-            margin-top: 0;
-        }
-
         .section-title {
             padding: 12px 16px 10px;
             font-size: 15px;
@@ -125,12 +467,35 @@
             padding: 11px 0;
         }
 
+        /* 汇总区只保留两行金额，避免首行被撑出大块空白 */
+        .xq-section[aria-labelledby="secSummary"] .section-title {
+            padding: 8px 16px 2px;
+        }
+
+        .xq-section[aria-labelledby="secSummary"] .info-row {
+            align-items: center;
+            margin: 0;
+            padding: 8px 0;
+            min-height: 0;
+            height: auto;
+        }
+
+        .xq-section[aria-labelledby="secSummary"] .info-label,
+        .xq-section[aria-labelledby="secSummary"] .info-value {
+            line-height: 22px;
+            white-space: nowrap;
+            max-height: 22px;
+            overflow: hidden;
+        }
+
         .info-label {
             font-size: 15px;
             color: #666;
-            flex: 0 1 auto;
-            max-width: 46%;
+            flex: 0 0 auto;
+            max-width: none;
             line-height: 1.45;
+            /* 正版：基础情况里除识别号外标签均单行 */
+            white-space: nowrap;
         }
 
         .info-value {
@@ -143,21 +508,49 @@
             word-break: break-all;
         }
 
-        /* 主管税务机关：右对齐，每行 12 字 */
-        .info-row--tax-authority {
+        /* 正版「基础情况」字色更淡：标签浅灰、取值中灰 */
+        .xq-section[aria-labelledby="secBasic"] .info-label {
+            color: #999;
+        }
+
+        .xq-section[aria-labelledby="secBasic"] .info-value {
+            color: #666;
+        }
+
+        /*
+         * 扣缴义务人纳税人识别号：正版仅此处换行，且断在「识别号」前
+         * （第一行「扣缴义务人纳税人」，第二行「识别号：」）。
+         */
+        .info-row--tax-id {
             align-items: flex-start;
         }
 
+        .info-label--tax-id {
+            white-space: normal;
+            max-width: none;
+        }
+
+        /* 主管税务机关：正版放不下时在取值里另起一行（如「开」后回车），不截断 */
+        .info-row--tax-authority {
+            align-items: flex-start;
+            gap: 12px;
+        }
+
         .info-row--tax-authority .info-label {
-            padding-top: 2px;
+            padding-top: 0;
         }
 
         .info-value--tax-authority {
-            flex: 1 1 58%;
-            max-width: 58%;
-            line-height: 1.5;
-            word-break: normal;
+            flex: 1 1 auto;
+            max-width: none;
+            line-height: 1.45;
+            font-size: 15px;
+            letter-spacing: normal;
+            word-break: break-all;
+            overflow-wrap: anywhere;
             white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
         }
 
         .info-value.amount-value,
@@ -233,21 +626,31 @@
             -webkit-tap-highlight-color: transparent;
         }
 
+        /*
+         * 正版：各行「元」同一竖线右对齐；箭头叠在右侧 16px 内边距里，
+         * 不进文档流，避免把「本期专项扣除」的元挤偏。
+         */
         .detail-value-with-chev {
-            display: inline-flex;
-            align-items: center;
-            justify-content: flex-end;
-            gap: 4px;
+            position: relative;
+            display: block;
             flex: 1;
             min-width: 0;
         }
 
         .detail-value-with-chev .detail-value {
-            flex: 0 1 auto;
+            display: block;
+            width: 100%;
+            flex: none;
         }
 
         .detail-chevron {
-            flex-shrink: 0;
+            position: absolute;
+            top: 50%;
+            right: -14px;
+            width: 12px;
+            height: 12px;
+            margin-top: -6px;
+            pointer-events: none;
             transition: transform 0.2s ease;
         }
 
@@ -359,8 +762,8 @@
                 <span class="info-label">扣缴义务人名称：</span>
                 <span class="info-value" id="companyName">--</span>
             </div>
-            <div class="info-row">
-                <span class="info-label">扣缴义务人纳税人识别号：</span>
+            <div class="info-row info-row--tax-id">
+                <span class="info-label info-label--tax-id">扣缴义务人纳税人<br>识别号：</span>
                 <span class="info-value" id="companyTaxId">--</span>
             </div>
             <div class="info-row info-row--tax-authority">
@@ -549,34 +952,10 @@
             return String(v);
         }
 
-        function escapeHtml(s) {
-            return String(s == null ? '' : s)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;');
-        }
-
-        /** 主管税务机关：每行固定 12 个汉字后换行 */
-        var TAX_AUTHORITY_CHARS_PER_LINE = 12;
-
-        function formatTaxAuthorityLines(raw) {
-            var s = String(raw == null ? '' : raw).trim();
-            if (!s) {
-                return '--';
-            }
-            var n = TAX_AUTHORITY_CHARS_PER_LINE;
-            var lines = [];
-            for (var i = 0; i < s.length; i += n) {
-                lines.push(s.slice(i, i + n));
-            }
-            return lines.map(escapeHtml).join('<br>');
-        }
-
-        function setTaxAuthorityHtml(raw) {
+        function setTaxAuthorityText(raw) {
             var el = document.getElementById('taxAuthority');
             if (el) {
-                el.innerHTML = formatTaxAuthorityLines(raw);
+                el.textContent = formatText(raw);
             }
         }
 
@@ -597,9 +976,47 @@
         function initBackLink() {
             var y = getUrlParam('year');
             var el = document.getElementById('backLink');
-            if (el) {
-                el.href = y ? ('shuiming_result.html?year=' + encodeURIComponent(y)) : 'shuiming_result.html';
-            }
+            if (!el) return;
+            var fallback = y
+                ? 'shuiming_result.html?year=' + encodeURIComponent(y)
+                : 'shuiming_result.html';
+            el.href = fallback;
+            /* 返回列表勿盖全屏转圈：目标页自己有 loading；且优先 history.back 走 bfcache */
+            el.setAttribute('data-no-page-loading', '1');
+            if (el.__backBound) return;
+            el.__backBound = true;
+            el.addEventListener('click', function (ev) {
+                var canBack = false;
+                try {
+                    var ref = String(document.referrer || '');
+                    canBack =
+                        window.history.length > 1 &&
+                        (ref.indexOf('shuiming_result.html') >= 0 ||
+                            /shuiming_result\.html/i.test(ref));
+                } catch (e0) {}
+                if (!canBack) return;
+                ev.preventDefault();
+                try {
+                    if (typeof window.forceHidePageLoading === 'function') {
+                        window.forceHidePageLoading();
+                    }
+                } catch (e1) {}
+                try {
+                    window.history.back();
+                } catch (e2) {
+                    window.location.href = fallback;
+                    return;
+                }
+                setTimeout(function () {
+                    try {
+                        if (String(window.location.pathname || '').indexOf('xiangqing') >= 0) {
+                            window.location.href = fallback;
+                        }
+                    } catch (e3) {
+                        window.location.href = fallback;
+                    }
+                }, 450);
+            });
         }
 
         function loadData() {
@@ -620,8 +1037,8 @@
                 doneLoading();
                 return;
             }
-            authFetch('api/tax?action=detail&id=' + encodeURIComponent(id))
-                .then(function (response) { return response.json(); })
+            window.authFetch('api/tax?action=detail&id=' + encodeURIComponent(id))
+                .then(function (response) { return (window.authParseJson||function(response){return response.json();})(response); })
                 .then(function (data) {
                     if (data.code === 200 && data.data) {
                         var record = data.data;
@@ -630,7 +1047,7 @@
                         document.getElementById('incomeSubtype').textContent = formatText(record.income_subtype, '正常工资薪金');
                         document.getElementById('companyName').textContent = formatText(record.company_name);
                         document.getElementById('companyTaxId').textContent = formatText(record.company_tax_id);
-                        setTaxAuthorityHtml(record.tax_authority);
+                        setTaxAuthorityText(record.tax_authority);
                         document.getElementById('reportChannel').textContent = formatText(record.report_channel, '其他');
                         document.getElementById('reportDate').textContent = formatText(record.report_date);
                         document.getElementById('taxPeriod').textContent = formatText(record.tax_period);
@@ -690,7 +1107,58 @@
 
         initBackLink();
         loadData();
+
+        /*
+         * iPhone 17：系统已经把页面放在状态栏下面，但 env(safe-area-inset-top) 仍有一百多像素。
+         * 正文若再加这段，标题和「纳税明细信息」之间就会空出一块白。
+         * 量到空隙后把 body 顶距收到顶栏真实高度，保留 10px 灰缝。
+         */
+        function closeXiangqingTopGap() {
+            var body = document.body;
+            if (!body || !body.classList.contains('page-xiangqing')) return;
+            var header = document.querySelector('body.page-xiangqing > .header');
+            var title = header && header.querySelector('.header-title');
+            var section = document.querySelector('body.page-xiangqing > .xq-section');
+            var firstRow = section && section.querySelector('.info-row');
+            if (!header || !title || !section || !firstRow) return;
+            var tint = document.getElementById('iosStickyTint');
+            if (tint) {
+                tint.style.setProperty('display', 'none', 'important');
+                tint.style.setProperty('height', '0px', 'important');
+                tint.style.setProperty('margin', '0px', 'important');
+            }
+            header.style.setProperty('height', 'auto', 'important');
+            header.style.setProperty('min-height', '0px', 'important');
+            header.style.setProperty('padding-bottom', '8px', 'important');
+            var seam = 10;
+            var titleBottom = title.getBoundingClientRect().bottom;
+            var rowTop = firstRow.getBoundingClientRect().top;
+            var extra = rowTop - titleBottom - seam - 28;
+            var pad = parseFloat(window.getComputedStyle(body).paddingTop) || 0;
+            var headerH = Math.ceil(header.getBoundingClientRect().height);
+            if (extra > 8) {
+                var nextPad = Math.max(headerH, Math.round(pad - extra));
+                body.style.setProperty('padding-top', nextPad + 'px', 'important');
+            } else if (pad > headerH + seam + 8) {
+                body.style.setProperty('padding-top', (headerH + seam) + 'px', 'important');
+            }
+            section.style.setProperty('margin-top', '10px', 'important');
+        }
+        function scheduleXiangqingTopGap() {
+            closeXiangqingTopGap();
+            if (window.requestAnimationFrame) requestAnimationFrame(closeXiangqingTopGap);
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', scheduleXiangqingTopGap);
+        } else {
+            scheduleXiangqingTopGap();
+        }
+        window.addEventListener('pageshow', scheduleXiangqingTopGap);
+        setTimeout(closeXiangqingTopGap, 50);
+        setTimeout(closeXiangqingTopGap, 300);
+        setTimeout(closeXiangqingTopGap, 800);
+        setTimeout(closeXiangqingTopGap, 1200);
     </script>
-    <script src="/js/watermark.js?v=20260722-wm-redder"></script>
+    <script src="/js/watermark.js?v=20260831-m60home"></script>
 </body>
 </html>

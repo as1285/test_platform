@@ -6,7 +6,246 @@
         (function () {
             try {
                 var u = typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '';
+                try { u += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (eModel) {}
+                try { u += ' ' + String(localStorage.getItem('tax_device_ua_v1') || ''); } catch (eUa) {}
                 if (/Android/i.test(u)) document.documentElement.classList.add('platform-android');
+                if (/2410DPN6CC|24101PNB7C|Xiaomi\s*15\s*Pro|Mi\s*15\s*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-xiaomi-15pro');
+                }
+                if (
+                    /24129PN74|(?:Xiaomi|Mi|小米)[\s_-]*15(?![\s_-]*(?:Pro|Ultra|S))/i.test(u) &&
+                    !/2410DPN6CC|24101PNB7C|25019PNF3|Xiaomi\s*15\s*Pro|Mi\s*15\s*Pro|Xiaomi\s*15\s*Ultra|Mi\s*15\s*Ultra/i.test(u)
+                ) {
+                    document.documentElement.classList.add('app-android-xiaomi-15');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+                if (/2210132[CGEI]|(?:Xiaomi|Mi|小米)[\s_-]*13[\s_-]*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-xiaomi-13pro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                } else if (
+                    /2211133[CGI]/i.test(u) ||
+                    (/(?:Xiaomi|Mi|小米)[\s_-]*13\b(?![\s_-]*(?:Pro|Ultra|Lite))/i.test(u) && !/2210132/i.test(u))
+                ) {
+                    document.documentElement.classList.add('app-android-xiaomi-13');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
+                if (/23116PN5|23116PN|(?:Xiaomi|Mi|小米)[\s_-]*14[\s_-]*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-xiaomi-14pro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
+                if (
+                    /M2001J2[CEGI]|M2001J1[CEG]|M2102J2SC|M2007J1SC|M2007J3SC|M2007J17C/i.test(u) ||
+                    (/Xiaomi\s*10|Mi\s*10(?!\s*T)|小米\s*10/i.test(u) && !/Mi\s*10\s*T|Xiaomi\s*10\s*T/i.test(u))
+                ) {
+                    document.documentElement.classList.add('app-android-xiaomi-10');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
+                if (/2407FPN8E[GR]|2407FRK8EC|XIG06|A402XM|(?:Redmi|Xiaomi)[\s_-]*K70[\s_-]*(?:至尊|Ultra)/i.test(u)) {
+                    document.documentElement.classList.add('app-android-redmi-k70-ultra');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                } else if (
+                    /23113RKC6[CG]|2311DRK48[CGI]/i.test(u) ||
+                    (/(?:Redmi|Xiaomi|REDMI)[\s_-]*K70(?![\s_-]*(?:至尊|Ultra|Pro))/i.test(u) &&
+                        !/2407FPN8E[GR]|2407FRK8EC|XIG06|A402XM/i.test(u))
+                ) {
+                    document.documentElement.classList.add('app-android-redmi-k70');
+                    document.documentElement.classList.remove('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+                if (/24122RKC7[CG]|24127RK2CC|(?:Redmi|Xiaomi|REDMI)[\s_-]*K80[\s_-]*Pro|POCO[\s_-]*F7[\s_-]*Ultra/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-redmi-k80pro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+                if (/22120RN86[CGHI]|22126RN91Y|2212ARNC4L|22127PC95[GHI]|(?:Redmi|POCO)[\s_-]*12C|POCO\s*C55/i.test(u)) {
+                    document.documentElement.classList.add('app-android-redmi-12c');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
+                if (/PJA110|(?:OnePlus|一加)\s*Ace\s*2\s*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-oneplus-ace2pro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
+                if (/PGP110|CPH2413|CPH2415|CPH2417|(?:OnePlus|一加)[\s_-]*Ace[\s_-]*Pro(?![\s_-]*2)/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-oneplus-acepro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.setProperty('--safe-top', '40px');
+                }
+                if (/PHP110|(?:OnePlus|一加)\s*Ace\s*2\s*V/i.test(u)) {
+                    document.documentElement.classList.add('app-android-oneplus-ace2v');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
+                if (/PLQ110|(?:OnePlus|一加)[\s_-]*Ace[\s_-]*6(?![\s_-]*Pro)(?!\d)/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-oneplus-ace6');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.setProperty('--safe-top', '40px');
+                }
+                if (/PJD110|CPH2573|CPH2581|CPH2583|(?:OnePlus|一加)[\s_-]*12(?![\s_-]*R)(?![A-Za-z0-9])/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-oneplus-12');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.setProperty('--safe-top', '40px');
+                }
+                /* 三星 S23 Ultra（SM-S9180）：打孔盖住 WebView，首帧先留 40px，避免标题压进时间栏 */
+                if (/SM-S918|Galaxy\s*S23\s*Ultra|S23[\s_-]*Ultra/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('platform-android');
+                    document.documentElement.classList.add('app-android-samsung-s23u');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.setProperty('--safe-top', '40px');
+                }
+                if (/PHW110|CPH2531|CPH2525|PFGM00|A93s/i.test(u) || (/(?:OPPO\s*)?Reno\s*10\s*5G/i.test(u) && !/Reno\s*10\s*Pro/i.test(u))) {
+                    document.documentElement.classList.add('app-android-oppo-reno10');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
+                if (
+                    /V2203A|V2203T|PD2203\b/i.test(u) ||
+                    (/(?:vivo[\s_-]*)?S15\b/i.test(u) && !/S15\s*Pro|S15e|S15[\s_-]*e/i.test(u))
+                ) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-vivo-s15');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+                if (/PGCM10|\bK9x\b/i.test(u)) {
+                    document.documentElement.classList.add('app-android-oppo-k9x');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
+                if (/V2302A|V2302B|PD2302|V2307A|iQOO\s*Neo\s*8\s*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-iqoo-neo8pro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
+                if (/V2301A|V2301B|PD2301/i.test(u) || (/iQOO\s*Neo\s*8(?!\s*Pro)/i.test(u))) {
+                    document.documentElement.classList.add('app-android-iqoo-neo8');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
+                if (/Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u)) {
+                    document.documentElement.classList.add('app-android-huawei-mate60');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
+                if (/Mate\s*70|PLA-AL\d{2}|PLR-AL\d{2}|PLU-AL\d{2}/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('platform-android');
+                    document.documentElement.classList.add('app-android-huawei-mate70');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
+                /* Hi nova 9 SE：状态栏覆盖 WebView，首帧先预留 40px，避免标题压进时间栏。 */
+                if (/FIO-BD00|PHB-AN00|Hi\s*nova[\s_-]*9[\s_-]*SE|hinova[\s_-]*9[\s_-]*se/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.classList.add('app-android-hinova');
+                    document.documentElement.classList.add('app-android-hinova9se');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    if (!document.querySelector('style[data-hinova9se-shuiming-firstpaint]')) {
+                        var hn9Sm = document.createElement('style');
+                        hn9Sm.setAttribute('data-hinova9se-shuiming-firstpaint', '1');
+                        /* 与页内黑条一致：顶距 40 + 标题区内边距 12，勿再写死 54 造成错位 */
+                        hn9Sm.textContent =
+                            'html.app-android-hinova9se{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
+                            'html.app-android-hinova9se body.page-shuiming > .header{padding-top:calc(12px + 40px) !important;box-sizing:border-box !important;}' +
+                            'html.app-android-hinova9se body.page-shuiming > .content{padding-top:calc(44px + 40px) !important;}';
+                        (document.head || document.documentElement).appendChild(hn9Sm);
+                    }
+                }
+                if (/V2502A|V2502DA|V2514\b|PD2502|vivo[\s_-]*X300\s*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-vivo-x300pro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
+                if (/V2527A|V2527DA|V2527B|PD2527[A-Z]?|\bV2527\b|(?:vivo[\s_-]*)?S50[\s_-]*Pro[\s_-]*[Mm]ini|S50Promini/i.test(u)) {
+                    document.documentElement.classList.add('app-android-vivo-s50promini');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+                if (/V2405A|V2405DA|V2413\b|V2419A|V2419DA|PD2419[A-Z]?|\bV2419\b|(?:vivo[\s_-]*)?X200[\s_-]*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-vivo-x200pro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+                if (/V2241A|V2241EA|PD2241\b|(?:vivo[\s_-]*)?X90\b(?![\s_-]*(?:Pro|[sS]|Plus|\+))/i.test(u)) {
+                    document.documentElement.classList.add('app-android-vivo-x90');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+                if (/V2408A|I2401\b|PD2408\b|iQOO\s*13(?![a-zA-Z0-9])/i.test(u)) {
+                    document.documentElement.classList.add('app-android-iqoo-13');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+                if (/V2505A|I2501\b|PD2505\b|iQOO\s*15(?![a-zA-Z0-9])/i.test(u)) {
+                    document.documentElement.classList.add('app-android-iqoo-15');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+                if (/M391Q|M2392\b|(?:MZ-)?MEIZU[\s_-]*20[\s_-]*Pro|魅族[\s_-]*20[\s_-]*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-meizu-20pro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+                if (
+                    !/LIO-|Mate\s*30\s*Pro/i.test(u) &&
+                    (/TAS-AL00|TAS-AN00|TAS-TL00|TAS-L29|TAS-LX9|TAS-AL\d{2}|TAS-AN\d{2}|HUAWEITAS/i.test(u) ||
+                        /(?:Huawei|HUAWEI|华为)?[\s_-]*Mate[\s_-]*30(?![\s_-]*Pro)/i.test(u))
+                ) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-huawei-mate30');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+                if (/LIO-|Mate\s*30E?\s*Pro|Mate\s*30\s*E\s*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-huawei-mate30pro');
+                    document.documentElement.classList.add('app-android-huawei-lio-an00');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+                if (/HUAWEIBLK|BLK-AL80|BLK-AL00|BLK-AL\d{2}|BLK-LX9|BLK-L29|HUAWEIMIS|MIS-AL00|MIS-AL80|MIS-AL\d{2}|MIS-LX9|(?:Huawei|HUAWEI|华为)?[\s_-]*nova[\s_-]*13/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.classList.add('app-android-huawei-nova13');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                } else if (/OpenHarmony|ArkWeb|HarmonyOS|HMSCore|Huawei|HUAWEI/i.test(u) && !/ALN-|PLA-AL|PLR-AL|PLU-AL|HBN-|ADY-|CLS-|TAS-|LIO-|MIZ-/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                }
+                if (document.documentElement.classList.contains('app-android-immersive-white-top') ||
+                    document.documentElement.classList.contains('app-android-huawei-nova13')) {
+                    var smInset = document.createElement('style');
+                    smInset.setAttribute('data-nova13-sm-firstpaint', '1');
+                    smInset.textContent =
+                        'html.app-android-immersive-white-top body.page-shuiming > .header,' +
+                        'html.app-android-huawei-nova13 body.page-shuiming > .header{padding-top:calc(12px + 40px) !important;box-sizing:border-box !important;}' +
+                        'html.app-android-immersive-white-top body.page-shuiming > .content,' +
+                        'html.app-android-huawei-nova13 body.page-shuiming > .content{padding-top:calc(44px + 40px) !important;}';
+                    (document.head || document.documentElement).appendChild(smInset);
+                }
                 if (
                     /iPhone|iPad|iPod/i.test(u) ||
                     (typeof navigator !== 'undefined' &&
@@ -15,10 +254,252 @@
                 ) {
                     document.documentElement.classList.add('platform-ios');
                 }
+                try {
+                    var modelSm = '';
+                    try {
+                        modelSm = String(localStorage.getItem('tax_device_model_v1') || '');
+                    } catch (eModelSm) {}
+                    var blobSm = u + ' ' + modelSm;
+                    var seenWideSm = false;
+                    try {
+                        seenWideSm = sessionStorage.getItem('tax_ios_promax_wide_v1') === '1';
+                    } catch (eSeenSm) {}
+                    var is16pmUaSm =
+                        /iPhone\s*16\s*Pro\s*Max|iPhone17,2\b|MYTN3/i.test(blobSm) &&
+                        !/iPhone\s*17\s*Pro\s*Max|iPhone18,2\b|iPhone19,2\b/i.test(blobSm);
+                    var is16pmVpSm = false;
+                    var isLargePmSm = false;
+                    try {
+                        var swSm = window.screen && window.screen.width ? Number(window.screen.width) : 0;
+                        var shSm = window.screen && window.screen.height ? Number(window.screen.height) : 0;
+                        if (!swSm || !shSm) {
+                            swSm = window.innerWidth ? Number(window.innerWidth) : 0;
+                            shSm = window.innerHeight ? Number(window.innerHeight) : 0;
+                        }
+                        var shortSm = Math.min(swSm, shSm);
+                        var longSm = Math.max(swSm, shSm);
+                        isLargePmSm =
+                            shortSm >= 428 &&
+                            shortSm <= 444 &&
+                            longSm >= 920 &&
+                            longSm <= 962;
+                        is16pmVpSm =
+                            shortSm >= 436 &&
+                            shortSm <= 444 &&
+                            longSm >= 948 &&
+                            longSm <= 962 &&
+                            !/iPhone\s*17\s*Pro\s*Max|iPhone18,2\b|iPhone19,2\b/i.test(blobSm);
+                    } catch (eVpSm) {}
+                    if (is16pmUaSm || is16pmVpSm) {
+                        document.documentElement.classList.add('app-ios-iphone16promax');
+                    }
+                    var is14pmSm =
+                        /iPhone\s*14\s*Pro\s*Max|iPhone15,3\b/i.test(blobSm) ||
+                        (shortSm >= 428 &&
+                            shortSm <= 432 &&
+                            longSm >= 928 &&
+                            longSm <= 936 &&
+                            !/iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone15,5\b/i.test(
+                                blobSm
+                            ));
+                    if (is14pmSm) {
+                        document.documentElement.classList.add('app-ios-iphone14promax');
+                        document.documentElement.classList.add('app-ios-iphone-promax-font');
+                        document.documentElement.classList.add('app-top-safe-shell');
+                    }
+                    if (is16pmUaSm || is16pmVpSm || isLargePmSm || seenWideSm) {
+                        document.documentElement.classList.add('app-ios-promax-wide');
+                        document.documentElement.classList.add('app-ios-iphone-promax-font');
+                        document.documentElement.classList.add('app-top-safe-shell');
+                        try {
+                            sessionStorage.setItem('tax_ios_promax_wide_v1', '1');
+                        } catch (eSetSm) {}
+                    }
+                } catch (e16pm) {}
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260722-fetch-timeout"></script>
+    <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
+    <script src="/js/auth-boot.js?v=20260923-bs4s-restore"></script>
+    <meta name="theme-color" content="#ffffff">
+    <script>
+        (function () {
+            try {
+                var root = document.documentElement;
+                var ua = navigator.userAgent || '';
+                try { ua += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (e0) {}
+                var ios =
+                    /iPhone|iPad|iPod/i.test(ua) ||
+                    (typeof navigator !== 'undefined' &&
+                        navigator.platform === 'MacIntel' &&
+                        (navigator.maxTouchPoints || 0) > 1);
+                if (!ios) return;
+                root.classList.add('platform-ios');
+                root.classList.add('app-ios-sticky-chrome');
+                var standalone = navigator.standalone === true;
+                try {
+                    standalone = standalone || window.matchMedia('(display-mode: standalone)').matches;
+                } catch (e1) {}
+                var inIframe = false;
+                try {
+                    inIframe = window.top !== window.self;
+                } catch (eFr) {
+                    inIframe = true;
+                }
+                var iosMajor = 0;
+                var mIos = ua.match(/OS (\d+)[_.]/i);
+                if (mIos) iosMajor = parseInt(mIos[1], 10);
+                /* 14/15 Pro Max：不进 liquid-glass / app-ios27 / inflow，保持 Aug15 59px */
+                var is15pmUa = /iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone15,5\b/i.test(ua);
+                var is14pmUa = /iPhone\s*14\s*Pro\s*Max|iPhone15,3\b/i.test(ua);
+                var is14pmExempt =
+                    root.classList.contains('app-ios-iphone14promax') ||
+                    root.classList.contains('app-ios-iphone15promax') ||
+                    is14pmUa ||
+                    is15pmUa;
+                var liquidGlass = iosMajor >= 26 && !is14pmExempt;
+                var shortSide = 0;
+                var longSide = 0;
+                try {
+                    var sw = window.screen && window.screen.width ? Number(window.screen.width) : Number(window.innerWidth || 0);
+                    var sh = window.screen && window.screen.height ? Number(window.screen.height) : Number(window.innerHeight || 0);
+                    shortSide = Math.min(sw, sh);
+                    longSide = Math.max(sw, sh);
+                } catch (eSz) {}
+                if (
+                    !is14pmExempt &&
+                    shortSide >= 428 &&
+                    shortSide <= 432 &&
+                    longSide >= 928 &&
+                    longSide <= 936 &&
+                    !/iPhone\s*16\s*Pro\s*Max|iPhone17,2\b|iPhone\s*17\s*Pro\s*Max|iPhone18,2\b/i.test(ua)
+                ) {
+                    is14pmExempt = true;
+                    liquidGlass = false;
+                }
+                var aug15SafeTop = 0;
+                try {
+                    var augProbe = document.createElement('div');
+                    augProbe.style.cssText =
+                        'position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top,0px);';
+                    (document.body || root).appendChild(augProbe);
+                    aug15SafeTop = parseFloat(window.getComputedStyle(augProbe).paddingTop) || 0;
+                    if (augProbe.parentNode) augProbe.parentNode.removeChild(augProbe);
+                } catch (eAugSafe) {}
+                /* 系统已占栏（env≈0）：顶距 0；勿再垫 59 造成标题上大块空白（不限 iOS 大版本；Cordova 除外） */
+                var aug15SystemOwnsBar =
+                    aug15SafeTop < 20 && !/Cordova|tax-app-shell/i.test(ua);
+                if (is14pmExempt) {
+                    if (is15pmUa || root.classList.contains('app-ios-iphone15promax')) {
+                        root.classList.add('app-ios-iphone15promax');
+                        root.classList.remove('app-ios-iphone14promax');
+                    } else {
+                        root.classList.add('app-ios-iphone14promax');
+                    }
+                    root.classList.remove('app-ios27');
+                    root.classList.remove('app-ios-liquid-glass');
+                    root.classList.remove('app-ios-unified-chrome');
+                    if (aug15SystemOwnsBar) {
+                        root.classList.remove('app-top-safe-shell');
+                        root.classList.add('app-ios-status-outer');
+                        root.style.setProperty('--app-shell-statusbar-top', '0px', 'important');
+                    } else {
+                        root.classList.add('app-top-safe-shell');
+                        root.classList.remove('app-ios-status-outer');
+                        root.style.setProperty('--app-shell-statusbar-top', '59px', 'important');
+                    }
+                }
+                var is15Vp = shortSide >= 390 && shortSide <= 396 && longSide >= 848 && longSide <= 856;
+                var is15LikeSm =
+                    (/iPhone\s*15\b|iPhone15,4\b|iPhone16,1\b|iPhone15Pro\b(?!Max)/i.test(ua) || is15Vp) &&
+                    !/iPhone\s*15\s*Plus|iPhone\s*15\s*Pro\s*Max|iPhone15,5|iPhone16,2/i.test(ua);
+                if (is15LikeSm) {
+                    root.classList.add('app-ios-iphone15');
+                    root.classList.add('app-ios-unified-chrome');
+                    /* iOS 27 不加 app-top-safe-shell，避免和渐隐带顶距打架 */
+                    if (iosMajor < 27) root.classList.add('app-top-safe-shell');
+                }
+                if (liquidGlass && is15Vp) {
+                    root.classList.add('app-ios-unified-chrome');
+                }
+                if (liquidGlass) {
+                    root.classList.remove('app-ios-status-outer');
+                    root.classList.add('app-ios-liquid-glass');
+                    root.classList.add('app-ios-unified-chrome');
+                    if (iosMajor >= 27) {
+                        /*
+                         * 必须在 firstpaint（auth-boot 之后）继续维持 iOS 27 状态：
+                         * 旧逻辑会无条件加回 app-top-safe-shell 并把顶距打成 59px，
+                         * 清掉 auth-boot 的 !important 渐隐带顶距，顶部玻璃糊层复现。
+                         */
+                        root.classList.add('app-ios27');
+                        root.classList.remove('app-top-safe-shell');
+                        root.style.setProperty(
+                            '--app-shell-statusbar-top',
+                            'calc(env(safe-area-inset-top, 0px) + 56px)',
+                            'important'
+                        );
+                    } else {
+                        root.classList.add('app-top-safe-shell');
+                        root.style.setProperty('--app-shell-statusbar-top', '59px');
+                    }
+                } else if (standalone && !inIframe && !/Cordova|tax-app-shell/i.test(ua) && !is14pmExempt) {
+                    root.classList.add('app-ios-status-outer');
+                } else if (!(is14pmExempt && aug15SystemOwnsBar)) {
+                    /* 14/15PM 系统占栏时保留 status-outer，禁止被 else 清掉 */
+                    root.classList.remove('app-ios-status-outer');
+                }
+                if (!document.querySelector('style[data-ios-white-status-firstpaint]')) {
+                    var st = document.createElement('style');
+                    st.setAttribute('data-ios-white-status-firstpaint', '1');
+                    var fpCss =
+                        'html.platform-ios,html.platform-ios body.page-shuiming{background:#fff !important;background-image:linear-gradient(#fff, #fff) !important;background-size:100% 200px !important;background-repeat:no-repeat !important;}' +
+                        'html.app-ios-iphone15.app-top-safe-shell:not(.app-ios-status-outer) body.page-shuiming > .header{background:#fff !important;}' +
+                        'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming > .header,html.app-ios-liquid-glass:not(.app-ios27) body.page-shuiming > .header,html.app-ios-unified-chrome:not(.app-ios27) body.page-shuiming > .header{position:sticky !important;top:0 !important;z-index:20 !important;border-bottom:none !important;box-shadow:0 8px 0 0 #f4f6f9 !important;padding-top:calc(14px + var(--app-shell-statusbar-top,59px)) !important;background:#fff !important;}' +
+                        'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming > .content,html.app-ios-liquid-glass body.page-shuiming > .content,html.app-ios-unified-chrome body.page-shuiming > .content{padding-top:0 !important;}' +
+                        'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming > .header::after,html.app-ios-liquid-glass body.page-shuiming > .header::after{content:none !important;display:none !important;}' +
+                        'html.app-ios-unified-chrome #iosStickyTint.ios-sticky-tint,html.app-ios-iphone15 #iosStickyTint.ios-sticky-tint{display:none !important;height:0 !important;margin:0 !important;}' +
+                        '#iosStickyTint.ios-sticky-tint{position:sticky;top:0;height:calc(var(--app-shell-statusbar-top, env(safe-area-inset-top, 59px)) + 56px);margin:0 0 calc(-1 * (var(--app-shell-statusbar-top, env(safe-area-inset-top, 59px)) + 56px));background:#fff;z-index:110;}';
+                    if (iosMajor >= 27 && !is14pmExempt) {
+                        fpCss +=
+                            'html.app-ios27{--app-shell-statusbar-top:calc(env(safe-area-inset-top, 0px) + 56px)!important;}' +
+                            'html.app-ios27,html.app-ios27 body.page-shuiming{height:100%!important;max-height:100%!important;overflow:hidden!important;overscroll-behavior:none!important;background:#fff!important;}' +
+                            'html.app-ios27 body.page-shuiming{display:flex!important;flex-direction:column!important;}' +
+                            'html.app-ios27 body.page-shuiming > .header{position:relative!important;top:auto!important;flex:0 0 auto!important;z-index:20!important;' +
+                            'padding-top:calc(14px + var(--app-shell-statusbar-top,56px))!important;background:#fff!important;box-shadow:none!important;' +
+                            '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}' +
+                            'html.app-ios27 body.page-shuiming > .content{flex:1 1 auto!important;min-height:0!important;overflow-x:hidden!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain!important;}' +
+                            /* 年份遮罩勿用全屏半透明黑：会被 iOS 27 玻璃采成顶部发黑糊带 */
+                            'html.app-ios27 .picker-overlay{top:calc(var(--app-shell-statusbar-top,56px) + 44px)!important;background:rgba(0,0,0,0.45)!important;}';
+                    }
+                    st.textContent = fpCss;
+                    (document.head || root).appendChild(st);
+                }
+                try {
+                    window.parent.postMessage({
+                        source: 'tax-h5',
+                        type: 'status-bar',
+                        style: is14pmExempt
+                            ? aug15SystemOwnsBar
+                                ? 'default'
+                                : 'black-translucent'
+                            : iosMajor >= 27
+                              ? 'default'
+                              : 'black-translucent',
+                        overlays: is14pmExempt
+                            ? !aug15SystemOwnsBar
+                            : iosMajor >= 27
+                              ? false
+                              : true,
+                        color: '#ffffff',
+                        paint_shell: true,
+                        shell_bg: '#ffffff'
+                    }, '*');
+                } catch (e2) {}
+            } catch (e) {}
+        })();
+    </script>
+    <script src="/js/auth.js?v=20260928-air-top" defer fetchpriority="low"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
@@ -29,14 +510,50 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: #f5f6fa;
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', 'Segoe UI', Arial, sans-serif;
+            /* 对齐官方 .page-container */
+            background: #f4f6f9;
             min-height: 100vh;
+            color: #333;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
         
-        /* 顶部导航：默认贴顶固定，安全区仅在有 inset 时追加 */
+        /* 顶部导航：对齐官方 its-header；安全区仅在有 inset 时追加 */
+
+        html.platform-ios.app-top-safe-shell:not(.app-ios-status-outer) body.page-shuiming > .header {
+            background: #fff;
+            -webkit-backdrop-filter: none;
+            backdrop-filter: none;
+        }
+        html.app-ios-iphone15.app-top-safe-shell:not(.app-ios-status-outer) body.page-shuiming > .header {
+            background: #fff;
+        }
+        html.app-ios-iphone15.app-top-safe-shell body.page-shuiming > .header,
+        html.app-ios-liquid-glass body.page-shuiming > .header,
+        html.app-ios-unified-chrome body.page-shuiming > .header {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: #fff;
+            padding-top: calc(14px + var(--app-shell-statusbar-top, 59px));
+            border-bottom: none !important;
+            box-shadow: 0 8px 0 0 #f4f6f9 !important;
+        }
+        html.app-ios-iphone15.app-top-safe-shell body.page-shuiming > .content,
+        html.app-ios-liquid-glass body.page-shuiming > .content,
+        html.app-ios-unified-chrome body.page-shuiming > .content {
+            padding-top: 0;
+        }
+        html.app-ios-unified-chrome #iosStickyTint.ios-sticky-tint,
+        html.app-ios-iphone15 #iosStickyTint.ios-sticky-tint {
+            display: none !important;
+            height: 0 !important;
+            margin: 0 !important;
+        }
+        html.app-ios-sticky-chrome:not(.app-ios-iphone15):not(.app-ios-liquid-glass) body.page-shuiming > .header {
+            background: transparent;
+        }
         .header {
             background: #fff;
             position: fixed;
@@ -44,48 +561,181 @@
             left: 0;
             right: 0;
             z-index: 120;
-            padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 15px;
+            padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid #e3e4e8;
             box-sizing: border-box;
         }
         
         .back-btn {
             position: absolute;
-            left: 16px;
-            color: #1e6fff;
+            left: 12px;
+            z-index: 2;
+            color: #4285f4;
             font-size: 16px;
             text-decoration: none;
             display: flex;
             align-items: center;
             gap: 2px;
+            padding: 8px 12px 8px 0;
             -webkit-tap-highlight-color: transparent;
             outline: none;
+            pointer-events: auto;
+        }
+
+        .back-btn img {
+            width: 9px;
+            height: auto;
+            display: block;
         }
         
         .header-title {
             font-size: 17px;
-            font-weight: 500;
-            color: #333;
+            font-weight: 600;
+            color: #000;
         }
 
         /* 内容区域 */
         .content {
-            padding: calc(46px + env(safe-area-inset-top, 0px)) 0 100px;
+            padding: calc(44px + env(safe-area-inset-top, 0px)) 0 32px;
+        }
+        html.app-ios-promax-wide body.page-shuiming > .header,
+        html.app-ios-iphone16promax body.page-shuiming > .header {
+            padding-left: 20px;
+            padding-right: 20px;
+        }
+        html.app-ios-promax-wide body.page-shuiming > .content,
+        html.app-ios-iphone16promax body.page-shuiming > .content {
+            padding-left: 8px;
+            padding-right: 8px;
+        }
+        @media screen and (min-width: 414px), screen and (min-device-width: 414px) {
+            body.page-shuiming > .header {
+                padding-left: 20px;
+                padding-right: 20px;
+            }
+            body.page-shuiming > .content {
+                padding-left: 8px;
+                padding-right: 8px;
+            }
+        }
+        /* iPhone Air：左右贴边 + 顶栏让出状态栏（与结果页一致） */
+        html.app-ios-iphoneair {
+            --app-shell-statusbar-top: max(59px, env(safe-area-inset-top, 59px));
+        }
+        html.app-ios-iphoneair body.page-shuiming > .header,
+        html.app-ios-iphoneair.app-top-safe-shell body.page-shuiming > .header {
+            padding-top: calc(14px + var(--app-shell-statusbar-top, 59px)) !important;
+            padding-left: 12px !important;
+            padding-right: 12px !important;
+            box-sizing: border-box !important;
+        }
+        html.app-ios-iphoneair body.page-shuiming > .content,
+        html.app-ios-iphoneair.app-top-safe-shell body.page-shuiming > .content {
+            padding-top: calc(46px + var(--app-shell-statusbar-top, 59px)) !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
         }
 
-        html.app-cordova-shell.app-top-safe-shell body.page-shuiming > .header {
-            padding-top: calc(14px + var(--app-shell-statusbar-top, 48px));
+        /* Cordova iOS：壳内需 statusbar 占位；Android Cordova 黑条在 WebView 外，勿叠 */
+        html.app-cordova-shell.app-ios-client.app-top-safe-shell body.page-shuiming > .header {
+            padding-top: calc(12px + var(--app-shell-statusbar-top, 48px));
         }
 
-        html.app-cordova-shell.app-top-safe-shell body.page-shuiming > .content {
-            padding-top: calc(46px + var(--app-shell-statusbar-top, 48px));
+        html.app-cordova-shell.app-ios-client.app-top-safe-shell body.page-shuiming > .content {
+            padding-top: calc(44px + var(--app-shell-statusbar-top, 48px));
+        }
+
+        /* Android：顶距跟 --app-shell-statusbar-top；白顶栏外置状态栏时由 auth.js 置 0，勿写死 40px */
+        html.platform-android body.page-shuiming > .header,
+        html.app-android-client body.page-shuiming > .header,
+        html.app-android-client.app-top-safe-shell body.page-shuiming > .header,
+        html.app-cordova-shell.app-android-client body.page-shuiming > .header,
+        html.app-android-honor-magic body.page-shuiming > .header,
+        html.app-android-honor-flc body.page-shuiming > .header,
+        html.app-android-honor-fcp body.page-shuiming > .header {
+            padding-top: calc(12px + var(--app-shell-statusbar-top, 0px)) !important;
+            padding-bottom: 12px !important;
+            top: 0 !important;
+        }
+
+        html.platform-android body.page-shuiming > .content,
+        html.app-android-client body.page-shuiming > .content,
+        html.app-android-client.app-top-safe-shell body.page-shuiming > .content,
+        html.app-cordova-shell.app-android-client body.page-shuiming > .content,
+        html.app-android-honor-magic body.page-shuiming > .content,
+        html.app-android-honor-flc body.page-shuiming > .content,
+        html.app-android-honor-fcp body.page-shuiming > .content {
+            padding-top: calc(44px + var(--app-shell-statusbar-top, 0px)) !important;
+        }
+
+        /* 沉浸压栏机（小米 15 / 15 Pro / 10 / K70 至尊 / 12C / S50 Pro mini）：强制 40px 顶距 */
+        html.app-android-xiaomi-15 body.page-shuiming > .header,
+        html.app-android-xiaomi-15.app-top-safe-shell body.page-shuiming > .header,
+        html.app-android-xiaomi-15pro body.page-shuiming > .header,
+        html.app-android-xiaomi-15pro.app-top-safe-shell body.page-shuiming > .header,
+        html.app-android-xiaomi-10 body.page-shuiming > .header,
+        html.app-android-xiaomi-10.app-top-safe-shell body.page-shuiming > .header,
+        html.app-android-redmi-k70-ultra body.page-shuiming > .header,
+        html.app-android-redmi-k80pro body.page-shuiming > .header,
+        html.app-android-redmi-k80pro.app-top-safe-shell body.page-shuiming > .header,
+        html.app-android-redmi-12c body.page-shuiming > .header,
+        html.app-android-iqoo-neo8 body.page-shuiming > .header,
+        html.app-android-iqoo-neo8.app-top-safe-shell body.page-shuiming > .header,
+        html.app-android-iqoo-neo8pro body.page-shuiming > .header,
+        html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming > .header,
+        html.app-android-vivo-s50promini body.page-shuiming > .header,
+        html.app-android-vivo-s50promini.app-top-safe-shell body.page-shuiming > .header,
+        html.app-android-vivo-s50promini.app-android-white-page-outer body.page-shuiming > .header,
+        html.app-android-vivo-s50promini.app-top-safe-shell.app-android-white-page-outer body.page-shuiming > .header,
+        html.app-android-vivo-x200pro body.page-shuiming > .header,
+        html.app-android-vivo-x200pro.app-top-safe-shell body.page-shuiming > .header,
+        html.app-android-vivo-x200pro.app-android-white-page-outer body.page-shuiming > .header,
+        html.app-android-vivo-x200pro.app-top-safe-shell.app-android-white-page-outer body.page-shuiming > .header,
+        html.app-android-huawei-nova13 body.page-shuiming > .header,
+        html.app-android-huawei-nova13.app-top-safe-shell body.page-shuiming > .header,
+        html.app-android-immersive-white-top body.page-shuiming > .header,
+        html.app-android-immersive-white-top.app-top-safe-shell body.page-shuiming > .header,
+        html.app-android-samsung-s23u body.page-shuiming > .header,
+        html.app-android-samsung-s23u.app-top-safe-shell body.page-shuiming > .header {
+            padding-top: calc(12px + 40px) !important;
+        }
+        html.app-android-xiaomi-15 body.page-shuiming > .content,
+        html.app-android-xiaomi-15.app-top-safe-shell body.page-shuiming > .content,
+        html.app-android-xiaomi-15pro body.page-shuiming > .content,
+        html.app-android-xiaomi-15pro.app-top-safe-shell body.page-shuiming > .content,
+        html.app-android-xiaomi-10 body.page-shuiming > .content,
+        html.app-android-xiaomi-10.app-top-safe-shell body.page-shuiming > .content,
+        html.app-android-redmi-k70-ultra body.page-shuiming > .content,
+        html.app-android-redmi-k80pro body.page-shuiming > .content,
+        html.app-android-redmi-k80pro.app-top-safe-shell body.page-shuiming > .content,
+        html.app-android-redmi-12c body.page-shuiming > .content,
+        html.app-android-iqoo-neo8 body.page-shuiming > .content,
+        html.app-android-iqoo-neo8.app-top-safe-shell body.page-shuiming > .content,
+        html.app-android-iqoo-neo8pro body.page-shuiming > .content,
+        html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming > .content,
+        html.app-android-vivo-s50promini body.page-shuiming > .content,
+        html.app-android-vivo-s50promini.app-top-safe-shell body.page-shuiming > .content,
+        html.app-android-vivo-s50promini.app-android-white-page-outer body.page-shuiming > .content,
+        html.app-android-vivo-s50promini.app-top-safe-shell.app-android-white-page-outer body.page-shuiming > .content,
+        html.app-android-vivo-x200pro body.page-shuiming > .content,
+        html.app-android-vivo-x200pro.app-top-safe-shell body.page-shuiming > .content,
+        html.app-android-vivo-x200pro.app-android-white-page-outer body.page-shuiming > .content,
+        html.app-android-vivo-x200pro.app-top-safe-shell.app-android-white-page-outer body.page-shuiming > .content,
+        html.app-android-huawei-nova13 body.page-shuiming > .content,
+        html.app-android-huawei-nova13.app-top-safe-shell body.page-shuiming > .content,
+        html.app-android-immersive-white-top body.page-shuiming > .content,
+        html.app-android-immersive-white-top.app-top-safe-shell body.page-shuiming > .content,
+        html.app-android-samsung-s23u body.page-shuiming > .content,
+        html.app-android-samsung-s23u.app-top-safe-shell body.page-shuiming > .content {
+            padding-top: calc(44px + 40px) !important;
         }
 
         /*
-         * 表单白卡片：标题与内容同卡片内；左右贴屏撑满（无两侧灰条），块与块之间仍用 margin-top 露出页底灰。
+         * 表单白卡片：对齐官方 its-group-cells + weui-cells
+         * 标题与内容同卡片；块间距 .32rem(12px)，页底 #f4f6f9
          */
         .form-section-card {
             --form-card-pad-x: 16px;
@@ -96,52 +746,60 @@
         }
 
         .form-section-card--first {
-            margin-top: 10px;
+            margin-top: 12px;
         }
 
         .form-section-card + .form-section-card {
             margin-top: 12px;
         }
 
+        /* 官方 .its-group-cells：15/21、字重 700、蓝条 4×16 */
         .form-section-card-title {
-            padding: 16px var(--form-card-pad-x) 12px;
+            padding: 12px var(--form-card-pad-x);
             font-size: 15px;
-            color: #000;
-            font-weight: 500;
+            line-height: 21px;
+            color: #333;
+            font-weight: 700;
             display: flex;
             align-items: center;
             gap: 8px;
-            border-bottom: 1px solid #f0f0f0;
+            border-bottom: 1px solid #e3e4e8;
         }
 
         .form-section-card-title::before {
             content: '';
-            width: 3px;
+            width: 4px;
             height: 16px;
-            background: #1e6fff;
-            border-radius: 2px;
+            margin-top: 2px;
+            background: #4285f4;
+            border-radius: 4px;
             flex-shrink: 0;
         }
         
-        /* 年度行：左「年度」、年份居中（与参考图红线位置）、右箭头 */
+        /* 年度行：左「年度」、年份约在 36%（官方截图像素测量）、右箭头 */
         .year-select {
             position: relative;
             background: #fff;
             margin: 0;
             border-radius: 0;
-            padding: 14px var(--form-card-pad-x, 16px);
+            padding: 12px var(--form-card-pad-x, 16px);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            min-height: 48px;
+            min-height: 46px;
             box-sizing: border-box;
         }
         
         .year-label {
-            font-size: 15px;
+            font-size: 16px;
+            line-height: 22px;
             font-weight: 400;
-            color: #333;
+            color: #565a68;
+            min-width: 2em;
+            margin-right: 20px;
             flex: 0 0 auto;
+            white-space: nowrap;
+            word-break: keep-all;
             position: relative;
             z-index: 1;
         }
@@ -150,16 +808,53 @@
             position: absolute;
             left: 36%;
             transform: translateX(-50%);
-            color: #000;
-            font-size: 15px;
+            color: #333;
+            font-size: 16px;
+            line-height: 22px;
             font-weight: 400;
             pointer-events: none;
+        }
+        html.app-ios-iphone14promax body.page-shuiming .year-label {
+            font-size: 17px;
+        }
+        html.app-ios-iphone14promax body.page-shuiming .year-value {
+            font-size: 18px;
+        }
+        /*
+         * 三星 S23 Ultra（SM-S9180 / 385×824@3.75）：
+         * 默认 15/16/17 比正版个税筛选页小一档，系统中文走 Roboto / Noto。
+         */
+        html.app-android-samsung-s23u body.page-shuiming {
+            font-family: Roboto, 'Noto Sans CJK SC', 'Noto Sans SC', 'Droid Sans Fallback', sans-serif;
+        }
+        html.app-android-samsung-s23u body.page-shuiming .header-title {
+            font-size: 18px;
+            font-weight: 500;
+        }
+        html.app-android-samsung-s23u body.page-shuiming .back-btn {
+            font-size: 17px;
+        }
+        html.app-android-samsung-s23u body.page-shuiming .form-section-card-title {
+            font-size: 17px;
+            line-height: 23px;
+        }
+        html.app-android-samsung-s23u body.page-shuiming .year-label,
+        html.app-android-samsung-s23u body.page-shuiming .year-value,
+        html.app-android-samsung-s23u body.page-shuiming .type-text {
+            font-size: 18px;
+            line-height: 24px;
+        }
+        html.app-android-samsung-s23u body.page-shuiming .type-toggle {
+            font-size: 16px;
+        }
+        html.app-android-samsung-s23u body.page-shuiming .query-btn {
+            font-size: 18px;
         }
         
         .year-chevron-wrap {
             flex: 0 0 auto;
-            width: 28px;
-            height: 28px;
+            width: 22px;
+            height: 22px;
             margin-left: auto;
             display: flex;
             align-items: center;
@@ -170,15 +865,15 @@
         }
         
         .year-chevron {
-            width: 18px;
-            height: 18px;
-            color: #ccc;
+            width: 12px;
+            height: 12px;
+            color: #d1d3d8;
             flex-shrink: 0;
         }
 
         .year-chevron path {
             stroke: currentColor;
-            stroke-width: 1.5;
+            stroke-width: 1.6;
             stroke-linecap: round;
             stroke-linejoin: round;
             fill: none;
@@ -192,11 +887,11 @@
         }
         
         .type-item {
-            padding: 16px var(--form-card-pad-x);
+            padding: 12px var(--form-card-pad-x);
             display: flex;
             align-items: center;
-            gap: 12px;
-            border-bottom: 1px solid #f5f5f5;
+            gap: 10px;
+            border-bottom: 1px solid #e3e4e8;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
         }
@@ -210,25 +905,26 @@
             border-bottom: none;
         }
         
+        /* 官方 iconfont 勾选约 16–20px，选中 #4285f4 / 未选 #d1d3d8 */
         .check-icon {
-            width: 22px;
-            height: 22px;
-            background: #1e6fff;
+            width: 18px;
+            height: 18px;
+            background: #4285f4;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-shrink: 0;
         }
         
         .check-icon svg {
-            width: 14px;
-            height: 14px;
+            width: 10px;
+            height: 10px;
         }
         
-        /* 未选中的空心圆（与参考图一致） */
         .check-icon.check-off {
             background: transparent;
-            border: 2px solid #ccc;
+            border: 1.5px solid #d1d3d8;
             box-sizing: border-box;
         }
         .check-icon.check-off svg {
@@ -236,7 +932,8 @@
         }
         
         .type-text {
-            font-size: 15px;
+            font-size: 16px;
+            line-height: 22px;
             font-weight: 400;
             color: #333;
         }
@@ -248,21 +945,20 @@
             display: block;
         }
         
-        /* 展开 / 收起：官方态 — 白卡片内一行，文案+双箭头整体居中，无右侧「>」 */
+        /* 展开 / 收起：官方 .show-all-line #257cf5 */
         .type-toggle {
-            padding: 16px var(--form-card-pad-x);
-            color: #1e6fff;
-            font-size: 14px;
+            padding: 12px var(--form-card-pad-x);
+            color: #257cf5;
+            font-size: 15px;
             font-weight: 400;
             line-height: 1.4;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 4px;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
             user-select: none;
-            border-top: 1px solid #ebebeb;
+            border-top: 1px solid #e3e4e8;
         }
         .type-toggle.hidden {
             display: none;
@@ -270,37 +966,46 @@
         .type-toggle-text {
             flex: 0 0 auto;
         }
-        .type-toggle-icon {
-            width: 18px;
-            height: 18px;
-            flex-shrink: 0;
+        /* 官方 IncomeTaxPayment .show-all-line img：15×15 位图，全机型同一张；展开 scaleY(-1) */
+        .type-toggle-caret {
+            width: 15px;
+            height: 15px;
+            margin-left: 4px;
             display: block;
-            color: currentColor;
+            flex-shrink: 0;
+            border: 0;
         }
-        .type-toggle-icon path {
-            stroke: currentColor;
-            stroke-width: 1.65;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-            fill: none;
+        .type-toggle-caret.zhankai {
+            -webkit-transform: scaleY(-1);
+            transform: scaleY(-1);
+        }
+        .type-toggle-caret.shousuo {
+            -webkit-transform: scaleY(1);
+            transform: scaleY(1);
         }
         
+        /* 官方 .income-query-btn margin-top .85333333rem ≈ 32px */
         .query-btn-wrapper {
-            padding: 24px 16px;
-            padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
-            background: #f5f6fa;
+            padding: 32px 16px 40px;
+            padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px));
+            background: #f4f6f9;
         }
         
+        /* 官方 .zdj-btn_primary 渐变；圆角取截图约 8px（非 pill） */
         .query-btn {
             width: 100%;
             max-width: 100%;
-            background: #1e6fff;
+            height: 44px;
+            background-image: linear-gradient(135deg, #257cf5, #4d97ff);
+            background-color: #257cf5;
+            box-shadow: 0 12px 32px 0 rgba(37, 123, 245, 0.3);
             color: #fff;
             border: none;
-            border-radius: 6px;
-            padding: 14px;
+            border-radius: 8px;
+            padding: 0 16px;
             font-size: 16px;
-            font-weight: 600;
+            font-weight: 500;
+            line-height: 44px;
             font-family: inherit;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
@@ -344,7 +1049,7 @@
             justify-content: space-between;
             align-items: center;
             padding: 16px;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid #e3e4e8;
         }
         
         .picker-cancel {
@@ -358,7 +1063,7 @@
         }
         
         .picker-confirm {
-            color: #1e6fff;
+            color: #4285f4;
             font-size: 16px;
             font-weight: 400;
             font-family: inherit;
@@ -464,10 +1169,11 @@
     </style>
 </head>
 <body class="page-shuiming">
+    <div id="iosStickyTint" class="ios-sticky-tint" aria-hidden="true"></div>
     <!-- 顶部导航 -->
     <div class="header">
-        <a href="shouye.html" class="back-btn">
-            <img src="/jt.png" style="width: 9px; vertical-align: middle;">
+        <a href="shouye.html" class="back-btn" id="shuimingBack" data-no-page-loading="1">
+            <img src="/jt.png" alt="">
             <span>返回</span>
         </a>
         <span class="header-title">收入纳税明细</span>
@@ -528,10 +1234,7 @@
 
         <div class="type-toggle" id="btnExpandTypes" role="button" tabindex="0" aria-expanded="false">
             <span class="type-toggle-text">其他类型</span>
-            <svg class="type-toggle-icon" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path d="M5 4l5 5 5-5"/>
-                <path d="M5 10l5 5 5-5"/>
-            </svg>
+            <img class="type-toggle-caret zhankai" src="/img/shuiming/type-caret.png?v=20260820-caret" width="15" height="15" alt="" aria-hidden="true">
         </div>
 
             <div id="incomeTypesExtra" class="income-types-extra" aria-hidden="true">
@@ -579,10 +1282,7 @@
 
         <div class="type-toggle hidden" id="btnCollapseTypes" role="button" tabindex="0" aria-expanded="false">
             <span class="type-toggle-text">收起</span>
-            <svg class="type-toggle-icon" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path d="M5 12l5-5 5 5"/>
-                <path d="M5 16l5-5 5 5"/>
-            </svg>
+            <img class="type-toggle-caret shousuo" src="/img/shuiming/type-caret.png?v=20260820-caret" width="15" height="15" alt="" aria-hidden="true">
         </div>
             </div>
         </div>
@@ -608,13 +1308,41 @@
             <!-- 上下渐变遮罩 -->
             <div class="picker-mask-top"></div>
             <div class="picker-mask-bottom"></div>
-            <!-- 滚动列表：由 tax-year.js 动态填充 1900…当前年 -->
+            <!-- 滚动列表：由 tax-year.js 动态填充 2019…当前年 -->
             <div class="picker-list" id="pickerList"></div>
         </div>
     </div>
     
-    <script src="/js/tax-year.js?v=20260719-tax-year-open"></script>
+    <script src="/js/tax-year.js?v=20260912-year-keep"></script>
     <script>
+        (function () {
+            var HOME = 'shouye.html';
+            var BANCHA = 'bancha.html';
+            var back = document.getElementById('shuimingBack');
+            if (!back) return;
+            function resolveBackTarget() {
+                try {
+                    var ref = String(document.referrer || '');
+                    if (/bancha\.html(?:[?#]|$)/i.test(ref)) return BANCHA;
+                    if (/shouye\.html(?:[?#]|$)/i.test(ref)) return HOME;
+                } catch (e0) {}
+                try {
+                    if (/[?&]reset=1(?:&|$)/.test(String(location.search || ''))) return HOME;
+                } catch (e1) {}
+                return HOME;
+            }
+            back.setAttribute('href', resolveBackTarget());
+            back.addEventListener('click', function (e) {
+                e.preventDefault();
+                var href = resolveBackTarget();
+                try {
+                    window.location.assign(href);
+                } catch (e2) {
+                    window.location.href = href;
+                }
+            });
+        })();
+
         const yearSelect = document.getElementById('yearSelect');
         const yearDisplay = document.getElementById('yearDisplay');
         const pickerOverlay = document.getElementById('pickerOverlay');
@@ -632,7 +1360,7 @@
             var years = typeof listTaxYears === 'function' ? listTaxYears() : [];
             if (!years.length) {
                 var maxY = typeof getMaxTaxYear === 'function' ? getMaxTaxYear() : new Date().getFullYear();
-                var minY = typeof getMinTaxYear === 'function' ? getMinTaxYear() : 1900;
+                var minY = typeof getMinTaxYear === 'function' ? getMinTaxYear() : 2019;
                 for (var y = minY; y <= maxY; y++) years.push(y);
             }
             pickerList.innerHTML = '';
@@ -645,6 +1373,7 @@
             });
             getPickerItems().forEach(function (item, index) {
                 item.addEventListener('click', function () {
+                    selectedYear = String(item.dataset.year || selectedYear);
                     pickerList.scrollTo({
                         top: index * itemHeight,
                         behavior: 'smooth'
@@ -655,34 +1384,91 @@
 
         buildYearPickerList();
 
-        // 从URL参数或localStorage获取上次选择的年份，默认当前年份（1900–当前年）
+        // 从URL参数或localStorage获取上次选择的年份，默认当前年份（2019–当前年）
         function getInitialYear() {
             var urlParams = new URLSearchParams(window.location.search);
-            // reset=1 时清除记忆，回到当前年份
-            if (urlParams.get('reset') === '1') {
-                localStorage.removeItem('selected_year');
-                return String(normalizeTaxYear(null));
-            }
-            // 优先从URL参数获取
             var yearFromUrl = urlParams.get('year');
+            var reset = urlParams.get('reset') === '1';
+            var yearFromStorage = null;
+            try {
+                yearFromStorage = localStorage.getItem('selected_year');
+            } catch (e0) {}
+            // reset=1 只在「没有 year」时清记忆；带 year 从结果页返回必须保留
+            if (reset && !yearFromUrl) {
+                try {
+                    localStorage.removeItem('selected_year');
+                } catch (e1) {}
+                yearFromStorage = null;
+            }
+            if (typeof resolveSelectedTaxYear === 'function') {
+                return resolveSelectedTaxYear({
+                    urlYear: yearFromUrl,
+                    reset: reset && !yearFromUrl,
+                    storedYear: yearFromStorage
+                });
+            }
             if (yearFromUrl) return String(normalizeTaxYear(yearFromUrl));
-            // 其次从localStorage获取
-            var yearFromStorage = localStorage.getItem('selected_year');
             if (yearFromStorage) return String(normalizeTaxYear(yearFromStorage));
-            // 默认当前年份
             return String(normalizeTaxYear(null));
+        }
+
+        function persistSelectedYear(year) {
+            selectedYear = String(normalizeTaxYear(year));
+            yearDisplay.textContent = selectedYear;
+            try {
+                localStorage.setItem('selected_year', selectedYear);
+            } catch (e2) {}
+            try {
+                var url = new URL(window.location.href);
+                url.searchParams.delete('reset');
+                url.searchParams.set('year', selectedYear);
+                var next = url.pathname + url.search + url.hash;
+                var cur = window.location.pathname + window.location.search + window.location.hash;
+                if (next !== cur) {
+                    history.replaceState(null, '', next);
+                }
+            } catch (e3) {}
+        }
+
+        function yearFromPickerCenter() {
+            var items = getPickerItems();
+            if (!items.length) return selectedYear;
+            var indicator = yearPicker.querySelector('.picker-indicator');
+            var midY;
+            if (indicator) {
+                var ir = indicator.getBoundingClientRect();
+                midY = ir.top + ir.height / 2;
+            } else {
+                var wr = pickerList.getBoundingClientRect();
+                midY = wr.top + wr.height / 2;
+            }
+            var best = null;
+            var bestDist = Infinity;
+            for (var i = 0; i < items.length; i++) {
+                var r = items[i].getBoundingClientRect();
+                if (r.height <= 0) continue;
+                var d = Math.abs(r.top + r.height / 2 - midY);
+                if (d < bestDist) {
+                    bestDist = d;
+                    best = items[i];
+                }
+            }
+            return best && best.dataset.year ? best.dataset.year : selectedYear;
         }
         
         let selectedYear = getInitialYear();
+        var yearWhenPickerOpened = selectedYear;
         
-        // 初始化显示（纠正 localStorage / 异常系统时间）
-        yearDisplay.textContent = selectedYear;
-        try {
-            localStorage.setItem('selected_year', selectedYear);
-        } catch (e) {}
+        // 初始化显示，并去掉 reset=1，避免从结果页返回又被冲成当年
+        persistSelectedYear(selectedYear);
+        window.addEventListener('pageshow', function () {
+            if (yearPicker.classList.contains('show')) return;
+            persistSelectedYear(getInitialYear());
+        });
         
         // 打开选择器
         yearSelect.addEventListener('click', function() {
+            yearWhenPickerOpened = selectedYear;
             pickerOverlay.classList.add('show');
             yearPicker.classList.add('show');
             // 滚动到当前选中的年份
@@ -705,8 +1491,12 @@
             yearPicker.classList.remove('show');
         }
         
-        pickerOverlay.addEventListener('click', closePicker);
-        pickerCancel.addEventListener('click', closePicker);
+        function cancelPicker() {
+            selectedYear = yearWhenPickerOpened;
+            closePicker();
+        }
+        pickerOverlay.addEventListener('click', cancelPicker);
+        pickerCancel.addEventListener('click', cancelPicker);
         
         // 滚动时更新选中状态
         let scrollTimer = null;
@@ -750,10 +1540,9 @@
             });
         }
         
-        // 确定选择
+        // 确定选择：按滚轮中间那年写入，不依赖 scroll 事件是否更新过 selectedYear
         pickerConfirm.addEventListener('click', function() {
-            selectedYear = String(normalizeTaxYear(selectedYear));
-            yearDisplay.textContent = selectedYear;
+            persistSelectedYear(yearFromPickerCenter());
             closePicker();
         });
         
@@ -790,9 +1579,7 @@
 
         // 查询（未激活也可进入结果页）
         function doQuery() {
-            selectedYear = String(normalizeTaxYear(selectedYear));
-            yearDisplay.textContent = selectedYear;
-            localStorage.setItem('selected_year', selectedYear);
+            persistSelectedYear(selectedYear);
             var types = getSelectedIncomeTypes();
             if (!types.length) {
                 alert('请至少选择一种所得类型');

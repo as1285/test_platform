@@ -2,13 +2,1575 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260722-fetch-timeout"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <!--
+      WebClip 启动文档：iOS 只认解析时的静态 meta，且整段 standalone 会话沿用启动页外观。
+      这里必须是沉浸式（black-translucent + 顶栏蓝），否则我的/首页等页面顶部会一直留白条。
+      浏览器内该 meta 无效；非 standalone 时 auth.js 会把 theme-color 改回白色。
+    -->
+    <meta name="theme-color" content="#2c80f4">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="个人所得税">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <link rel="manifest" href="manifest.json">
+    <link rel="preload" as="image" href="splash_screen.png?v=20260731-webclip">
+    <!-- iOS 主屏 / 描述文件：静态启动图（须在首屏 HTML，勿仅依赖 JS 注入） -->
+    <link rel="apple-touch-startup-image" href="splash/startup-iphone-14-pro-max.png?v=20260731-webclip" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3)">
+    <link rel="apple-touch-startup-image" href="splash/startup-iphone-14-pro-max.png?v=20260731-webclip" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)">
+    <link rel="apple-touch-startup-image" href="splash/startup-iphone-14-pro.png?v=20260731-webclip" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3)">
+    <link rel="apple-touch-startup-image" href="splash/startup-iphone-14-pro.png?v=20260731-webclip" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)">
+    <link rel="apple-touch-startup-image" href="splash/startup-iphone-13-pro-max.png?v=20260731-webclip" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)">
+    <link rel="apple-touch-startup-image" href="splash/startup-iphone-12-13.png?v=20260731-webclip" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)">
+    <link rel="apple-touch-startup-image" href="splash/startup-iphone-x.png?v=20260731-webclip" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)">
+    <link rel="apple-touch-startup-image" href="splash/startup-iphone-xs-max.png?v=20260731-webclip" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3)">
+    <link rel="apple-touch-startup-image" href="splash/startup-iphone-xr.png?v=20260731-webclip" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2)">
+    <link rel="apple-touch-startup-image" href="splash/startup-iphone-8-plus.png?v=20260731-webclip" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3)">
+    <link rel="apple-touch-startup-image" href="splash/startup-iphone-8.png?v=20260731-webclip" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)">
+    <link rel="apple-touch-startup-image" href="splash_screen.png?v=20260731-webclip" media="(orientation: portrait)">
+    <script>
+        (function () {
+            try {
+                var u = String(navigator.userAgent || '');
+                try {
+                    u += ' ' + String(localStorage.getItem('tax_device_model_v1') || '');
+                } catch (e0) {}
+                if (/2210132[CGEI]|(?:Xiaomi|Mi|小米)[\s_-]*13[\s_-]*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-xiaomi-13pro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                }
+                if (/Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u)) {
+                    document.documentElement.classList.add('app-android-huawei-mate60');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                }
+                /* iPhone 16 Pro Max：首帧打标，避免 iOS 26 误走 17 Pro Max 档 */
+                if (
+                    /iPhone|iPad|iPod/i.test(u) ||
+                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+                ) {
+                    document.documentElement.classList.add('app-ios-client');
+                    var sw = window.screen && window.screen.width ? Number(window.screen.width) : 0;
+                    var sh = window.screen && window.screen.height ? Number(window.screen.height) : 0;
+                    var shortSide = Math.min(sw, sh);
+                    var longSide = Math.max(sw, sh);
+                    var is440 =
+                        shortSide >= 436 && shortSide <= 444 && longSide >= 948 && longSide <= 962;
+                    if (
+                        /iPhone\s*16\s*Pro\s*Max|iPhone17,2\b|MYTN3/i.test(u) ||
+                        (is440 && !/iPhone\s*17\s*Pro\s*Max|iPhone18,2\b/i.test(u))
+                    ) {
+                        document.documentElement.classList.add('app-ios-iphone16promax');
+                        document.documentElement.style.setProperty(
+                            '--app-shell-statusbar-top',
+                            'max(59px, env(safe-area-inset-top, 59px))'
+                        );
+                    }
+                    if (
+                        /iPhone\s*14\s*Pro\s*Max|iPhone15,3\b/i.test(u) ||
+                        (shortSide >= 428 &&
+                            shortSide <= 432 &&
+                            longSide >= 928 &&
+                            longSide <= 936 &&
+                            !/iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone15,5\b/i.test(
+                                u
+                            ))
+                    ) {
+                        document.documentElement.classList.add('app-ios-iphone14promax');
+                        document.documentElement.classList.add('app-ios-iphone-promax-font');
+                        document.documentElement.style.setProperty('--app-shell-statusbar-top', '59px');
+                    }
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <script src="/js/tab-shell-escape.js?v=20260906-login-top"></script>
+    <script src="/js/auth-boot.js?v=20260902-ip16pm-login"></script>
+    <script src="/js/auth.js?v=20260923-honor-x20" defer></script>
+    <script src="/js/browser-install-prompt.js?v=20260827-cend-sync" defer></script>
     <title>登录</title>
-    <script>location.replace('index.html');</script>
-    <meta http-equiv="refresh" content="0;url=index.html">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', 'STHeiti', 'Microsoft YaHei', sans-serif;
+            background-color: #fff;
+            min-height: 100vh;
+            color: #333;
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        /* 顶部导航（对齐 APK .its-header） */
+        .header {
+            background: #fff;
+            padding: 0 12px;
+            padding-top: calc(15px + max(env(safe-area-inset-top, 0px), var(--app-shell-statusbar-top, 0px)));
+            min-height: calc(44px + max(env(safe-area-inset-top, 0px), var(--app-shell-statusbar-top, 0px)));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            border-bottom: 1px solid #e3e4e8;
+            box-sizing: border-box;
+        }
+
+        .back-btn {
+            position: absolute;
+            left: 8px;
+            bottom: 0;
+            height: 44px;
+            color: #4285f4;
+            font-size: 15px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+            line-height: 21px;
+            padding: 0 4px;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+        }
+        .back-btn:active {
+            color: #86b1f8;
+        }
+
+        .back-btn .back-chevron {
+            display: block;
+            width: 11px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        .back-btn .back-chevron svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .header-title {
+            font-size: 17px;
+            font-weight: 400;
+            line-height: 23px;
+            color: #333;
+            letter-spacing: 0;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Logo：对齐目标 UI——浅蓝圆底 + 深蓝人像剪影 + 白色微笑曲线 */
+        .avatar-section {
+            display: flex;
+            justify-content: center;
+            padding: 40px 0 56px;
+        }
+
+        .avatar {
+            width: 88px;
+            height: 88px;
+            border-radius: 50%;
+            overflow: hidden;
+            background: transparent;
+            flex-shrink: 0;
+            line-height: 0;
+        }
+
+        .avatar-img {
+            display: block;
+            width: 88px;
+            height: 88px;
+        }
+        
+        /* 表单：APK .login-input 底部分割线 #c4c6cf */
+        .form-section {
+            padding: 0 16px;
+            max-width: 343px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .form-item {
+            display: flex;
+            align-items: center;
+            min-height: 48px;
+            padding: 12px 0;
+            border-bottom: 1px solid #c4c6cf;
+        }
+
+        .form-label {
+            width: 48px;
+            font-size: 15px;
+            font-weight: 400;
+            color: #333;
+            flex-shrink: 0;
+            line-height: 21px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .form-input {
+            flex: 1;
+            min-width: 0;
+            border: none;
+            outline: none;
+            font-size: 15px;
+            line-height: 21px;
+            color: #333;
+            caret-color: #4285f4;
+            padding: 0 8px;
+            background: transparent;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .form-input::placeholder {
+            color: #c4c6cf;
+        }
+
+        /* 账号帮助：官方 login-input-icon-wenhao 为 #4285f4 */
+        .form-help {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 1px solid #4285f4;
+            background: transparent;
+            color: #4285f4;
+            font-size: 11px;
+            font-weight: 500;
+            font-family: Arial, Helvetica, sans-serif;
+            line-height: 14px;
+            text-align: center;
+            flex-shrink: 0;
+            margin-left: 4px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            box-sizing: border-box;
+        }
+        .form-help:active {
+            opacity: 0.75;
+        }
+
+        /* 滑块：对齐 APK .nc_wrapper（#f0f2f5 / 高 48px / 手柄 52px） */
+        .slider-section {
+            padding: 18px 16px 0;
+            max-width: 343px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .slider-lane {
+            position: relative;
+            height: 48px;
+            background: #f0f2f5;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .slider-progress {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 0;
+            background: #b7d978;
+            border-radius: 4px 0 0 4px;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .slider-lane.is-verified {
+            background: #8fc63d;
+        }
+        .slider-lane.is-verified .slider-progress {
+            width: 100% !important;
+            background: #8fc63d;
+            border-radius: 4px;
+        }
+        .slider-hint {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 0 12px 0 56px;
+            font-size: 16px;
+            color: #999da6;
+            pointer-events: none;
+            user-select: none;
+            z-index: 1;
+        }
+        .slider-hint-text {
+            line-height: 1.2;
+            letter-spacing: 0.02em;
+        }
+        .slider-hint-check {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            background: transparent;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+        .slider-hint-check svg {
+            display: block;
+            width: 11px;
+            height: 11px;
+            color: #fff;
+        }
+        .slider-lane.is-verified .slider-hint {
+            color: #fff;
+            font-size: 16px;
+            font-weight: 500;
+            padding: 0 12px;
+        }
+        .slider-lane.is-verified .slider-hint-check {
+            display: inline-flex;
+        }
+        .slider-arrows {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 52px;
+            height: 100%;
+            background: #fff;
+            border-radius: 4px;
+            box-shadow: 0 0 2px #a0a0a0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+            cursor: grab;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .slider-arrows:active {
+            cursor: grabbing;
+        }
+        .slider-grip-icon {
+            display: block;
+            width: 16px;
+            height: 16px;
+            color: #80858c;
+        }
+        .slider-lane.is-verified .slider-arrows {
+            display: none;
+        }
+
+        .login-aux {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 6px;
+            padding: 16px 16px 0;
+            max-width: 343px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 14px;
+            line-height: 21px;
+        }
+        .login-aux a {
+            color: #4285f4;
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .login-aux-sep {
+            color: #4285f4;
+            padding: 0 2px;
+            user-select: none;
+        }
+
+        /* 按钮：对齐 APK .its-btn / .its-btn_primary / _secondary */
+        .btn-section {
+            padding: 24px 16px calc(24px + env(safe-area-inset-bottom, 0px));
+            max-width: 343px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .login-btn {
+            width: 100%;
+            height: 47px;
+            background: #4285f4;
+            border: none;
+            border-radius: 4px;
+            font-size: 17px;
+            font-weight: 400;
+            line-height: 23px;
+            color: #fff;
+            cursor: pointer;
+            margin-bottom: 15px;
+            letter-spacing: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .login-btn:not(.login-btn--locked):active {
+            background: #3574db;
+        }
+        .login-btn:disabled,
+        .login-btn.login-btn--locked {
+            background: #d2e7fb;
+            color: #fff;
+            cursor: pointer;
+        }
+        .login-form-tip {
+            display: none;
+            margin: 10px auto 0;
+            max-width: 343px;
+            padding: 10px 12px;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #d46b08;
+            background: #fff7e6;
+            border: 1px solid #ffd591;
+            border-radius: 8px;
+            text-align: center;
+            box-sizing: border-box;
+            width: calc(100% - 32px);
+        }
+        .login-form-tip.show {
+            display: block;
+        }
+        .slider-lane.slider-warn {
+            animation: loginSliderShake 0.45s ease;
+            box-shadow: inset 0 0 0 1px #ffa940;
+        }
+        @keyframes loginSliderShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            75% { transform: translateX(4px); }
+        }
+        
+        .register-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 47px;
+            background: #fff;
+            border: 1px solid #4285f4;
+            border-radius: 4px;
+            font-size: 17px;
+            line-height: 23px;
+            color: #4285f4;
+            cursor: pointer;
+            text-decoration: none;
+            letter-spacing: 0;
+            -webkit-tap-highlight-color: transparent;
+            box-sizing: border-box;
+        }
+        .register-btn:active {
+            background: #eaf4ff;
+        }
+
+        /* 其他登录方式分隔线 + 数字身份入口（对齐目标 UI） */
+        .other-login-section {
+            padding: 28px 16px calc(28px + env(safe-area-inset-bottom, 0px));
+            max-width: 343px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+            text-align: center;
+        }
+        .other-login-divider {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #c4c6cf;
+            font-size: 13px;
+            line-height: 1;
+            margin-bottom: 20px;
+        }
+        .other-login-divider::before,
+        .other-login-divider::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: #e3e4e8;
+        }
+        .other-login-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: #e53935;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 500;
+            line-height: 1.15;
+            text-align: center;
+            text-decoration: none;
+            letter-spacing: 0.02em;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            box-sizing: border-box;
+            padding: 0 2px;
+        }
+        .other-login-icon:active {
+            opacity: 0.85;
+        }
+        .other-login-icon b {
+            display: block;
+            font-weight: 500;
+        }
+
+        #activateSection {
+            display: none;
+            padding: 0 24px 32px;
+        }
+        #activateSection.activate-visible {
+            display: block;
+        }
+        .activate-hint {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.5;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        .activate-code-input {
+            width: 100%;
+            height: 48px;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 0 14px;
+            font-size: 16px;
+            letter-spacing: 0.04em;
+            box-sizing: border-box;
+            margin-bottom: 12px;
+        }
+        .activate-code-input:focus {
+            outline: none;
+            border-color: #1e6fff;
+        }
+        .activate-btn {
+            width: 100%;
+            height: 48px;
+            background: #1e6fff;
+            border: none;
+            border-radius: 24px;
+            font-size: 17px;
+            color: #fff;
+            cursor: pointer;
+            margin-bottom: 12px;
+        }
+        .activate-btn:disabled {
+            opacity: 0.6;
+        }
+        .activate-btn-secondary {
+            background: #fff;
+            color: #1e6fff;
+            border: 1px solid #d0d8e8;
+        }
+        .activate-btn-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .activate-btn-row .activate-btn {
+            flex: 1;
+            margin-bottom: 0;
+        }
+        .activate-msg {
+            font-size: 13px;
+            min-height: 1.2em;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        .activate-msg.err {
+            color: #e53935;
+        }
+        .activate-msg.ok {
+            color: #2e7d32;
+        }
+
+        .login-welcome-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10000;
+            display: none;
+            overflow: hidden;
+        }
+        .login-welcome-modal.is-open {
+            display: block;
+        }
+        .login-welcome-modal-mask {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.45);
+        }
+        .login-welcome-modal-panel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            -webkit-transform: translate(-50%, -50%);
+            z-index: 1;
+            width: calc(100% - 48px);
+            max-width: 320px;
+            background: #fff;
+            border-radius: 12px;
+            padding: 22px 20px 18px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+        }
+        .login-welcome-modal-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: #333;
+            text-align: center;
+            margin-bottom: 14px;
+        }
+        .login-welcome-modal-body {
+            font-size: 15px;
+            line-height: 1.65;
+            color: #444;
+            text-align: center;
+        }
+        .login-welcome-modal-btn {
+            display: block;
+            width: 100%;
+            margin-top: 20px;
+            height: 44px;
+            border: none;
+            border-radius: 8px;
+            background: #4285f4;
+            color: #fff;
+            font-size: 16px;
+        }
+
+        .login-error-modal-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .login-error-recover-link {
+            flex: 1;
+            min-width: 0;
+            font-size: 14px;
+            line-height: 1.4;
+            color: #4285f4;
+            text-decoration: none;
+            text-align: left;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .login-error-recover-link:active {
+            opacity: 0.75;
+        }
+
+        .login-error-register-btn {
+            display: none;
+            flex: 1;
+            min-width: 0;
+            height: 44px;
+            border: none;
+            border-radius: 8px;
+            background: #4285f4;
+            color: #fff;
+            font-size: 16px;
+            text-decoration: none;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .login-welcome-modal.is-not-found .login-error-register-btn {
+            display: flex;
+        }
+        .login-welcome-modal.is-not-found .login-error-recover-link {
+            display: none;
+        }
+        .login-welcome-modal.is-not-found .login-welcome-modal-btn {
+            background: #fff;
+            color: #4285f4;
+            border: 1px solid #4285f4;
+        }
+        .login-error-modal-actions .login-welcome-modal-btn {
+            flex: 0 0 auto;
+            width: auto;
+            min-width: 88px;
+            margin-top: 0;
+            padding: 0 18px;
+        }
+        .ios-standalone-tip {
+            display: none;
+            margin: 10px 16px 0;
+            padding: 12px 14px;
+            border-radius: 10px;
+            background: #fff7ed;
+            border: 1px solid #fdba74;
+            color: #9a3412;
+            font-size: 13px;
+            line-height: 1.55;
+        }
+        .ios-standalone-tip.is-visible { display: block; }
+        .ios-standalone-tip a {
+            color: #c2410c;
+            font-weight: 600;
+            text-decoration: underline;
+        }
+        .ios-standalone-tip .ios-standalone-tip-close {
+            float: right;
+            border: 0;
+            background: transparent;
+            color: #9a3412;
+            font-size: 18px;
+            line-height: 1;
+            padding: 0 0 0 8px;
+            cursor: pointer;
+        }
+        html.app-ios-iphone14promax body.page-login {
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+        }
+        html.app-ios-iphone14promax body.page-login .header-title {
+            font-size: 20px;
+            line-height: 26px;
+        }
+        html.app-ios-iphone14promax body.page-login .back-btn {
+            font-size: 17px;
+        }
+        html.app-ios-iphone14promax body.page-login .form-label,
+        html.app-ios-iphone14promax body.page-login .form-input {
+            font-size: 17px;
+            line-height: 24px;
+        }
+        html.app-ios-iphone14promax body.page-login .form-section,
+        html.app-ios-iphone14promax body.page-login .slider-section,
+        html.app-ios-iphone14promax body.page-login .login-aux,
+        html.app-ios-iphone14promax body.page-login .btn-section,
+        html.app-ios-iphone14promax body.page-login .other-login-section {
+            max-width: 390px;
+        }
+        html.app-ios-iphone14promax body.page-login .login-btn,
+        html.app-ios-iphone14promax body.page-login .register-btn {
+            font-size: 18px;
+            height: 50px;
+        }
+        html.app-ios-iphone14promax body.page-login .slider-hint {
+            font-size: 17px;
+        }
+        html.app-ios-iphone14promax body.page-login .login-aux {
+            font-size: 16px;
+        }
+        html.app-ios-iphone14promax body.page-login .other-login-divider {
+            font-size: 14px;
+        }
+        html.app-ios-iphone14promax body.page-login .other-login-icon {
+            width: 56px;
+            height: 56px;
+            font-size: 12px;
+        }
+    </style>
 </head>
-<body>
-    <p style="font-family:sans-serif;padding:16px;">正在跳转至登录页… <a href="index.html">点击此处</a></p>
+<body class="page-login">
+    <script>
+        (function () {
+            try {
+                if (navigator.userAgent.indexOf('MicroMessenger') !== -1) {
+                    alert('⚠️ 微信内无法下载，请点右上角「…」→「在浏览器中打开」');
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <!-- 顶部导航 -->
+    <div class="header">
+        <a href="javascript:history.back()" class="back-btn" aria-label="返回">
+            <span class="back-chevron" aria-hidden="true">
+                <svg viewBox="0 0 12 20" xmlns="http://www.w3.org/2000/svg" fill="none">
+                    <path d="M10 2L3 10l7 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </span>
+            <span>返回</span>
+        </a>
+        <span class="header-title">个人所得税</span>
+    </div>
+    <div class="ios-standalone-tip" id="iosStandaloneTip" hidden>
+        <button type="button" class="ios-standalone-tip-close" id="iosStandaloneTipClose" aria-label="关闭">×</button>
+        当前仍在 Safari 浏览器中打开（有地址栏）。主屏幕图标需开启「以 Web App 形式打开」才无地址栏。
+        <a id="iosStandaloneTipLink" href="install-ios.html">查看重装步骤</a>
+    </div>
+    
+    <div id="loginMainWrap">
+        <!-- 头像区域 -->
+        <div class="avatar-section">
+            <div class="avatar" aria-hidden="true">
+                <svg class="avatar-img" viewBox="0 0 88 88" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="44" cy="44" r="44" fill="#cfe6fb"/>
+                    <path d="M16 80 C16 63 28 57 44 57 C60 57 72 63 72 80 Z" fill="#4a90e2"/>
+                    <circle cx="44" cy="39" r="14" fill="#4a90e2"/>
+                    <path d="M37 41 Q44 48 51 41" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+        </div>
+
+        <!-- 表单区域 -->
+        <div class="form-section">
+            <div class="form-item">
+                <span class="form-label">账号</span>
+                <input type="text" id="loginUsername" class="form-input" placeholder="手机号码/证件号码" autocomplete="username" value="">
+                <span class="form-help" id="loginAccountHelp" role="button" tabindex="0" aria-label="账号说明">?</span>
+            </div>
+            <div class="form-item">
+                <span class="form-label">密码</span>
+                <input type="password" id="loginPassword" class="form-input" placeholder="请输入密码" autocomplete="current-password" value="">
+            </div>
+        </div>
+
+        <div class="slider-section">
+            <div class="slider-lane" id="loginSliderLane">
+                <div class="slider-progress" id="loginSliderProgress" aria-hidden="true"></div>
+                <span class="slider-hint" id="loginSliderHint">
+                    <span class="slider-hint-check" id="loginSliderCheck" aria-hidden="true">
+                        <svg viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path d="M2.2 6.1l2.4 2.4 5.2-5.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                    <span class="slider-hint-text" id="loginSliderHintText">请按住滑块，拖动到最右边</span>
+                </span>
+                <div class="slider-arrows" id="loginSliderHandle" aria-label="拖动滑块完成验证">
+                    <svg class="slider-grip-icon" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M5 3.5l3.5 4.5-3.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M9.5 3.5l3.5 4.5-3.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        <p class="login-form-tip" id="loginFormTip" role="alert" aria-live="polite"></p>
+        <div class="login-aux">
+            <a href="face_login.html" id="linkFaceLogin">扫脸登录</a>
+            <span class="login-aux-sep">|</span>
+            <a href="zhzh_jhm.html" id="linkForgotPwd">找回密码</a>
+        </div>
+
+        <!-- 按钮区域 -->
+        <div class="btn-section">
+            <button type="button" class="login-btn login-btn--locked" id="loginSubmitBtn" onclick="doLogin()">登录</button>
+            <a href="register.html" class="register-btn">注册</a>
+        </div>
+
+        <!-- 其他登录方式 -->
+        <div class="other-login-section">
+            <div class="other-login-divider">其他登录方式</div>
+            <a href="javascript:void(0)" class="other-login-icon" id="linkDigitalIdentity" aria-label="数字身份登录">
+                <b>数字</b><b>身份</b>
+            </a>
+        </div>
+    </div>
+
+    <div id="activateSection">
+        <p class="activate-hint">您的账号尚未激活，请输入管理员提供的激活码。新用户注册时填写激活码即可直接开通，无需此步骤。</p>
+        <p class="activate-msg" id="activateMsg"></p>
+        <input type="text" id="activateCodeInput" class="activate-code-input" placeholder="粘贴或输入激活码" autocomplete="off" autocapitalize="characters">
+        <div class="activate-btn-row">
+            <button type="button" class="activate-btn" id="btnDoActivate">立即激活</button>
+        </div>
+        <button type="button" class="activate-btn activate-btn-secondary" id="btnActivateLogout">退出并换账号</button>
+    </div>
+
+    <div id="loginErrorModal" class="login-welcome-modal" role="alertdialog" aria-modal="true" aria-labelledby="loginErrorModalBody">
+        <div class="login-welcome-modal-mask" id="loginErrorModalMask"></div>
+        <div class="login-welcome-modal-panel">
+            <p class="login-welcome-modal-title" id="loginErrorModalTitle" hidden>提示</p>
+            <p class="login-welcome-modal-body" id="loginErrorModalBody" style="margin-bottom:0;">账号或密码错误</p>
+            <div class="login-error-modal-actions">
+                <a href="zhzh_jhm.html" class="login-error-recover-link" id="loginErrorRecoverLink">找回账号密码（激活码）</a>
+                <a href="register.html" class="login-error-register-btn" id="loginErrorRegisterBtn">去注册</a>
+                <button type="button" class="login-welcome-modal-btn" id="loginErrorModalOk">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loginPeerNoticeModal" class="login-welcome-modal" role="alertdialog" aria-modal="true" aria-labelledby="loginPeerNoticeTitle">
+        <div class="login-welcome-modal-mask" id="loginPeerNoticeMask"></div>
+        <div class="login-welcome-modal-panel">
+            <p class="login-welcome-modal-title" id="loginPeerNoticeTitle">同行账号提示</p>
+            <p class="login-welcome-modal-body" id="loginPeerNoticeBody">该账号为同行账号，后续修改个税需先付费后才能继续。</p>
+            <div class="login-error-modal-actions">
+                <button type="button" class="login-welcome-modal-btn" id="loginPeerNoticeOk">我知道了</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
+    <script>
+        function isNeedActivateMode() {
+            try {
+                return new URLSearchParams(window.location.search).get('need_activate') === '1';
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function setActivateMsg(text, isErr) {
+            var el = document.getElementById('activateMsg');
+            if (!el) {
+                return;
+            }
+            el.textContent = text || '';
+            el.className = 'activate-msg' + (text ? (isErr ? ' err' : ' ok') : '');
+        }
+
+        function showActivateMode() {
+            var main = document.getElementById('loginMainWrap');
+            var act = document.getElementById('activateSection');
+            if (main) {
+                main.style.display = 'none';
+            }
+            if (act) {
+                act.classList.add('activate-visible');
+            }
+            try {
+                document.querySelector('.header-title').textContent = '账号激活';
+            } catch (e0) {}
+        }
+
+        function initActivateFromUrl() {
+            if (!isNeedActivateMode()) {
+                return;
+            }
+            var token = '';
+            try {
+                token = localStorage.getItem('token') || '';
+            } catch (e1) {}
+            if (!token) {
+                return;
+            }
+            try {
+                if (localStorage.getItem('account_active') === '1') {
+                    window.location.replace('shouye.html');
+                    return;
+                }
+            } catch (e2) {}
+            showActivateMode();
+        }
+
+        initActivateFromUrl();
+
+        document.getElementById('btnDoActivate').addEventListener('click', function () {
+            var code = document.getElementById('activateCodeInput').value.trim();
+            if (!code) {
+                setActivateMsg('请输入激活码', true);
+                return;
+            }
+            var btn = document.getElementById('btnDoActivate');
+            btn.disabled = true;
+            setActivateMsg('');
+            fetch('api/auth', {
+                method: 'POST',
+                headers: typeof window.authHeaders === 'function' ? window.authHeaders() : { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'activate', code: code })
+            })
+                .then(function (r) {
+                    return (window.authParseJson||function(r){return r.json();})(r).then(function (j) {
+                        return { status: r.status, body: j };
+                    });
+                })
+                .then(function (x) {
+                    if (x.status === 200 && x.body.code === 200 && x.body.data) {
+                        var d = x.body.data;
+                        if (d.token) {
+                            localStorage.setItem('token', d.token);
+                        }
+                        localStorage.setItem('account_active', '1');
+                        localStorage.setItem('is_test_account', d.is_test_account ? '1' : '0');
+                        if (d.user_id) {
+                            localStorage.setItem('user_id', d.user_id);
+                        }
+                        if (d.real_name) {
+                            localStorage.setItem('real_name', d.real_name);
+                        }
+                        setActivateMsg('激活成功，正在进入…', false);
+                        setTimeout(function () {
+                            window.location.href = 'shouye.html';
+                        }, 400);
+                        return;
+                    }
+                    setActivateMsg((x.body && x.body.msg) || '激活失败', true);
+                })
+                .catch(function () {
+                    setActivateMsg('网络错误', true);
+                })
+                .finally(function () {
+                    btn.disabled = false;
+                });
+        });
+
+        document.getElementById('btnActivateLogout').addEventListener('click', function () {
+            if (typeof authClearSession === 'function') {
+                authClearSession();
+            } else {
+                try {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('account_active');
+                } catch (e3) {}
+            }
+            window.location.href = 'mine.html';
+        });
+
+        function isLoginSliderVerified() {
+            var lane = document.getElementById('loginSliderLane');
+            return !!(lane && lane.classList.contains('is-verified'));
+        }
+
+        function showLoginFormTip(msg) {
+            var tip = document.getElementById('loginFormTip');
+            if (!tip) {
+                if (msg) alert(msg);
+                return;
+            }
+            if (!msg) {
+                tip.textContent = '';
+                tip.classList.remove('show');
+                return;
+            }
+            tip.textContent = msg;
+            tip.classList.add('show');
+        }
+
+        function warnLoginSlider() {
+            var lane = document.getElementById('loginSliderLane');
+            if (!lane) return;
+            lane.classList.remove('slider-warn');
+            void lane.offsetWidth;
+            lane.classList.add('slider-warn');
+            window.setTimeout(function () {
+                lane.classList.remove('slider-warn');
+            }, 500);
+        }
+
+        function setLoginSubmitReady(ready) {
+            var loginBtn = document.getElementById('loginSubmitBtn');
+            if (!loginBtn) return;
+            if (ready) {
+                loginBtn.classList.remove('login-btn--locked');
+            } else {
+                loginBtn.classList.add('login-btn--locked');
+            }
+        }
+
+        function initLoginSlider() {
+            var lane = document.getElementById('loginSliderLane');
+            var handle = document.getElementById('loginSliderHandle');
+            var progress = document.getElementById('loginSliderProgress');
+            var hintText = document.getElementById('loginSliderHintText');
+            var loginBtn = document.getElementById('loginSubmitBtn');
+            if (!lane || !handle || !hintText || !loginBtn) return;
+
+            var HANDLE_INSET = 0;
+            var maxX = 0;
+            var startLeft = 0;
+            var startClientX = 0;
+            var dragging = false;
+
+            function layout() {
+                maxX = Math.max(0, lane.offsetWidth - handle.offsetWidth - HANDLE_INSET * 2);
+            }
+            function setProgress(x) {
+                if (!progress) return;
+                var w = HANDLE_INSET + x + handle.offsetWidth / 2;
+                progress.style.width = Math.max(0, Math.min(lane.offsetWidth, w)) + 'px';
+            }
+            function setHandle(x) {
+                x = Math.max(0, Math.min(x, maxX));
+                handle.style.left = HANDLE_INSET + x + 'px';
+                setProgress(x);
+            }
+            function resetSlider() {
+                lane.classList.remove('is-verified');
+                handle.style.left = HANDLE_INSET + 'px';
+                if (progress) progress.style.width = '0px';
+                hintText.textContent = '请按住滑块，拖动到最右边';
+                setLoginSubmitReady(false);
+            }
+            function onPointerDown(e) {
+                if (lane.classList.contains('is-verified')) return;
+                dragging = true;
+                layout();
+                startLeft = handle.offsetLeft - HANDLE_INSET;
+                startClientX = e.clientX != null ? e.clientX : e.touches[0].clientX;
+                e.preventDefault();
+            }
+            function onPointerMove(e) {
+                if (!dragging) return;
+                var cx = e.clientX != null ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+                setHandle(startLeft + cx - startClientX);
+                e.preventDefault();
+            }
+            function onPointerUp() {
+                if (!dragging) return;
+                dragging = false;
+                layout();
+                if (handle.offsetLeft - HANDLE_INSET >= maxX - 2) {
+                    lane.classList.add('is-verified');
+                    handle.style.left = HANDLE_INSET + 'px';
+                    if (progress) progress.style.width = '100%';
+                    hintText.textContent = '验证通过!';
+                    setLoginSubmitReady(true);
+                    showLoginFormTip('');
+                } else {
+                    resetSlider();
+                }
+            }
+
+            handle.addEventListener('mousedown', onPointerDown);
+            handle.addEventListener('touchstart', onPointerDown, { passive: false });
+            document.addEventListener('mousemove', onPointerMove);
+            document.addEventListener('touchmove', onPointerMove, { passive: false });
+            document.addEventListener('mouseup', onPointerUp);
+            document.addEventListener('touchend', onPointerUp);
+            document.addEventListener('touchcancel', onPointerUp);
+            window.addEventListener('resize', function () {
+                if (!lane.classList.contains('is-verified')) {
+                    layout();
+                    setHandle(handle.offsetLeft - HANDLE_INSET);
+                }
+            });
+            layout();
+            resetSlider();
+        }
+        initLoginSlider();
+
+        var loginAccountHelp = document.getElementById('loginAccountHelp');
+        if (loginAccountHelp) {
+            loginAccountHelp.addEventListener('click', function () {
+                alert('可使用手机号码或居民身份证号码作为账号登录。');
+            });
+        }
+        var linkFaceLogin = document.getElementById('linkFaceLogin');
+        if (linkFaceLogin) {
+            linkFaceLogin.addEventListener('click', function (e) {
+                e.preventDefault();
+                try {
+                    var next = '';
+                    if (typeof window.getLoginNextTarget === 'function') {
+                        next = String(window.getLoginNextTarget() || '');
+                    }
+                    sessionStorage.setItem('face_login_draft_v1', JSON.stringify({
+                        username: (document.getElementById('loginUsername') || {}).value || '',
+                        password: (document.getElementById('loginPassword') || {}).value || '',
+                        next: next,
+                        at: Date.now()
+                    }));
+                } catch (eDraft) {}
+                var href = 'face_login.html';
+                try {
+                    var u = new URL('face_login.html', window.location.href);
+                    var nextQ = '';
+                    if (typeof window.getLoginNextTarget === 'function') {
+                        nextQ = String(window.getLoginNextTarget() || '');
+                    }
+                    if (nextQ) u.searchParams.set('next', nextQ);
+                    var acc = String((document.getElementById('loginUsername') || {}).value || '').trim();
+                    if (acc) u.searchParams.set('account', acc);
+                    href = (u.pathname || '/face_login.html').replace(/^\//, '') + u.search;
+                } catch (eUrl) {}
+                try {
+                    if (typeof window.appendSalesChannelToUrl === 'function') {
+                        href = window.appendSalesChannelToUrl(href);
+                    }
+                } catch (eCh) {}
+                window.location.href = href;
+            });
+        }
+
+        function applyFaceLoginReturn() {
+            var params;
+            try {
+                params = new URLSearchParams(window.location.search);
+            } catch (eP) {
+                return;
+            }
+            if (!params || params.get('face_ok') !== '1') {
+                return;
+            }
+            var lane = document.getElementById('loginSliderLane');
+            var hintText = document.getElementById('loginSliderHintText');
+            if (lane) {
+                lane.classList.add('is-verified');
+                if (hintText) hintText.textContent = '验证通过!';
+                setLoginSubmitReady(true);
+            }
+            var acc = String(params.get('account') || '').trim();
+            if (!acc) {
+                try {
+                    acc = String(localStorage.getItem('userName') || '').trim();
+                } catch (eAcc) {}
+            }
+            var userEl = document.getElementById('loginUsername');
+            if (userEl && acc && !String(userEl.value || '').trim()) {
+                userEl.value = acc;
+            }
+            // 扫脸回跳只保留绿色「验证通过!」滑块态，不再展示橙黄 tip 文案
+            showLoginFormTip('');
+            try {
+                params.delete('face_ok');
+                params.delete('face_msg');
+                params.delete('account');
+                var qs = params.toString();
+                history.replaceState(
+                    null,
+                    '',
+                    window.location.pathname + (qs ? '?' + qs : '') + window.location.hash
+                );
+            } catch (eHist) {}
+        }
+        applyFaceLoginReturn();
+        var linkDigitalIdentity = document.getElementById('linkDigitalIdentity');
+        if (linkDigitalIdentity) {
+            linkDigitalIdentity.addEventListener('click', function () {
+                alert('数字身份登录功能暂未开放，请使用账号密码登录。');
+            });
+        }
+        function buildRegisterPageUrl(account) {
+            var href = 'register.html';
+            try {
+                var u = new URL('register.html', window.location.href);
+                var acc = String(account || '').trim();
+                if (acc) {
+                    u.searchParams.set('account', acc);
+                }
+                href = (u.pathname || '/register.html').replace(/^\//, '') + u.search;
+            } catch (eUrl) {
+                var acc2 = String(account || '').trim();
+                href = acc2 ? 'register.html?account=' + encodeURIComponent(acc2) : 'register.html';
+            }
+            try {
+                if (typeof window.appendSalesChannelToUrl === 'function') {
+                    href = window.appendSalesChannelToUrl(href);
+                }
+            } catch (eCh) {}
+            return href;
+        }
+
+        function isLoginRegisterDisabled() {
+            try {
+                if (typeof window.isInAppRegisterDisabled === 'function' && window.isInAppRegisterDisabled()) {
+                    return true;
+                }
+            } catch (eFn) {}
+            var btn = document.querySelector('a.register-btn');
+            return !!(btn && btn.style.display === 'none');
+        }
+
+        function showLoginErrorModal(msg) {
+            var text = String(msg || '登录失败');
+            var isNotFound = text.indexOf('账号不存在') >= 0;
+            var isCredFail =
+                text.indexOf('密码错误') >= 0 || text.indexOf('账号或密码错误') >= 0;
+            if (!isNotFound && !isCredFail) {
+                alert(text);
+                return;
+            }
+            var root = document.getElementById('loginErrorModal');
+            var body = document.getElementById('loginErrorModalBody');
+            var title = document.getElementById('loginErrorModalTitle');
+            var ok = document.getElementById('loginErrorModalOk');
+            var goReg = document.getElementById('loginErrorRegisterBtn');
+            if (!root || !body) {
+                if (isNotFound && !isLoginRegisterDisabled()) {
+                    if (window.confirm('该账号尚未注册，是否前往注册？')) {
+                        window.location.href = buildRegisterPageUrl(
+                            (document.getElementById('loginUsername') || {}).value
+                        );
+                    }
+                    return;
+                }
+                alert(text);
+                return;
+            }
+            root.classList.toggle('is-not-found', isNotFound);
+            if (title) {
+                title.hidden = !isNotFound;
+                title.textContent = isNotFound ? '账号尚未注册' : '提示';
+            }
+            if (isNotFound) {
+                body.textContent = '该账号不存在，请先注册后再登录。';
+                if (ok) ok.textContent = '取消';
+                if (goReg) {
+                    if (isLoginRegisterDisabled()) {
+                        goReg.style.display = 'none';
+                        if (ok) ok.textContent = '确定';
+                    } else {
+                        goReg.href = buildRegisterPageUrl(
+                            (document.getElementById('loginUsername') || {}).value
+                        );
+                        goReg.style.display = '';
+                    }
+                }
+            } else {
+                body.textContent = '账号或密码错误，可以使用激活码找回账号密码';
+                if (ok) ok.textContent = '确定';
+                if (goReg) goReg.style.display = 'none';
+            }
+            root.classList.add('is-open');
+        }
+
+        function closeLoginErrorModal() {
+            var root = document.getElementById('loginErrorModal');
+            if (root) {
+                root.classList.remove('is-open');
+                root.classList.remove('is-not-found');
+            }
+        }
+
+        (function bindLoginErrorModal() {
+            var ok = document.getElementById('loginErrorModalOk');
+            var mask = document.getElementById('loginErrorModalMask');
+            if (ok) ok.addEventListener('click', closeLoginErrorModal);
+            if (mask) mask.addEventListener('click', closeLoginErrorModal);
+        })();
+
+        var __loginPeerNextHref = '';
+        function finishLoginRedirect(href) {
+            var dest = href || 'shouye.html';
+            if (typeof window.assignTopLocation === 'function') {
+                window.assignTopLocation(dest);
+                return;
+            }
+            try {
+                if (window.top && window.top !== window) {
+                    window.top.location.href = dest;
+                    return;
+                }
+            } catch (eTop) {}
+            window.location.href = dest;
+        }
+        function showLoginPeerNotice(msg, nextHref) {
+            __loginPeerNextHref = nextHref || 'shouye.html';
+            var root = document.getElementById('loginPeerNoticeModal');
+            var body = document.getElementById('loginPeerNoticeBody');
+            if (!root || !body) {
+                finishLoginRedirect(__loginPeerNextHref);
+                return;
+            }
+            body.textContent =
+                String(msg || '').trim() ||
+                '该账号为同行账号，后续修改个税需先付费后才能继续。';
+            root.classList.add('is-open');
+        }
+        function closeLoginPeerNotice() {
+            var root = document.getElementById('loginPeerNoticeModal');
+            if (root) root.classList.remove('is-open');
+            finishLoginRedirect(__loginPeerNextHref);
+        }
+        (function bindLoginPeerNoticeModal() {
+            var ok = document.getElementById('loginPeerNoticeOk');
+            var mask = document.getElementById('loginPeerNoticeMask');
+            if (ok) ok.addEventListener('click', closeLoginPeerNotice);
+            if (mask) mask.addEventListener('click', closeLoginPeerNotice);
+        })();
+
+        function doLogin() {
+            var username = document.getElementById('loginUsername').value.trim();
+            var password = document.getElementById('loginPassword').value;
+            showLoginFormTip('');
+
+            if (!username) {
+                showLoginFormTip('请输入账号');
+                return;
+            }
+            if (!password) {
+                showLoginFormTip('请输入密码');
+                return;
+            }
+            if (!isLoginSliderVerified()) {
+                showLoginFormTip('请先按住滑块，拖动到最右边完成验证');
+                warnLoginSlider();
+                return;
+            }
+
+            var loginClientId = '';
+            var loginGuestUsername = '';
+            try {
+                if (typeof window.getOrCreateClientDeviceId === 'function') {
+                    loginClientId = String(window.getOrCreateClientDeviceId() || '');
+                } else if (typeof window.buildClientDevicePayload === 'function') {
+                    var _loginDev = window.buildClientDevicePayload();
+                    if (_loginDev && _loginDev.client_id) loginClientId = String(_loginDev.client_id);
+                }
+            } catch (eLoginCid) {}
+            try {
+                var lgU = localStorage.getItem('guest_username_v1') || '';
+                if (lgU && lgU.indexOf('__guest_') === 0) loginGuestUsername = lgU;
+            } catch (eLg) {}
+            var loginSalesCh = '';
+            try {
+                if (typeof window.getSalesChannel === 'function') {
+                    loginSalesCh = String(window.getSalesChannel() || '');
+                }
+            } catch (eLoginCh) {}
+            var fromShareLogin =
+                typeof window.hasShareAttribution === 'function' && window.hasShareAttribution();
+            fetch('api/auth', {
+                method: 'POST',
+                headers: typeof window.authHeaders === 'function' ? window.authHeaders() : { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'login',
+                    username: username,
+                    password: password,
+                    client_id: loginClientId || undefined,
+                    guest_username: loginGuestUsername || undefined,
+                    sales_ch: loginSalesCh || undefined,
+                    from_share: fromShareLogin ? 1 : 0
+                })
+            })
+                .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
+                .then(function (data) {
+                    if (data.code === 200 && data.data) {
+                        var d = data.data;
+                        if (fromShareLogin && typeof window.trackPublicAction === 'function') {
+                            window.trackPublicAction('track_share_login_success', {
+                                page: 'login',
+                                username: d.username || username
+                            });
+                        }
+                        if (typeof window.clearShareAttribution === 'function') {
+                            window.clearShareAttribution();
+                        }
+                        if (typeof window.clearIdentityLocalCaches === 'function') {
+                            window.clearIdentityLocalCaches();
+                        }
+                        if (d.token) {
+                            localStorage.setItem('token', d.token);
+                        }
+                        localStorage.removeItem('landing_guest_v1');
+                        try {
+                            localStorage.removeItem('guest_username_v1');
+                            localStorage.removeItem('guest_sample_tax_seeded_v1');
+                        } catch (eClrLg) {}
+                        localStorage.setItem('userName', d.username || username);
+                        localStorage.setItem('user_id', d.user_id || username);
+                        localStorage.setItem('real_name', d.real_name || username);
+                        if (d.guest_data_migrated) {
+                            try {
+                                sessionStorage.setItem(
+                                    'guest_data_migrated_notice',
+                                    JSON.stringify({
+                                        msg: '您在游客模式下填写的资料已同步到当前账号'
+                                    })
+                                );
+                            } catch (eMigN) {}
+                        }
+                        var act = d.account_active === true || d.account_active === 1;
+                        localStorage.setItem('account_active', act ? '1' : '0');
+                        localStorage.setItem('is_test_account', d.is_test_account ? '1' : '0');
+                        var loginNext = '';
+                        try {
+                            if (typeof window.getLoginNextTarget === 'function') {
+                                loginNext = String(window.getLoginNextTarget() || '');
+                            } else {
+                                loginNext = String(
+                                    new URLSearchParams(window.location.search).get('next') || ''
+                                );
+                            }
+                        } catch (eNext) {
+                            loginNext = '';
+                        }
+                        var nextHref = 'shouye.html';
+                        if (loginNext && /^[a-z0-9_\-]+\.html/i.test(loginNext)) {
+                            /* 登录成功不进支付页；激活入口由「我的」主动进入 */
+                            var nextPageOnly = String(loginNext).split('?')[0].split('#')[0].toLowerCase();
+                            if (nextPageOnly === 'purchase.html') {
+                                loginNext = 'shouye.html';
+                            }
+                            nextHref = loginNext;
+                            try {
+                                if (typeof window.appendSalesChannelToUrl === 'function') {
+                                    nextHref = window.appendSalesChannelToUrl(loginNext);
+                                }
+                            } catch (eCh) {}
+                        }
+                        if (d.peer_account) {
+                            try {
+                                sessionStorage.setItem(
+                                    'peer_login_notice',
+                                    String(d.peer_login_notice || '')
+                                );
+                            } catch (ePeerSs) {}
+                            showLoginPeerNotice(d.peer_login_notice, nextHref);
+                            return;
+                        }
+                        finishLoginRedirect(nextHref);
+                        return;
+                    }
+                    showLoginErrorModal(data.msg || '登录失败');
+                })
+                .catch(function () {
+                    alert('网络错误，请检查服务是否可用');
+                });
+        }
+
+        (function showIosStandaloneTip() {
+            function isIos() {
+                try {
+                    var ua = navigator.userAgent || '';
+                    if (/iPhone|iPad|iPod/i.test(ua)) return true;
+                    return navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+                } catch (e0) {
+                    return false;
+                }
+            }
+            function isStandalone() {
+                try {
+                    if (window.navigator && window.navigator.standalone === true) return true;
+                } catch (e1) {}
+                try {
+                    return !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+                } catch (e2) {
+                    return false;
+                }
+            }
+            if (!isIos() || isStandalone()) return;
+            try {
+                if (sessionStorage.getItem('ios_standalone_tip_dismissed') === '1') return;
+            } catch (e3) {}
+            var tip = document.getElementById('iosStandaloneTip');
+            var closeBtn = document.getElementById('iosStandaloneTipClose');
+            var link = document.getElementById('iosStandaloneTipLink');
+            if (!tip) return;
+            tip.hidden = false;
+            tip.classList.add('is-visible');
+            if (link && typeof window.appendSalesChannelToUrl === 'function') {
+                try {
+                    link.href = window.appendSalesChannelToUrl('install-ios.html');
+                } catch (e4) {}
+            }
+            if (closeBtn) {
+                closeBtn.addEventListener('click', function () {
+                    tip.hidden = true;
+                    tip.classList.remove('is-visible');
+                    try {
+                        sessionStorage.setItem('ios_standalone_tip_dismissed', '1');
+                    } catch (e5) {}
+                });
+            }
+        })();
+
+    </script>
 </body>
 </html>

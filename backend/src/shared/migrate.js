@@ -83,6 +83,13 @@ async function runMigrations(pool) {
         console.log('[migrate] applied ' + name);
       } catch (e) {
         await conn.rollback();
+        var code = e && e.code != null ? String(e.code) : '';
+        if (code === 'ER_DUP_FIELDNAME' || code === 'ER_DUP_KEYNAME') {
+          await conn.execute('INSERT INTO schema_migrations (name) VALUES (?)', [name]);
+          applied.push(name);
+          console.log('[migrate] skipped already-applied ' + name + ' (' + code + ')');
+          continue;
+        }
         throw e;
       }
     }

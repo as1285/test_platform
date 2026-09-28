@@ -1,0 +1,270 @@
+/* 底部导航：对齐参考站悬浮半透明胶囊（tax.ezgen.top/tax/8082） */
+
+:root {
+    --bottom-nav-height: 54px;
+    --bottom-nav-side: 16px;
+    /* 悬浮胶囊贴近底边（4~8px）；过大空隙像「悬空」 */
+    --bottom-nav-gap: 8px;
+    --bottom-nav-bottom: var(--bottom-nav-gap);
+    --bottom-nav-radius: 32px;
+    --bottom-nav-clearance: calc(
+        var(--bottom-nav-height) + var(--bottom-nav-bottom) + 12px
+    );
+    --bottom-nav-text: #999999;
+    --bottom-nav-text-active: #1e6fff;
+}
+
+/*
+ * iOS：勿把 env(safe-area-inset-bottom) 再加进 bottom。
+ * WebView 已全屏时再叠加 safe-area 会把胶囊抬高一整截灰底（约 50px+）。
+ * 与 Android 一样只保留很小的悬浮间隙。
+ */
+html.app-ios-client {
+    --bottom-nav-gap: 8px;
+    --bottom-nav-bottom: 8px;
+    --bottom-nav-side: 16px;
+}
+
+/* iOS PWA：与其它环境同一小浮起，勿叠加 safe-area */
+html.ios-pwa {
+    --bottom-nav-bottom: 8px;
+    --bottom-nav-gap: 8px;
+}
+
+/* 待办 / 办查：底栏贴底（iOS 见文末 app-ios-client 规则，须压过本段） */
+html body.page-daiban,
+html body.page-bancha {
+    --bottom-nav-bottom: 4px !important;
+    --bottom-nav-gap: 4px !important;
+}
+
+html body.page-daiban > .bottom-nav,
+html body.page-bancha > .bottom-nav {
+    bottom: 4px !important;
+}
+
+/*
+ * 高优先级锁：覆盖各页内联 / 机型补丁，保证切 TAB 时 bottom 一致。
+ */
+html body .bottom-nav,
+html body > .bottom-nav,
+html body.page-shouye > .bottom-nav,
+html body.page-daiban > .bottom-nav,
+html body.page-bancha > .bottom-nav,
+html body.page-message > .bottom-nav,
+html body.page-mine > .bottom-nav,
+html body.tax-app-shell > .bottom-nav,
+html body .bottom-nav.ios-device {
+    position: fixed !important;
+    left: var(--bottom-nav-side) !important;
+    right: var(--bottom-nav-side) !important;
+    bottom: var(--bottom-nav-bottom) !important;
+    top: auto !important;
+    z-index: 10050 !important;
+    margin: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    transform: none !important;
+    -webkit-transform: none !important;
+    translate: none !important;
+    view-transition-name: none !important;
+    animation: none !important;
+    pointer-events: auto !important;
+    /* 避免被祖先 stacking / 滚动容器影响观感 */
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+}
+
+html body.page-mine {
+    --bottom-nav-bottom: var(--bottom-nav-gap) !important;
+}
+
+/*
+ * iOS 最终锁（必须在通用 bottom 规则之后）：
+ * 只用 8px 浮起，禁止 padding/bottom 再吃 safe-area。
+ */
+html.app-ios-client body.page-mine {
+    --bottom-nav-bottom: 8px !important;
+    --bottom-nav-gap: 8px !important;
+}
+
+html.app-ios-client body.page-daiban,
+html.app-ios-client body.page-bancha {
+    --bottom-nav-bottom: 8px !important;
+    --bottom-nav-gap: 8px !important;
+}
+
+html.app-ios-client body > .bottom-nav,
+html.app-ios-client body > .bottom-nav.ios-device,
+html.app-ios-client body.page-daiban > .bottom-nav,
+html.app-ios-client body.page-bancha > .bottom-nav,
+html.app-ios-client body.page-daiban > .bottom-nav.ios-device,
+html.app-ios-client body.page-bancha > .bottom-nav.ios-device,
+html.app-ios-client body.page-shouye > .bottom-nav,
+html.app-ios-client body.page-message > .bottom-nav,
+html.app-ios-client body.page-mine > .bottom-nav,
+html.app-ios-client body.page-mine > .bottom-nav.ios-device {
+    bottom: 8px !important;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+    margin-bottom: 0 !important;
+    border-radius: 32px !important;
+    /* 关闭模糊，避免 iOS WebKit 把 fixed 底栏抬高一整截 */
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-backface-visibility: visible !important;
+    backface-visibility: visible !important;
+    background: rgba(255, 255, 255, 0.98) !important;
+}
+
+/* iPhone 16 Pro / Pro Max：我的页再压一档，与其它 TAB 齐底 */
+html.app-ios-iphone16pro body.page-mine > .bottom-nav,
+html.app-ios-iphone16pro body.page-mine > .bottom-nav.ios-device,
+html.app-ios-iphone16promax body.page-mine > .bottom-nav,
+html.app-ios-iphone16promax body.page-mine > .bottom-nav.ios-device {
+    bottom: 2px !important;
+}
+
+.bottom-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    height: auto;
+    min-height: var(--bottom-nav-height);
+    /*
+     * 提高不透明度：半透明+强模糊会透出下方切片，像「底栏叠在页面截图上」。
+     * 接近原版实心底栏观感，仍保留圆角胶囊形态。
+     */
+    background: rgba(255, 255, 255, 0.96);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border-radius: var(--bottom-nav-radius);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    padding: 10px 0 10px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    box-sizing: border-box;
+    overflow: visible;
+}
+
+.bottom-nav.ios-device {
+    padding: 10px 0 10px !important;
+}
+
+.bottom-nav .nav-item,
+.bottom-nav .nav-item:link,
+.bottom-nav .nav-item:visited {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: auto;
+    padding: 0 2px;
+    text-decoration: none;
+    color: var(--bottom-nav-text);
+    font-size: 11px;
+    line-height: 1.1;
+    font-weight: 400;
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
+    box-sizing: border-box;
+    position: relative;
+}
+
+.bottom-nav .nav-item:active {
+    opacity: 0.82;
+}
+
+.bottom-nav .nav-item.active,
+.bottom-nav .nav-item.active:link,
+.bottom-nav .nav-item.active:visited {
+    color: var(--bottom-nav-text-active);
+    font-weight: 400;
+}
+
+.bottom-nav .nav-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    margin-bottom: 4px;
+    line-height: 0;
+    position: relative;
+}
+
+.bottom-nav .nav-unread-badge {
+    position: absolute;
+    top: -4px;
+    right: -8px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    background: #ff3b30;
+    color: #fff;
+    font-size: 10px;
+    line-height: 16px;
+    text-align: center;
+    font-weight: 600;
+    box-sizing: border-box;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.bottom-nav .nav-icon img {
+    width: 19px;
+    height: 19px;
+    display: block;
+    margin: 0 auto;
+    object-fit: contain;
+}
+
+.bottom-nav .nav-text {
+    display: block;
+    color: inherit;
+    font-size: 11px;
+}
+
+.bottom-nav .nav-item.active .nav-text {
+    color: var(--bottom-nav-text-active);
+}
+
+.bottom-nav.ios-device .nav-text {
+    color: #000000;
+}
+
+.bottom-nav.ios-device .nav-item.active .nav-text {
+    color: var(--bottom-nav-text-active);
+}
+
+@media (max-width: 360px) {
+    :root {
+        --bottom-nav-side: 12px;
+        --bottom-nav-height: 54px;
+    }
+
+    .bottom-nav {
+        border-radius: 32px;
+        padding: 10px 0 14px;
+    }
+}
+
+/* Cordova 2410DPN6CC：env 常为 0，需略抬高避开手势条（所有 TAB 同一值） */
+html.app-cordova-xiaomi-2410 {
+    --app-cordova-bottom-inset: 24px;
+    --bottom-nav-bottom: 24px;
+    --bottom-nav-gap: 24px;
+    --bottom-nav-clearance: calc(
+        var(--bottom-nav-height) + var(--bottom-nav-bottom) + 12px
+    );
+}
+
+html.app-cordova-xiaomi-2410 .bottom-nav {
+    padding-bottom: 16px;
+    box-sizing: border-box;
+}
+
+html.app-cordova-xiaomi-2410 body.page-mine .content-wrapper {
+    padding-bottom: var(--bottom-nav-clearance) !important;
+}

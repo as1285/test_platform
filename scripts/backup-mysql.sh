@@ -1,19 +1,53 @@
 #!/usr/bin/env bash
 # 备份 Docker MySQL 中的 personal_tax 库为 gzip sql。
 # 用法：
-#   ./scripts/backup-mysql.sh              # 写入 data/db-backups/
-#   ./scripts/backup-mysql.sh --stdout     # 输出到 stdout（供 GitHub Actions / 管道使用）
+#   ./scripts/backup-mysql.sh                 # 写入 data/db-backups/
+#   ./scripts/backup-mysql.sh --stdout        # 输出到 stdout（供管道使用）
+#   ./scripts/backup-mysql.sh --install-cron  # 幂等安装：每 5 分钟备份并上传 COS
 #
-# 高频本地备份（防攻击回滚）：默认保留 24 小时，最多 50 份（约每 30 分钟一份）。
+# 默认：每 5 分钟一份；本机保留 24 小时，最多 300 份（≈ 1 天热备）。
+# 更长保留见 scripts/sync-backup-offsite.sh（日备 14 天 / 周备 8 周）。
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SCRIPT_PATH="$ROOT/scripts/backup-mysql.sh"
 DB_CONTAINER="${DB_CONTAINER:-test_platform_db}"
-DB_ROOT_PASSWORD="${DB_ROOT_PASSWORD:-password}"
 DB_NAME="${DB_NAME:-personal_tax}"
 BACKUP_DIR="${BACKUP_DIR:-$ROOT/data/db-backups}"
 RETAIN_HOURS="${RETAIN_HOURS:-24}"
-MAX_BACKUPS="${MAX_BACKUPS:-50}"
+MAX_BACKUPS="${MAX_BACKUPS:-300}"
+LOG_FILE="${MYSQL_BACKUP_LOG:-/var/log/test_platform-mysql-backup.log}"
+LOCK_FILE="${MYSQL_BACKUP_LOCK:-/var/lock/test_platform-mysql-backup.lock}"
+OFFSITE_SCRIPT="$ROOT/scripts/sync-backup-offsite.sh"
+CRON_EXPR="*/5 * * * *"
+CRON_LINE="${CRON_EXPR} /usr/bin/flock -xn ${LOCK_FILE} -c '/bin/bash ${SCRIPT_PATH} && /bin/bash ${OFFSITE_SCRIPT} --hot-only' >> ${LOG_FILE} 2>&1"
+
+resolve_db_password() {
+  if [[ -n "${DB_ROOT_PASSWORD:-}" ]]; then
+    echo "$DB_ROOT_PASSWORD"
+    return 0
+  fi
+  if docker ps --format '{{.Names}}' | grep -qx "$DB_CONTAINER"; then
+    docker exec "$DB_CONTAINER" printenv MYSQL_ROOT_PASSWORD 2>/dev/null || true
+  fi
+}
+
+install_cron() {
+  local tmp
+  tmp="$(mktemp)"
+  crontab -l 2>/dev/null | grep -v 'scripts/backup-mysql.sh' >"$tmp" || true
+  printf '%s\n' "$CRON_LINE" >>"$tmp"
+  crontab "$tmp"
+  rm -f "$tmp"
+  echo "[backup] crontab installed: $CRON_LINE"
+  crontab -l 2>/dev/null | grep -F 'backup-mysql.sh' || true
+}
+
+if [[ "${1:-}" == "--install-cron" ]]; then
+  install_cron
+  exit 0
+fi
+
 STDOUT=0
 if [[ "${1:-}" == "--stdout" ]]; then
   STDOUT=1
@@ -21,6 +55,12 @@ fi
 
 if ! docker ps --format '{{.Names}}' | grep -qx "$DB_CONTAINER"; then
   echo "[backup] MySQL 容器未运行: $DB_CONTAINER" >&2
+  exit 1
+fi
+
+DB_ROOT_PASSWORD="$(resolve_db_password)"
+if [[ -z "$DB_ROOT_PASSWORD" ]]; then
+  echo "[backup] 无法读取 MySQL root 密码（设 DB_ROOT_PASSWORD 或确保容器 ${DB_CONTAINER} 可访问）" >&2
   exit 1
 fi
 
@@ -39,20 +79,28 @@ if [[ "$STDOUT" -eq 1 ]]; then
 fi
 
 mkdir -p "$BACKUP_DIR"
-docker exec "$DB_CONTAINER" mysqldump "${DUMP_ARGS[@]}" | gzip -c > "$OUT"
+TMP_OUT="${OUT}.tmp.$$"
+cleanup_tmp() { rm -f "$TMP_OUT"; }
+trap cleanup_tmp EXIT
+docker exec "$DB_CONTAINER" mysqldump "${DUMP_ARGS[@]}" | gzip -c > "$TMP_OUT"
 
 # 空备份或异常小文件视为失败（避免静默写出几 KB 废文件）
 MIN_BYTES="${BACKUP_MIN_BYTES:-4096}"
-SZ="$(wc -c < "$OUT" | tr -d ' ')"
+SZ="$(wc -c < "$TMP_OUT" | tr -d ' ')"
 if [[ "$SZ" -lt "$MIN_BYTES" ]]; then
-  echo "[backup] ERROR: 备份过小 (${SZ} bytes): $OUT" >&2
-  rm -f "$OUT"
+  echo "[backup] ERROR: 备份过小 (${SZ} bytes): $TMP_OUT" >&2
   exit 1
 fi
+if ! gzip -t "$TMP_OUT" 2>/dev/null; then
+  echo "[backup] ERROR: gzip 校验失败: $TMP_OUT" >&2
+  exit 1
+fi
+mv -f "$TMP_OUT" "$OUT"
+trap - EXIT
 
 echo "[backup] 已写入 $OUT ($(du -h "$OUT" | awk '{print $1}'))"
 
-# 按小时清理（默认 24h；find -mmin 单位为分钟）
+# 按小时清理（默认 48h；find -mmin 单位为分钟）
 RETAIN_MINS=$((RETAIN_HOURS * 60))
 find "$BACKUP_DIR" -name "${DB_NAME}-[0-9]*.sql.gz" -mmin +"$RETAIN_MINS" -delete 2>/dev/null || true
 

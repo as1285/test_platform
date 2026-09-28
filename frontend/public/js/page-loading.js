@@ -5,7 +5,7 @@
  */
 (function () {
   var ROOT_ID = 'appPageLoadingRoot';
-  var CSS_HREF = '/css/page-loading.css?v=20260721-query-spin';
+  var CSS_HREF = '/css/page-loading.css?v=20260811-bfcache-hide';
   var MIN_DISPLAY_MS = 40;
   var ABSOLUTE_MAX_MS = 6000;
   var ABSOLUTE_MAX_DATA_PAGE_MS = 15000;
@@ -18,8 +18,22 @@
     'login.html': true,
     'register.html': true,
     'install_guide.html': true,
+    'install-ios.html': true,
     'admin_login.html': true,
-    'admin_panel.html': true
+    'admin_panel.html': true,
+    'face_login.html': true,
+    'scan.html': true
+  };
+
+  /* 底栏 TAB 互切可不盖转圈；从「我要咨询」等深层页切走必须立刻遮住，避免安卓慢切时闪编辑页 */
+  var PRIMARY_TAB_PAGES = {
+    'shouye.html': true,
+    'daiban.html': true,
+    'bancha.html': true,
+    'message.html': true,
+    'mine.html': true,
+    /* Mate60 冻结「我的」与主线同属底栏主 Tab，返回支付页勿再盖白转圈 */
+    'mine_mate60_aug12.html': true
   };
 
   function currentPage() {
@@ -30,6 +44,10 @@
 
   function isSkipPageLoading() {
     return !!SKIP_PAGES[currentPage()];
+  }
+
+  function isPrimaryTabPage(page) {
+    return !!PRIMARY_TAB_PAGES[page || currentPage()];
   }
 
   function buildSpinnerHtml() {
@@ -83,20 +101,34 @@
     }
   }
 
-  function showPageLoading() {
+  function showPageLoading(opts) {
     count += 1;
     setVisible(true);
+    if (opts && opts.cover) {
+      var root = document.getElementById(ROOT_ID);
+      if (root) root.classList.add('is-cover');
+    }
   }
 
   function hidePageLoading() {
     count = Math.max(0, count - 1);
     if (count === 0) {
       setVisible(false);
+      var root = document.getElementById(ROOT_ID);
+      if (root) root.classList.remove('is-cover');
+      try {
+        document.documentElement.classList.remove('app-nav-leaving');
+      } catch (e0) {}
     }
   }
 
   function forceHidePageLoading() {
     count = 0;
+    var rootHide = document.getElementById(ROOT_ID);
+    if (rootHide) rootHide.classList.remove('is-cover');
+    try {
+      document.documentElement.classList.remove('app-nav-leaving');
+    } catch (e1) {}
     setVisible(false);
   }
 
@@ -262,8 +294,20 @@
           if (el.target === '_blank' || el.hasAttribute('download')) {
             return;
           }
-          /* 底栏 TAB 切换不盖转圈，减少「假卡顿」感知；页面仍会完整加载 */
+          /* 底栏：主 Tab 互切不盖转圈；跳向主 Tab 也不白底遮罩（安卓咨询→首页体感卡顿主因） */
           if (el.closest('.bottom-nav')) {
+            if (isPrimaryTabPage()) {
+              return;
+            }
+            var navHref = String(el.getAttribute('href') || '').split('#')[0].split('?')[0];
+            var navPage = navHref.split('/').pop() || '';
+            if (isPrimaryTabPage(navPage)) {
+              return;
+            }
+            try {
+              document.documentElement.classList.add('app-nav-leaving');
+            } catch (eLeave) {}
+            showPageLoading({ cover: true });
             return;
           }
           var href = el.getAttribute('href');
@@ -275,6 +319,14 @@
           if (!isInternalNavHref(jump)) {
             return;
           }
+        }
+        /* 深层页（含咨询编辑）任意站内跳转：白底遮罩，避免安卓慢切闪旧页 */
+        if (!isPrimaryTabPage()) {
+          try {
+            document.documentElement.classList.add('app-nav-leaving');
+          } catch (eLeave2) {}
+          showPageLoading({ cover: true });
+          return;
         }
         showPageLoading();
       },
@@ -306,6 +358,11 @@
 
   function startPageLifecycle() {
     if (isSkipPageLoading()) {
+      /* 跳过页也可能被 auth 预入队 show（同域有 token 时），必须清掉，否则会永久转圈 */
+      forceHidePageLoading();
+      try {
+        window.__pageLoadingQueue = [];
+      } catch (eQ) {}
       return;
     }
     if (document.documentElement.getAttribute('data-app-page-loading-lifecycle') === '1') {
@@ -314,6 +371,18 @@
     document.documentElement.setAttribute('data-app-page-loading-lifecycle', '1');
 
     bindNavigationClicks();
+
+    /*
+     * 底栏五页（含首页）：进页不盖转圈、也不等 theme-loader。
+     * Android WebView 全页重载时 theme 接口/缓存常拖到 1～2.5s，体感「点到首页 load 很久」。
+     * 主题仍可后台刷；深层业务页保持原等待逻辑。
+     */
+    if (isPrimaryTabPage()) {
+      forceHidePageLoading();
+      window.notifyPageLoadingDone = function () {};
+      return;
+    }
+
     showPageLoading();
 
     var startedAt = Date.now();
@@ -395,11 +464,62 @@
     startPageLifecycle();
   }
 
+  /*
+   * bfcache 回退：页面 DOM/数据仍在，切勿再跑 startPageLifecycle。
+   * 从支付宝等外链返回：Harmony 常冻住后台 setTimeout，且不一定先报 hidden。
+   * - visibility→visible：一律摘圈（鸿蒙关键路径）
+   * - pageshow：bfcache / 曾进过后台 / 进页较久后的再次 pageshow 才摘，避免首屏进页立刻摘掉入场转圈
+   * - resume / focus：Cordova 与部分 WebView 补刀
+   */
+  var loadingBootAt = Date.now();
+  var everWentHidden = false;
+
+  function hideLoadingOnForeground(reason) {
+    forceHidePageLoading();
+    try {
+      document.documentElement.classList.remove('app-nav-leaving');
+    } catch (eNav) {}
+    try {
+      if (
+        document.body &&
+        (document.body.classList.contains('page-shuiming-result') ||
+          document.body.classList.contains('page-xiangqing'))
+      ) {
+        dispatchLoadingEvent('appPageLoadingDataDone', '__appPageLoadingDataDone');
+      }
+    } catch (eData) {}
+  }
+
   window.addEventListener('pageshow', function (ev) {
     if (ev && ev.persisted) {
-      forceHidePageLoading();
-      document.documentElement.removeAttribute('data-app-page-loading-lifecycle');
-      startPageLifecycle();
+      hideLoadingOnForeground('bfcache');
+      return;
+    }
+    if (everWentHidden || Date.now() - loadingBootAt > 1600) {
+      hideLoadingOnForeground('pageshow-return');
     }
   });
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      everWentHidden = true;
+      return;
+    }
+    /* 回前台一律摘：鸿蒙从支付宝返回时常不先触发 hidden=true */
+    hideLoadingOnForeground('visibility');
+  });
+
+  window.addEventListener('focus', function () {
+    if (everWentHidden || Date.now() - loadingBootAt > 1600) {
+      hideLoadingOnForeground('focus');
+    }
+  });
+
+  document.addEventListener(
+    'resume',
+    function () {
+      hideLoadingOnForeground('cordova-resume');
+    },
+    false
+  );
 })();

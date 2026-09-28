@@ -1,0 +1,1417 @@
+/* consult page styles — extracted from consult.html */
+/* ===== CSS 变量系统 ===== */
+:root {
+    --color-primary: #3b82f6;
+    --color-primary-light: #60a5fa;
+    --color-primary-dark: #2563eb;
+    --color-primary-bg: #eff6ff;
+    --color-primary-border: #bfdbfe;
+    --color-success: #10b981;
+    --color-success-bg: #ecfdf5;
+    --color-danger: #ef4444;
+    --color-danger-bg: #fef2f2;
+    --color-warning: #f59e0b;
+    --color-warning-bg: #fffbeb;
+    --color-text: #0f172a;
+    --color-text-secondary: #475569;
+    --color-text-muted: #94a3b8;
+    --color-text-placeholder: #cbd5e1;
+    --color-bg: #f1f5f9;
+    --color-surface: #ffffff;
+    --color-surface-alt: #f8fafc;
+    --color-border: #e2e8f0;
+    --color-border-light: #f1f5f9;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-full: 9999px;
+    --shadow-xs: 0 1px 2px rgba(15,23,42,0.04);
+    --shadow-sm: 0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
+    --shadow-md: 0 4px 6px -1px rgba(15,23,42,0.07), 0 2px 4px -2px rgba(15,23,42,0.05);
+    --shadow-lg: 0 10px 15px -3px rgba(15,23,42,0.08), 0 4px 6px -4px rgba(15,23,42,0.04);
+    --shadow-xl: 0 20px 25px -5px rgba(15,23,42,0.1), 0 8px 10px -6px rgba(15,23,42,0.06);
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ===== 基础重置 ===== */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif;
+    background: var(--color-bg);
+    color: var(--color-text);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    padding-bottom: calc(var(--bottom-nav-clearance, 86px) + 8px);
+}
+html.app-ios-client body.page-consult,
+html.app-ios-iphone14pro body.page-consult,
+html.app-ios-iphone15promax body.page-consult {
+    padding-bottom: calc(var(--bottom-nav-clearance, 86px) + 24px);
+    -webkit-overflow-scrolling: touch;
+}
+
+/* ===== 顶部 Header =====
+ * 返回 / 标题走文档流，不要 absolute + env(safe-area-inset-top)。
+ * 安卓 WebView 里 env() 常为 0，壳却会给 .header 加上 --app-shell-statusbar-top。
+ */
+.header {
+    --consult-header-safe-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
+    background: var(--color-surface);
+    padding: calc(12px + var(--consult-header-safe-top)) 16px 12px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: 8px;
+    position: relative;
+    z-index: 20;
+    border-bottom: 1px solid var(--color-border-light);
+}
+.header h1 {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--color-text);
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    padding: 0;
+    grid-column: 2;
+    text-align: center;
+}
+.header .user-name {
+    font-size: 12px;
+    color: var(--color-text-muted);
+    margin-top: 2px;
+}
+
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    justify-self: start;
+    min-height: 44px;
+    padding: 8px 4px 8px 0;
+    position: relative;
+    z-index: 2;
+}
+.back-link:active { opacity: 0.6; }
+.header .back-link span { font-size: 13px; }
+
+.consult-fill-entry-toggle {
+    justify-self: end;
+    grid-column: 3;
+    border: none;
+    background: transparent;
+    color: #1658dc;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    line-height: 1.2;
+    padding: 8px 0 8px 8px;
+    min-height: 44px;
+    cursor: pointer;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+}
+.consult-fill-entry-toggle:active { opacity: 0.6; }
+
+/* ===== Tab 导航 ===== */
+.tabs {
+    display: flex;
+    background: var(--color-surface);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-bottom: 1px solid var(--color-border-light);
+    padding: 0 4px;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+    flex: 1;
+    min-width: 72px;
+    padding: 12px 8px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    position: relative;
+    white-space: nowrap;
+    transition: color var(--transition-fast);
+}
+.tab:active { opacity: 0.7; }
+.tab.active {
+    color: var(--color-primary);
+    font-weight: 600;
+}
+.tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 24px;
+    height: 3px;
+    background: var(--color-primary);
+    border-radius: 3px 3px 0 0;
+}
+
+/* ===== 内容容器 ===== */
+.container {
+    padding: 12px;
+    /* 16px 不够：底栏约 74px，按钮会落在胶囊/Home 条上，点不到也滑不动 */
+    padding-bottom: calc(var(--bottom-nav-clearance, 86px) + 16px);
+}
+html.app-ios-client .container,
+html.app-ios-iphone14pro .container,
+html.app-ios-iphone15promax .container {
+    padding-bottom: calc(var(--bottom-nav-clearance, 86px) + 48px);
+}
+
+/* ===== 卡片系统 ===== */
+.card {
+    background: var(--color-surface);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--color-border-light);
+    transition: box-shadow var(--transition-fast);
+}
+.card-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--color-text);
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--color-border-light);
+    letter-spacing: -0.01em;
+}
+.card-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.card-title-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+/* ===== 表单系统 ===== */
+.form-group { margin-bottom: 14px; }
+.form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    margin-bottom: 6px;
+}
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 11px 12px;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font-size: 15px;
+    color: var(--color-text);
+    background: var(--color-surface);
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    -webkit-appearance: none;
+    appearance: none;
+}
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+    color: var(--color-text-placeholder);
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+}
+.form-group input[readonly] {
+    color: var(--color-text-muted);
+    background: var(--color-surface-alt);
+    cursor: not-allowed;
+}
+.form-group input[readonly]:focus {
+    border-color: var(--color-border);
+    box-shadow: none;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+@media (max-width: 480px) {
+    .form-row { grid-template-columns: 1fr; }
+}
+
+/* ===== 按钮系统 ===== */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 20px;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+    transition: all var(--transition-fast);
+    -webkit-tap-highlight-color: transparent;
+    line-height: 1.4;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary {
+    background: var(--color-primary);
+    color: #fff;
+}
+.btn-primary:active {
+    background: var(--color-primary-dark);
+}
+.btn-danger {
+    background: var(--color-danger);
+    color: #fff;
+    padding: 7px 12px;
+    font-size: 12px;
+}
+.btn-sm { padding: 7px 14px; font-size: 13px; }
+.btn-default {
+    background: var(--color-surface);
+    color: var(--color-primary);
+    border: 1.5px solid var(--color-primary-border);
+    padding: 7px 14px;
+    font-size: 13px;
+}
+.btn-default:active {
+    background: var(--color-primary-bg);
+}
+.btn-secondary {
+    background: var(--color-surface-alt);
+    color: var(--color-text-secondary);
+    border: 1.5px solid var(--color-border);
+    padding: 7px 14px;
+    font-size: 13px;
+}
+.btn-block { width: 100%; display: flex; }
+
+/* ===== 消息提示 ===== */
+.msg {
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 12px;
+    font-size: 14px;
+    font-weight: 500;
+}
+.msg-success { background: var(--color-success-bg); color: #065f46; }
+.msg-error { background: var(--color-danger-bg); color: #991b1b; }
+
+/* ===== 列表项 ===== */
+.list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--color-border-light);
+}
+.list-item:last-child { border-bottom: none; }
+.list-item-content { flex: 1; }
+.list-item-title { font-size: 14px; color: var(--color-text); font-weight: 600; }
+.list-item-desc { font-size: 12px; color: var(--color-text-muted); margin-top: 3px; }
+.list-item-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.record-card .list-item-actions { margin-top: 10px; }
+
+.empty { text-align: center; padding: 40px 20px; color: var(--color-text-muted); font-size: 14px; }
+
+
+.record-card {
+    background: var(--color-surface-alt);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    margin-bottom: 10px;
+    border: 1px solid var(--color-border-light);
+}
+.record-card:last-child { margin-bottom: 0; }
+.record-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.record-card-title { font-size: 14px; font-weight: 600; color: var(--color-text); }
+.record-card-date { font-size: 12px; color: var(--color-text-muted); }
+.record-card-info { font-size: 12px; color: var(--color-text-secondary); line-height: 1.7; }
+
+/* ===== 激活码弹窗 ===== */
+.activate-modal-root {
+    position: fixed; inset: 0; z-index: 9999;
+    display: none; box-sizing: border-box;
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+}
+.activate-modal-root.is-open { display: block; }
+.activate-modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+.activate-modal-panel {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    z-index: 1; width: calc(100% - 32px); max-width: 340px;
+    background: var(--color-surface); border-radius: var(--radius-lg);
+    padding: 20px 18px 16px; box-shadow: var(--shadow-xl);
+}
+.activate-modal-title { font-size: 16px; color: var(--color-text); margin-bottom: 14px; font-weight: 700; }
+.activate-modal-input {
+    width: 100%; padding: 12px; border: 1.5px solid var(--color-primary-border);
+    border-radius: var(--radius-sm); font-size: 15px; margin-bottom: 14px; box-sizing: border-box;
+}
+.activate-modal-input:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
+.activate-modal-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; align-items: center; }
+.consult-tax-edit-pay-panel { max-width: 360px; }
+.consult-tax-edit-pay-choices { display: flex; flex-direction: column; gap: 8px; margin: 0 0 12px; }
+.consult-tax-edit-pay-choices .btn-block { width: 100%; }
+.consult-tax-edit-pay-qr { text-align: center; min-height: 160px; margin: 8px 0 12px; }
+.consult-tax-edit-pay-status { font-size: 12px; color: #888; text-align: center; margin: 0 0 10px; }
+.peer-tax-fee-banner {
+    margin: 0 0 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: #fef2f2;
+    color: #9f1239;
+    font-size: 13px;
+    line-height: 1.5;
+    border: 1px solid #fecdd3;
+}
+/* ===== 税务记录面板 ===== */
+#panel-records .card {
+    padding: 14px;
+    margin-bottom: 12px;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+}
+#panel-records .card-title {
+    font-size: 15px; font-weight: 700; margin-bottom: 4px;
+    padding-bottom: 0; border-bottom: none; color: var(--color-text);
+}
+#batchTaxCard .card-title { font-size: 15px; margin-bottom: 4px; padding-bottom: 0; }
+#batchTaxCard > .btn.btn-sm { font-size: 12px; padding: 8px 12px; }
+#panel-records .card-title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+#panel-records .card-title-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+#panel-records .card-title-actions .btn { padding: 5px 10px; font-size: 12px; border-radius: 6px; }
+#panel-records .form-group { margin-bottom: 10px; }
+#panel-records .form-group label { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 5px; font-weight: 500; }
+#panel-records .form-group input, #panel-records .form-group select, #panel-records .form-group textarea {
+    padding: 10px 12px; font-size: 14px; border-radius: var(--radius-sm); border-color: var(--color-border); background: var(--color-surface);
+}
+#panel-records .form-row { gap: 10px; grid-template-columns: 1fr 1fr; }
+#panel-records .btn-block { padding: 12px; font-size: 15px; margin-top: 4px; border-radius: 10px; font-weight: 600; }
+#panel-records .record-card {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border-radius: 10px;
+    background: var(--color-surface-alt);
+    border: 1px solid var(--color-border-light);
+}
+#panel-records .record-card-main { flex: 1; min-width: 0; }
+#panel-records .record-card-header { margin-bottom: 4px; }
+#panel-records .record-card-title { font-size: 13px; }
+#panel-records .record-card-date { font-size: 11px; }
+#panel-records .record-card-info { font-size: 12px; line-height: 1.5; color: var(--color-text-secondary); }
+#panel-records .record-card.is-tappable {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+#panel-records .record-card.is-tappable:active {
+    background: var(--color-primary-bg);
+    border-color: var(--color-primary-border);
+}
+#panel-records .record-card.is-tappable::after {
+    content: "›";
+    color: var(--color-text-muted);
+    font-size: 18px;
+    line-height: 1;
+    padding-top: 2px;
+    flex: 0 0 auto;
+}
+#taxRecordsListCard.is-managing .record-card.is-tappable::after { display: none; }
+#panel-records .record-card-actions {
+    display: none;
+    flex: 0 0 auto;
+    align-self: center;
+    align-items: center;
+    gap: 6px;
+}
+#taxRecordsListCard.is-managing .record-card-actions { display: inline-flex; }
+#panel-records .record-card-move,
+#panel-records .record-card-delete {
+    display: none;
+    flex: 0 0 auto;
+    align-self: center;
+    padding: 5px 10px;
+    font-size: 12px;
+}
+#taxRecordsListCard.is-managing .record-card-move,
+#taxRecordsListCard.is-managing .record-card-delete { display: inline-flex; }
+#panel-records .record-card .list-item-actions { margin-top: 8px; }
+#panel-records .record-card .btn-sm { padding: 5px 10px; font-size: 12px; }
+#taxRecordsManageHint,
+.tax-records-manage-hint {
+    margin: 0 0 8px;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--color-text-secondary);
+}
+#taxRecordsListCard.is-managing #btnTaxRecordsManage.is-active {
+    color: var(--color-primary);
+    border-color: var(--color-primary-border);
+    background: var(--color-primary-bg);
+}
+#taxRecordsListCard .tax-records-manage-toolbar {
+    position: static;
+    display: none;
+    flex-direction: row;
+    flex-wrap: wrap;
+    min-width: 0;
+    width: 100%;
+    margin: 0 0 8px;
+    box-shadow: none;
+    border: 1px solid var(--color-border-light);
+    background: var(--color-surface-alt);
+}
+#taxRecordsListCard.is-managing .tax-records-manage-toolbar:not([hidden]) {
+    display: flex;
+}
+#taxRecordsListCard .tax-records-settings-panel {
+    margin: 0 0 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border-light);
+    border-radius: 10px;
+    background: var(--color-surface-alt);
+}
+#taxRecordsListCard .tax-records-settings-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text);
+}
+#taxRecordsListCard .tax-records-settings-check input {
+    margin-top: 3px;
+}
+#taxRecordsListCard .tax-records-settings-hint {
+    margin: 8px 0 0;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--color-text-secondary);
+}
+#taxRecordsListCard .tax-records-settings-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+}
+#taxRecordsListCard #btnTaxRecordsSettings.is-active {
+    color: var(--color-primary);
+    border-color: var(--color-primary-border);
+    background: var(--color-primary-bg);
+}
+#taxRecordsListCard .tax-records-manage-toolbar .batch-tax-more-item {
+    flex: 1 1 auto;
+    text-align: center;
+    padding: 8px 10px;
+}
+#panel-records #recordListMount .empty { padding: 28px 16px; font-size: 13px; color: var(--color-text-muted); }
+#panel-records #recordListMount .tax-empty-start-title {
+    margin: 0 0 6px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-text);
+}
+#panel-records #recordListMount .tax-empty-start-desc {
+    margin: 0 0 14px;
+    font-size: 13px;
+    line-height: 1.45;
+}
+#panel-records #recordListMount .tax-empty-start .btn { min-width: 180px; }
+
+/* ===== 任职受雇 / 消息管理面板 ===== */
+#panel-employers .card {
+    padding: 14px; margin-bottom: 12px; border-radius: var(--radius-md); box-shadow: var(--shadow-sm);
+}
+#panel-employers .card-title {
+    font-size: 15px; font-weight: 700; margin-bottom: 0; padding-bottom: 0; border-bottom: none; color: var(--color-text);
+}
+#panel-employers .card-title-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+#panel-employers .form-group { margin-bottom: 10px; }
+#panel-employers .form-group label { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 5px; font-weight: 500; }
+#panel-employers .form-group input, #panel-employers .form-group select, #panel-employers .form-group textarea,
+#panel-employers .form-group input, #panel-employers .form-group select, #panel-employers .form-group textarea {
+    padding: 10px 12px; font-size: 14px; border-radius: 10px; border-color: var(--color-border); background: var(--color-surface-alt); min-height: 42px; line-height: 1.25;
+}
+#panel-employers .form-group input[type="date"] {
+    -webkit-appearance: none; appearance: none; color: var(--color-text);
+    background: var(--color-surface-alt) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3C/svg%3E") no-repeat right 12px center / 16px;
+    padding-right: 36px;
+}
+#panel-employers .form-group input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0; position: absolute; inset: 0; width: 100%; height: 100%; cursor: pointer; }
+#panel-employers .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+#panel-employers .form-row .form-group { min-width: 0; }
+#panel-employers .btn-block { padding: 12px 16px; border-radius: 10px; font-weight: 600; margin-top: 4px; }
+
+/* 折叠表单卡片 */
+#panel-employers .consult-form-card { overflow: hidden; transition: box-shadow var(--transition-fast); }
+#panel-employers .consult-form-card.is-collapsed { display: none; }
+#panel-employers .consult-form-toggle {
+    width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    border: none; background: transparent; padding: 0 0 10px; margin-bottom: 12px;
+    border-bottom: 1px solid var(--color-border-light); font-family: inherit; cursor: pointer;
+    -webkit-tap-highlight-color: transparent; text-align: left;
+}
+#panel-employers .consult-form-toggle-title { font-size: 15px; font-weight: 700; color: var(--color-text); }
+#panel-employers .consult-form-toggle-hint {
+    flex-shrink: 0; font-size: 12px; font-weight: 600; color: var(--color-text-secondary);
+    background: var(--color-surface-alt); border-radius: var(--radius-full); padding: 5px 10px;
+}
+#panel-employers .consult-form-body { padding-top: 2px; }
+
+/* 消息卡片 */
+#panel-employers .msg-card { background: var(--color-surface-alt); border: 1px solid var(--color-border-light); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+#panel-employers .msg-card:last-child { margin-bottom: 0; }
+#panel-employers .msg-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+#panel-employers .msg-card-title { font-size: 14px; font-weight: 600; color: var(--color-text); line-height: 1.35; }
+#panel-employers .msg-card-desc { font-size: 12px; color: var(--color-text-secondary); line-height: 1.5; margin-top: 6px; }
+#panel-employers .msg-card .btn-sm { flex-shrink: 0; padding: 6px 10px; border-radius: 8px; }
+
+/* 状态标签 */
+#panel-employers .status-pill {
+    display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: var(--radius-full); line-height: 1.4;
+}
+#panel-employers .status-pill.is-on { background: var(--color-success-bg); color: #065f46; }
+#panel-employers .status-pill.is-off { background: var(--color-surface-alt); color: var(--color-text-muted); }
+
+/* 任职受雇记录卡片 */
+#panel-employers .record-card { background: var(--color-surface-alt); border: 1px solid var(--color-border-light); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+#panel-employers .record-card:last-child { margin-bottom: 0; }
+#panel-employers .record-card-title { font-size: 14px; font-weight: 600; color: var(--color-text); }
+#panel-employers .record-card-info { font-size: 12px; color: var(--color-text-secondary); line-height: 1.55; margin-top: 2px; }
+#panel-employers .record-card .list-item-actions { margin-top: 10px; gap: 6px; }
+#panel-employers .record-card .btn-sm { padding: 6px 10px; font-size: 12px; border-radius: 8px; }
+
+/* 消息列表项 */
+#panel-employers .list-item { align-items: flex-start; gap: 10px; padding: 12px 0; }
+#panel-employers .list-item-title { font-size: 14px; font-weight: 600; color: var(--color-text); }
+#panel-employers .list-item-desc { font-size: 12px; color: var(--color-text-secondary); line-height: 1.45; margin-top: 3px; }
+
+#panel-employers #employerListMount .empty, #panel-employers #messageListMount .empty { padding: 28px 12px; font-size: 13px; color: var(--color-text-muted); }
+#employerFormCard, #messageFormCard { scroll-margin-top: 56px; }
+
+/* ===== 税务记录流程步骤 ===== */
+#panel-records .tax-flow-steps {
+    display: flex; align-items: center; justify-content: space-between; gap: 4px;
+    margin: 0 0 12px; padding: 12px 14px; background: var(--color-surface);
+    border: 1px solid var(--color-border-light); border-radius: 12px; box-shadow: var(--shadow-xs);
+}
+#panel-records .tax-flow-step { display: flex; align-items: center; gap: 6px; min-width: 0; }
+#panel-records .tax-flow-num {
+    flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%;
+    background: var(--color-primary); color: #fff; font-size: 12px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center; line-height: 1;
+}
+#panel-records .tax-flow-label { font-size: 12px; color: var(--color-text-secondary); font-weight: 500; white-space: nowrap; }
+#panel-records .tax-flow-step:not(.is-current) .tax-flow-num {
+    background: var(--color-border);
+    color: var(--color-text-secondary);
+}
+#panel-records .tax-flow-step.is-current .tax-flow-label {
+    color: var(--color-primary);
+    font-weight: 700;
+}
+#panel-records .tax-flow-sep {
+    flex: 1 1 auto; height: 1px; min-width: 12px; background: linear-gradient(90deg, var(--color-border), var(--color-primary-border));
+}
+
+/* ===== 开始方式双主路径 ===== */
+#panel-records .tax-start-chooser {
+    margin: 4px 0 4px;
+    padding: 14px 14px 16px;
+    border-radius: 12px;
+    background: linear-gradient(180deg, var(--color-primary-bg), var(--color-surface));
+    border: 1px solid var(--color-primary-border);
+}
+#panel-records .tax-start-chooser-title {
+    margin: 0 0 12px; font-size: 15px; font-weight: 600; color: var(--color-text);
+}
+#panel-records .tax-start-chooser-desc {
+    margin: 0 0 12px; font-size: 12px; color: var(--color-text-secondary); line-height: 1.45;
+}
+#panel-records .tax-start-chooser-actions {
+    display: flex; flex-direction: column; gap: 8px;
+}
+#panel-records .tax-start-btn { border-radius: 10px; font-weight: 500; }
+#panel-records .tax-start-chooser-more {
+    display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+    gap: 4px 6px; margin-top: 12px;
+}
+#panel-records .tax-start-link {
+    border: none; background: transparent; padding: 4px 2px;
+    font-size: 12px; color: var(--color-text-secondary); font-family: inherit;
+    cursor: pointer; text-decoration: underline; text-underline-offset: 2px;
+}
+#panel-records .tax-start-link:active { color: var(--color-primary); }
+#panel-records .tax-start-link-sep {
+    color: var(--color-text-muted); font-size: 12px; user-select: none;
+}
+#panel-records .tax-start-btn-quiet {
+    background: transparent;
+    border-color: transparent;
+    color: var(--color-text-secondary);
+    font-weight: 500;
+    min-height: 40px;
+}
+#panel-records .tax-start-btn-quiet:active { background: var(--color-surface-alt); }
+#panel-records .batch-tax-form-section[hidden],
+#panel-records .tax-start-chooser[hidden] { display: none !important; }
+
+/* ===== 个税 FAQ ===== */
+#taxFaqCard { padding: 0; overflow: hidden; margin-bottom: 0; }
+#taxFaqCard .tax-faq-toggle {
+    width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 14px 16px; border: none; background: transparent; font-size: 15px; font-weight: 600;
+    color: var(--color-text); cursor: pointer; font-family: inherit; text-align: left;
+}
+#taxFaqCard .tax-faq-toggle-icon { font-size: 11px; color: var(--color-text-muted); transition: transform var(--transition-normal); }
+#taxFaqCard.is-open .tax-faq-toggle-icon { transform: rotate(180deg); }
+#taxFaqCard .tax-faq-body { display: none; padding: 0 12px 12px; border-top: 1px solid var(--color-border-light); }
+#taxFaqCard.is-open .tax-faq-body { display: block; }
+#taxFaqCard .tax-faq-search-label {
+    display: block; font-size: 12px; color: var(--color-text-secondary); margin: 10px 0 6px;
+}
+#taxFaqCard .tax-faq-search {
+    width: 100%; box-sizing: border-box; height: 40px; padding: 0 12px;
+    border: 1px solid var(--color-border); border-radius: 10px; font-size: 14px;
+    background: var(--color-surface); font-family: inherit; color: var(--color-text);
+}
+#taxFaqCard .tax-faq-search:focus {
+    outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+}
+#taxFaqCard .tax-faq-chips {
+    display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px;
+}
+#taxFaqCard .tax-faq-chip {
+    border: 1px solid var(--color-border); background: var(--color-surface);
+    color: var(--color-text-secondary); border-radius: 999px; padding: 6px 12px;
+    font-size: 12px; font-weight: 500; cursor: pointer; font-family: inherit;
+}
+#taxFaqCard .tax-faq-chip.is-active {
+    background: var(--color-primary-bg); border-color: var(--color-primary-border);
+    color: var(--color-primary);
+}
+#taxFaqCard .tax-faq-empty {
+    margin: 12px 0 4px; font-size: 12px; color: var(--color-text-muted); line-height: 1.45; text-align: center;
+}
+#taxFaqCard .tax-faq-item {
+    border: 1px solid var(--color-border-light); border-radius: 10px; margin-top: 8px;
+    background: var(--color-surface-alt); overflow: hidden;
+}
+#taxFaqCard .tax-faq-item[hidden] { display: none !important; }
+#taxFaqCard .tax-faq-item summary {
+    list-style: none; cursor: pointer; padding: 11px 12px; font-size: 13px; font-weight: 600;
+    color: var(--color-text); line-height: 1.4; -webkit-tap-highlight-color: transparent;
+}
+#taxFaqCard .tax-faq-item summary::-webkit-details-marker { display: none; }
+#taxFaqCard .tax-faq-item summary::after {
+    content: '▼'; float: right; font-size: 10px; color: var(--color-text-muted);
+    margin-left: 8px; transition: transform var(--transition-normal);
+}
+#taxFaqCard .tax-faq-item[open] summary::after { transform: rotate(180deg); }
+#taxFaqCard .tax-faq-item p {
+    margin: 0; padding: 0 12px 12px; font-size: 12px; color: var(--color-text-secondary); line-height: 1.6;
+}
+
+/* ===== 更多：公式 / 单条 ===== */
+/* overflow:hidden 在 iOS 会吞掉整卡上的纵向滑动，长表单滑不到「更新记录」 */
+#panel-records .tax-more-card { padding: 0; overflow: visible; }
+#panel-records .tax-more-toggle {
+    width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 14px 16px; border: none; background: transparent; font-size: 15px; font-weight: 600;
+    color: var(--color-text); cursor: pointer; font-family: inherit; text-align: left;
+}
+#panel-records .tax-more-toggle-icon { font-size: 11px; color: var(--color-text-muted); transition: transform var(--transition-normal); }
+#panel-records .tax-more-card.is-open .tax-more-toggle-icon,
+#panel-records .tax-more-card:not(.is-collapsed) .tax-more-toggle-icon { transform: rotate(180deg); }
+#panel-records .tax-more-body { display: none; padding: 0 12px 12px; border-top: 1px solid var(--color-border-light); }
+#panel-records .tax-more-card.is-open .tax-more-body,
+#panel-records .tax-more-card:not(.is-collapsed) .tax-more-body { display: block; }
+#panel-records .tax-more-inner-card {
+    margin-top: 10px; border: 1px solid var(--color-border-light); border-radius: 12px;
+    box-shadow: none; overflow: visible;
+}
+#panel-records .tax-more-inner-card + .tax-more-inner-card,
+#panel-records .tax-more-inner-card + .consult-advanced-card { margin-top: 10px; }
+
+/* ===== 批量添加工具栏 ===== */
+#panel-records .batch-hint { font-size: 12px; color: var(--color-text-muted); line-height: 1.45; margin: 0 0 12px; }
+#panel-products .consult-products-section-label {
+    margin: 4px 2px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    letter-spacing: 0.02em;
+}
+#panel-products .consult-products-section-label:not(:first-child) {
+    margin-top: 16px;
+}
+#panel-products .consult-purchase-entry {
+    border: 1px solid #bfdbfe;
+    background: linear-gradient(135deg, #eff6ff, #f8fbff);
+}
+/* 完税二维码：增值服务首位高亮入口（从支付页折叠区迁入） */
+#panel-products .consult-najilu-qr-entry {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 12px;
+    padding: 14px 14px;
+    border-radius: 14px;
+    text-decoration: none;
+    color: inherit;
+    border: 1px solid #fcd34d;
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 55%, #fff7ed 100%);
+    box-shadow: 0 6px 16px rgba(245, 158, 11, 0.14);
+    -webkit-tap-highlight-color: transparent;
+}
+#panel-products .consult-najilu-qr-entry:active {
+    opacity: 0.92;
+}
+#panel-products .consult-najilu-qr-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 11px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #b45309;
+    background: #fff;
+    border: 1px solid #fde68a;
+}
+#panel-products .consult-najilu-qr-body {
+    flex: 1;
+    min-width: 0;
+}
+#panel-products .consult-najilu-qr-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+#panel-products .consult-najilu-qr-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #92400e;
+}
+#panel-products .consult-najilu-qr-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #92400e;
+    background: #fde68a;
+}
+#panel-products .consult-najilu-qr-sub {
+    display: block;
+    margin-top: 3px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: #a16207;
+}
+#panel-products .consult-najilu-qr-cta {
+    flex-shrink: 0;
+    font-size: 13px;
+    font-weight: 700;
+    color: #b45309;
+}
+#panel-products .consult-najilu-qr-arrow {
+    flex-shrink: 0;
+    font-size: 18px;
+    color: #d97706;
+    line-height: 1;
+}
+#panel-records .consult-compat-bug-entry {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 12px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    text-decoration: none;
+    color: inherit;
+    border: 1px solid #bfdbfe;
+    background: linear-gradient(135deg, #eff6ff 0%, #f8fbff 100%);
+    -webkit-tap-highlight-color: transparent;
+}
+#panel-records .consult-compat-bug-entry:active {
+    opacity: 0.92;
+}
+#panel-records .consult-compat-bug-body {
+    flex: 1;
+    min-width: 0;
+}
+#panel-records .consult-compat-bug-body strong {
+    display: block;
+    font-size: 14px;
+    font-weight: 700;
+    color: #1e40af;
+}
+#panel-records .consult-compat-bug-body span {
+    display: block;
+    margin-top: 2px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: #64748b;
+}
+#panel-records .consult-compat-bug-cta {
+    flex-shrink: 0;
+    font-size: 13px;
+    font-weight: 700;
+    color: #1d4ed8;
+}
+#panel-records .consult-compat-bug-arrow {
+    flex-shrink: 0;
+    font-size: 18px;
+    color: #60a5fa;
+    line-height: 1;
+}
+/* 税务记录页：填写/列表在上，二次退税入口沉底 */
+#panel-records #consultRefundAdEntry {
+    margin-top: 16px;
+}
+#panel-records #consultRefundAdEntry.is-refund-qualified,
+#panel-products #consultRefundAdProductEntry.is-refund-qualified {
+    border: 1px solid #fecaca;
+    background: linear-gradient(135deg, #fff7f7, #fff);
+}
+/* 年收入≥15万：青绿推荐卡（从收入纳税明细移至咨询填写区） */
+#panel-records #consultRefundAdEntry.is-income-browse,
+#panel-products #consultRefundAdProductEntry.is-income-browse {
+    border: none;
+    background: linear-gradient(135deg, #0f766e 0%, #0d9488 55%, #14b8a6 100%);
+    color: #fff;
+    box-shadow: 0 8px 20px rgba(13, 148, 136, 0.22);
+    position: relative;
+    overflow: hidden;
+}
+#panel-records #consultRefundAdEntry.is-income-browse .card-title,
+#panel-products #consultRefundAdProductEntry.is-income-browse .card-title {
+    color: #fff !important;
+}
+#panel-records #consultRefundAdEntry.is-income-browse .hint,
+#panel-products #consultRefundAdProductEntry.is-income-browse .hint {
+    color: rgba(255, 255, 255, 0.88) !important;
+}
+#panel-records #consultRefundAdEntry.is-income-browse .btn,
+#panel-products #consultRefundAdProductEntry.is-income-browse .btn {
+    background: #fff !important;
+    color: #0f766e !important;
+    border-color: #fff !important;
+}
+#panel-records #consultRefundAdEntry.is-income-browse .consult-product-badge,
+#panel-products #consultRefundAdProductEntry.is-income-browse .consult-product-badge {
+    display: none !important;
+}
+#panel-records #consultRefundAdEntry .consult-product-badge,
+#panel-products .consult-purchase-badge,
+#panel-products .consult-product-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #1d4ed8;
+    background: #dbeafe;
+}
+#panel-products .consult-activate-label {
+    display: block;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    margin: 0 0 6px;
+}
+#panel-products .consult-activate-input {
+    width: 100%;
+    height: 42px;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    padding: 0 12px;
+    font-size: 14px;
+    margin-bottom: 10px;
+    background: #fff;
+    font-family: inherit;
+}
+#panel-products .consult-purchase-entry[hidden] {
+    display: none !important;
+}
+#panel-records .batch-tax-toolbar { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+#panel-records .batch-tax-toolbar .btn { flex: 1 1 calc(33.33% - 6px); min-width: 0; font-size: 12px; padding: 8px 6px; border-radius: 8px; font-weight: 500; min-height: 44px; }
+#panel-records .batch-tax-toolbar .btn-default { background: var(--color-surface-alt); border-color: var(--color-border); color: var(--color-text-secondary); }
+/* 二级工具栏层级：按模板生成为最显眼的次要入口，独占一行；示例填写降级为次要文字按钮
+   注：外层 .batch-tax-toolbar 改为纵向排列后，flex-basis 百分比会作用在主轴（高度）而非宽度，
+   故这里显式用 width:100% + flex:0 0 auto 撑满一行，避免继承旧的 33% 横向分栏规则。 */
+#panel-records .batch-tax-toolbar-primary.btn {
+    flex: 0 0 auto; width: 100%; min-height: 44px; font-size: 14px; font-weight: 600; padding: 11px 10px;
+    color: var(--color-primary); background: var(--color-primary-bg); border-color: var(--color-primary-border);
+}
+#panel-records .batch-tax-toolbar-primary.btn:active { background: var(--color-primary-border); }
+#panel-records .batch-tax-toolbar-row2 { flex: 0 0 auto; width: 100%; display: flex; gap: 8px; align-items: stretch; }
+#panel-records .batch-tax-toolbar-row2 > .btn,
+#panel-records .batch-tax-toolbar-row2 > .batch-tax-more-wrap { flex: 1 1 0; min-width: 0; }
+#panel-records .batch-tax-toolbar-quiet { background: transparent; border-color: transparent; color: var(--color-text-secondary); font-weight: 400; }
+#panel-records .batch-tax-toolbar-quiet:active { background: var(--color-surface-alt); }
+#panel-records .batch-tax-more-wrap { position: relative; flex: 1 1 calc(33.33% - 6px); min-width: 0; }
+#panel-records .batch-tax-more-wrap > .btn { width: 100%; }
+#panel-records .batch-tax-more-menu {
+    position: absolute; right: 0; top: calc(100% + 4px); z-index: 40;
+    min-width: 148px; background: var(--color-surface); border: 1px solid var(--color-border);
+    border-radius: 10px; box-shadow: var(--shadow-md); padding: 6px; display: flex; flex-direction: column; gap: 2px;
+}
+#panel-records .batch-tax-more-menu[hidden] { display: none !important; }
+#panel-records .batch-tax-more-item {
+    border: none; background: transparent; text-align: left; padding: 10px 12px; border-radius: 8px;
+    font-size: 13px; color: var(--color-text); cursor: pointer; font-family: inherit;
+}
+#panel-records .batch-tax-more-item:active { background: var(--color-surface-alt); }
+#panel-records .batch-tax-more-item.is-danger { color: var(--color-danger); }
+#panel-records .card-title-actions .batch-tax-more-wrap { flex: 0 0 auto; }
+#panel-records .batch-tax-card-head { margin-bottom: 4px; }
+#panel-records .batch-tax-collapse-btn {
+    border: none; background: transparent; color: var(--color-primary); font-size: 13px;
+    font-weight: 500; padding: 4px 6px; cursor: pointer; font-family: inherit;
+}
+#panel-records .batch-tax-empty {
+    text-align: center; padding: 16px 12px 18px; margin-bottom: 12px;
+    background: var(--color-primary-bg); border: 1px dashed var(--color-primary-border); border-radius: 12px;
+}
+#panel-records .batch-tax-empty-title { font-size: 15px; font-weight: 600; color: var(--color-text); margin: 0 0 6px; }
+#panel-records .batch-tax-empty-desc { font-size: 12px; color: var(--color-text-secondary); margin: 0 0 12px; line-height: 1.45; }
+#panel-records .batch-tax-empty-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+#panel-records #batchTaxCard.is-collapsed #batchTaxCardBody { display: none; }
+#panel-records .consult-advanced-card { padding: 0; overflow: visible; }
+#panel-records .consult-advanced-toggle {
+    width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 14px 16px; border: none; background: transparent; font-size: 15px; font-weight: 600;
+    color: var(--color-text); cursor: pointer; font-family: inherit; text-align: left;
+}
+#panel-records .consult-advanced-toggle-icon { font-size: 11px; color: var(--color-text-muted); transition: transform var(--transition-normal); }
+#panel-records .consult-advanced-card:not(.is-collapsed) .consult-advanced-toggle-icon { transform: rotate(180deg); }
+#panel-records .consult-advanced-body { display: none; padding: 0 16px 28px; border-top: 1px solid var(--color-border-light); }
+html.app-ios-client #panel-records .consult-advanced-body,
+html.app-ios-iphone14pro #panel-records .consult-advanced-body,
+html.app-ios-iphone15promax #panel-records .consult-advanced-body {
+    padding-bottom: 36px;
+}
+#recordSubmitBtn {
+    scroll-margin-bottom: calc(var(--bottom-nav-clearance, 86px) + 24px);
+}
+.consult-record-form-end-space {
+    height: 8px;
+    pointer-events: none;
+}
+html.app-ios-client .consult-record-form-end-space,
+html.app-ios-iphone14pro .consult-record-form-end-space,
+html.app-ios-iphone15promax .consult-record-form-end-space {
+    /* 专留给底栏胶囊 + Home 条，让「更新记录」能再往上滑出可点区域 */
+    height: 96px;
+}
+#panel-records .consult-advanced-card:not(.is-collapsed) .consult-advanced-body { display: block; }
+#taxRecordsListCard { scroll-margin-top: 56px; }
+.tax-pay-guide-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 0 0 12px;
+    padding: 12px 12px 12px 14px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #eff6ff, #f8fbff);
+    border: 1px solid #bfdbfe;
+    box-sizing: border-box;
+}
+.tax-pay-guide-banner[hidden] { display: none !important; }
+.tax-pay-guide-banner-text { min-width: 0; flex: 1; }
+.tax-pay-guide-banner-text strong {
+    display: block;
+    font-size: 14px;
+    font-weight: 700;
+    color: #1d4ed8;
+    margin: 0 0 2px;
+}
+.tax-pay-guide-banner-text span {
+    font-size: 12px;
+    color: #334155;
+    line-height: 1.45;
+}
+.tax-pay-guide-banner-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 0 0 auto;
+}
+.tax-pay-guide-banner-actions .btn {
+    white-space: nowrap;
+    text-decoration: none;
+}
+.tax-pay-guide-banner-dismiss {
+    border: none;
+    background: transparent;
+    color: #64748b;
+    font-size: 18px;
+    line-height: 1;
+    padding: 4px 6px;
+    cursor: pointer;
+    font-family: inherit;
+}
+#panel-records .batch-tax-actions { margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--color-border-light); display: flex; flex-direction: column; gap: 8px; }
+#panel-records .batch-tax-actions .btn-primary { box-shadow: 0 4px 12px rgba(59,130,246,0.25); }
+#panel-records .batch-bonus-only-btn { background: transparent; border: none; color: var(--color-text-secondary); font-size: 13px; font-weight: 500; padding: 8px; order: 2; }
+#panel-records .batch-tax-actions #batch_submit_employments_btn, #panel-records .batch-tax-actions #batch_update_employments_btn { order: 1; }
+#panel-records .batch-bonus-only-btn:active { color: var(--color-primary); }
+#panel-records .batch-add-emp-btn { margin: 0 0 12px; background: transparent; border: 1.5px dashed var(--color-border); color: var(--color-primary); font-weight: 500; border-radius: 10px; padding: 10px; }
+#panel-records .batch-add-emp-btn:active { background: var(--color-surface-alt); }
+#panel-records .batch-edit-banner { font-size: 12px; line-height: 1.5; color: #b45309; background: var(--color-warning-bg); border: 1px solid #fed7aa; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+#batchTaxCard.is-edit-mode { border: 1px solid var(--color-primary-border); box-shadow: 0 0 0 1px rgba(59,130,246,0.12); }
+
+/* 工作经历行 */
+#panel-records .batch-emp-row { border: 1px solid var(--color-border-light); border-radius: 12px; padding: 14px; margin-bottom: 12px; background: var(--color-surface); box-shadow: var(--shadow-xs); }
+#panel-records .batch-emp-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--color-border-light); }
+#panel-records .batch-emp-title { font-size: 14px; font-weight: 600; color: var(--color-text-secondary); }
+#panel-records .batch-emp-head-actions { display: flex; align-items: center; gap: 2px; }
+#panel-records .batch-emp-copy-btn { background: transparent !important; color: var(--color-primary) !important; border: none !important; padding: 4px 8px !important; font-size: 13px !important; font-weight: 500; box-shadow: none !important; }
+#panel-records .batch-emp-copy-btn:active { opacity: 0.7; }
+#panel-records .batch-emp-remove-btn { background: transparent !important; color: var(--color-danger) !important; border: none !important; padding: 4px 8px !important; font-size: 13px !important; font-weight: 500; box-shadow: none !important; }
+#panel-records .batch-emp-remove-btn:active { opacity: 0.7; }
+#panel-records .batch-emp-optional-meta, #panel-records .batch-emp-deduct-meta, #panel-records .batch-emp-bonus-meta, #panel-records .batch-emp-severance-meta { margin-bottom: 6px; }
+#panel-records .batch-emp-optional-toggle, #panel-records .batch-emp-deduct-toggle, #panel-records .batch-emp-bonus-toggle, #panel-records .batch-emp-severance-toggle {
+    display: flex; align-items: center; justify-content: space-between; width: 100%; margin: 0 0 8px; padding: 9px 12px;
+    font-size: 12px; color: var(--color-text-secondary); background: var(--color-surface-alt); border: 1px solid var(--color-border); border-radius: 8px;
+    cursor: pointer; -webkit-tap-highlight-color: transparent; font-weight: 500;
+}
+#panel-records .batch-emp-optional-toggle:active, #panel-records .batch-emp-deduct-toggle:active, #panel-records .batch-emp-bonus-toggle:active, #panel-records .batch-emp-severance-toggle:active { opacity: 0.92; }
+#panel-records .batch-emp-optional-toggle-icon, #panel-records .batch-emp-deduct-toggle-icon, #panel-records .batch-emp-bonus-toggle-icon, #panel-records .batch-emp-severance-toggle-icon { font-size: 10px; color: var(--color-text-muted); transition: transform var(--transition-normal); }
+#panel-records .batch-emp-optional-meta.is-open .batch-emp-optional-toggle-icon,
+#panel-records .batch-emp-deduct-meta.is-open .batch-emp-deduct-toggle-icon,
+#panel-records .batch-emp-bonus-meta.is-open .batch-emp-bonus-toggle-icon,
+#panel-records .batch-emp-severance-meta.is-open .batch-emp-severance-toggle-icon { transform: rotate(180deg); }
+#panel-records .batch-emp-optional-body, #panel-records .batch-emp-deduct-body, #panel-records .batch-emp-bonus-body, #panel-records .batch-emp-severance-body { display: none; }
+#panel-records .batch-emp-optional-meta.is-open .batch-emp-optional-body,
+#panel-records .batch-emp-deduct-meta.is-open .batch-emp-deduct-body,
+#panel-records .batch-emp-bonus-meta.is-open .batch-emp-bonus-body,
+#panel-records .batch-emp-severance-meta.is-open .batch-emp-severance-body { display: block; }
+#panel-records .batch-emp-bonus-hint, #panel-records .batch-emp-severance-hint { font-size: 11px; color: var(--color-text-muted); line-height: 1.45; margin: 0 0 8px; }
+#panel-records .batch-emp-bonus-meta, #panel-records .batch-emp-severance-meta { margin-top: 4px; }
+#panel-records .batch-emp-bonus-list, #panel-records .batch-emp-severance-list { display: flex; flex-direction: column; gap: 10px; }
+#panel-records .batch-emp-bonus-item, #panel-records .batch-emp-severance-item { padding: 10px 10px 4px; border: 1px solid var(--color-border-light); border-radius: 10px; background: var(--color-surface-alt, #f8fafc); }
+#panel-records .batch-emp-bonus-item-head, #panel-records .batch-emp-severance-item-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+#panel-records .batch-emp-bonus-item-title, #panel-records .batch-emp-severance-item-title { font-size: 12px; font-weight: 600; color: var(--color-text-secondary); }
+#panel-records .batch-emp-bonus-remove, #panel-records .batch-emp-severance-remove { background: transparent; border: none; color: var(--color-danger); font-size: 12px; padding: 2px 4px; cursor: pointer; }
+#panel-records .batch-emp-bonus-add, #panel-records .batch-emp-severance-add { display: block; width: 100%; margin: 8px 0 2px; padding: 8px 10px; font-size: 13px; color: var(--color-primary); background: transparent; border: 1px dashed var(--color-primary-border, #93c5fd); border-radius: 8px; cursor: pointer; }
+#panel-records .batch-emp-bonus-solo-btn, #panel-records .batch-emp-severance-solo-btn {
+    display: block;
+    width: 100%;
+    margin: 8px 0 4px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    background: var(--color-primary, #3b82f6);
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.22);
+}
+#panel-records .batch-emp-bonus-solo-btn:active, #panel-records .batch-emp-severance-solo-btn:active { opacity: 0.92; }
+
+/* 年月输入（旧：四个数字框，管理端仍在用） */
+#panel-records .batch-ym-inline { display: flex; gap: 8px; align-items: stretch; }
+#panel-records .batch-ym-inline input.batch-ym-field { flex: 1 1 0; min-width: 0; min-height: 42px; font-size: 15px; padding: 10px 12px; touch-action: manipulation; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); -webkit-appearance: none; appearance: none; }
+#panel-records .batch-ym-inline input.batch-emp-sm, #panel-records .batch-ym-inline input.batch-emp-em { flex: 0 0 72px; width: 72px; text-align: center; }
+#panel-records .batch-ym-inline input.batch-ym-field:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
+
+/* 起止月：C 端友好选择器（点开年/月下拉，替代四个数字框） */
+#panel-records .batch-emp-period-group { margin-bottom: 14px; }
+#panel-records .batch-ym-range { display: flex; align-items: center; gap: 8px; }
+#panel-records .batch-ym-range-btn {
+    flex: 1 1 0; min-width: 0; min-height: 48px; display: flex; flex-direction: column; align-items: flex-start;
+    justify-content: center; gap: 2px; padding: 8px 12px; border: 1.5px solid var(--color-border); border-radius: 8px;
+    background: var(--color-surface); font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent;
+    text-align: left;
+}
+#panel-records .batch-ym-range-btn:active { background: var(--color-surface-alt); border-color: var(--color-primary-border); }
+#panel-records .batch-ym-range-btn-cap { font-size: 11px; color: var(--color-text-muted); line-height: 1.3; }
+#panel-records .batch-ym-range-btn-val { font-size: 15px; font-weight: 600; color: var(--color-text); line-height: 1.3; }
+#panel-records .batch-ym-range-arrow { flex: 0 0 auto; font-size: 14px; color: var(--color-text-muted); }
+#panel-records .batch-ym-hidden-fields { display: none; }
+
+/* 起止月选择弹层：年/月两个下拉 */
+.batch-ym-picker-panel { max-width: 320px; }
+.batch-ym-picker-body { display: flex; align-items: center; gap: 6px; padding: 20px 16px; }
+.batch-ym-picker-select {
+    flex: 1 1 0; min-width: 0; min-height: 44px; font-size: 16px; padding: 8px 10px; border: 1.5px solid var(--color-border);
+    border-radius: 8px; background: var(--color-surface); color: var(--color-text); font-family: inherit;
+    -webkit-appearance: none; appearance: none;
+}
+.batch-ym-picker-unit { flex: 0 0 auto; font-size: 13px; color: var(--color-text-secondary); }
+
+@media (pointer: coarse) {
+    .form-group select, .form-group input[type="date"], .form-group input[type="number"] { min-height: 44px; font-size: 16px; touch-action: manipulation; }
+    .form-group select { padding-right: 32px; -webkit-appearance: menulist; appearance: menulist; }
+    #panel-records .form-group select, #panel-records .form-group input[type="date"], #panel-records .form-group input[type="number"] { min-height: 44px; font-size: 16px; touch-action: manipulation; }
+    #panel-records .form-group select { padding: 10px 32px 10px 12px; -webkit-appearance: menulist; appearance: menulist; }
+}
+
+#panel-records .batch-emp-month-salary-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
+#panel-records .batch-emp-month-salary-badge { font-size: 12px; color: var(--color-primary); }
+#panel-records .batch-deduct-calc { margin-bottom: 8px; padding: 8px 10px; border-radius: 8px; background: var(--color-primary-bg); border: 1px dashed var(--color-primary-border); }
+#panel-records .batch-deduct-calc-hint { font-size: 11px; color: var(--color-text-muted); line-height: 1.45; margin: 0 0 8px; }
+
+/* ===== 个税计算表 / 公式 ===== */
+#taxFormulaCard { padding: 0; overflow: hidden; }
+#taxFormulaCard .tax-formula-toggle {
+    display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 14px;
+    border: none; background: var(--color-surface); font-size: 15px; font-weight: 700; color: var(--color-text);
+    cursor: pointer; -webkit-tap-highlight-color: transparent; text-align: left;
+}
+#taxFormulaCard .tax-formula-toggle-icon { font-size: 11px; color: var(--color-text-muted); transition: transform var(--transition-normal); }
+#taxFormulaCard.is-open .tax-formula-toggle-icon { transform: rotate(180deg); }
+#taxFormulaCard .tax-formula-body { display: none; padding: 0 14px 14px; border-top: 1px solid var(--color-border-light); }
+#taxFormulaCard.is-open .tax-formula-body { display: block; }
+#taxFormulaCard .tax-formula-sec { margin-top: 12px; }
+#taxFormulaCard .tax-formula-sec-title { font-size: 13px; font-weight: 600; color: var(--color-primary); margin: 0 0 8px; display: flex; align-items: center; gap: 6px; }
+#taxFormulaCard .tax-formula-sec-title::before { content: ''; width: 3px; height: 12px; background: var(--color-primary); border-radius: 2px; }
+#taxFormulaCard .tax-formula-box { background: var(--color-surface-alt); border: 1px solid var(--color-border); border-radius: 10px; padding: 10px 12px; font-size: 12px; color: var(--color-text-secondary); line-height: 1.65; margin-bottom: 8px; }
+#taxFormulaCard .tax-formula-box code, #taxFormulaCard .tax-formula-box .eq { display: block; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: var(--color-text); background: var(--color-surface); border-radius: 6px; padding: 8px 10px; margin: 6px 0; border: 1px solid var(--color-border); word-break: break-all; }
+#taxFormulaCard .tax-formula-note { font-size: 11px; color: var(--color-text-muted); line-height: 1.45; margin: 0; }
+#taxFormulaCard .tax-rate-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 10px; border: 1px solid var(--color-border); }
+#taxFormulaCard .tax-rate-table { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 300px; }
+#taxFormulaCard .tax-rate-table th, #taxFormulaCard .tax-rate-table td { padding: 8px 6px; text-align: center; border-bottom: 1px solid var(--color-border-light); white-space: nowrap; }
+#taxFormulaCard .tax-rate-table th { background: var(--color-surface-alt); color: var(--color-text-secondary); font-weight: 600; }
+#taxFormulaCard .tax-rate-table tr:last-child td { border-bottom: none; }
+#taxFormulaCard .tax-rate-table td { color: var(--color-text-secondary); }
+#taxFormulaCard .tax-try-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+#taxFormulaCard .tax-try-row label { display: block; font-size: 11px; color: var(--color-text-secondary); margin-bottom: 4px; }
+#taxFormulaCard .tax-try-row input { width: 100%; padding: 8px 10px; border: 1px solid var(--color-border); border-radius: 8px; font-size: 14px; background: var(--color-surface); }
+#taxFormulaCard .tax-try-result { margin-top: 10px; padding: 10px 12px; background: var(--color-primary-bg); border-radius: 10px; font-size: 13px; color: var(--color-primary-dark); line-height: 1.5; }
+#taxFormulaCard .tax-try-result strong { color: var(--color-primary); font-size: 16px; }
+
+/* ===== 弹窗系统 ===== */
+/* 10055：须高于 .bottom-nav 的 10050 !important，否则底部导航会压住弹窗页脚按钮 */
+.batch-ms-modal-root { position: fixed; inset: 0; z-index: 10055; display: none; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
+.batch-ms-modal-root.is-open { display: flex; }
+.batch-ms-modal-mask { position: absolute; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+.batch-ms-modal-panel { position: relative; width: 100%; max-width: 420px; max-height: calc(100vh - 32px); background: var(--color-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-xl); display: flex; flex-direction: column; overflow: hidden; }
+/* dvh 跟随移动端浏览器工具栏收放，避免面板超出可视区把页脚顶出屏幕 */
+@supports (max-height: 100dvh) {
+    .batch-ms-modal-panel { max-height: calc(100dvh - 32px - env(safe-area-inset-bottom, 0px)); }
+}
+/* 页脚常驻可见，不随长列表滚走 */
+.batch-ms-modal-footer { flex: 0 0 auto; position: sticky; bottom: 0; }
+.batch-ms-modal-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--color-border-light); font-size: 15px; font-weight: 700; color: var(--color-text); }
+.batch-ms-modal-head button { border: none; background: none; font-size: 22px; line-height: 1; color: var(--color-text-muted); cursor: pointer; padding: 0 4px; }
+.batch-ms-modal-hint { padding: 10px 16px 0; font-size: 12px; color: var(--color-text-secondary); line-height: 1.45; }
+.batch-ms-modal-scroll { flex: 1; overflow-y: auto; padding: 10px 16px; -webkit-overflow-scrolling: touch; }
+.batch-ms-pager { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 16px; border-top: 1px solid var(--color-border-light); flex: 0 0 auto; flex-wrap: wrap; }
+.batch-ms-pager[hidden] { display: none; }
+.batch-ms-pager-btn { min-width: 60px; padding: 6px 10px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); font-size: 13px; color: var(--color-text); cursor: pointer; }
+.batch-ms-pager-btn:disabled { opacity: 0.45; cursor: default; }
+.batch-ms-pager-info { font-size: 12px; color: var(--color-text-secondary); min-width: 108px; text-align: center; }
+.batch-ms-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.batch-ms-row label { flex: 0 0 92px; font-size: 13px; color: var(--color-text-secondary); }
+.batch-ms-row input { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--color-border); border-radius: 8px; font-size: 14px; }
+.batch-ms-modal-footer { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; align-items: center; padding: 12px 16px; border-top: 1px solid var(--color-border-light); background: var(--color-surface-alt); }
+#batchMsModalClear { margin-right: auto; }
+.tax-paste-import-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0 0 8px; flex-wrap: wrap; }
+.tax-paste-import-toolbar-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tax-screenshot-file-input { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; clip: rect(0,0,0,0); }
+.tax-paste-import-textarea { width: 100%; box-sizing: border-box; min-height: 180px; margin: 0 0 10px; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 8px; font-size: 14px; line-height: 1.55; font-family: inherit; resize: vertical; }
+.tax-paste-import-preview { margin: 0 0 10px; padding: 10px 12px; background: var(--color-surface-alt); border-radius: 8px; font-size: 13px; color: var(--color-text); max-height: 160px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
+.tax-paste-import-preview.is-ok { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+.tax-paste-import-preview.is-err { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+.tax-paste-import-footer { flex-wrap: wrap; gap: 8px; }
+.tax-paste-import-footer #taxPasteImportGenerateBtn { flex: 1 1 140px; min-height: 44px; font-weight: 700; }
+#taxRecycleBinModal .recycle-bin-item { padding: 10px 0; border-bottom: 1px solid var(--color-border-light); }
+#taxRecycleBinModal .recycle-bin-item:last-child { border-bottom: none; }
+#taxRecycleBinModal .recycle-bin-item-title { font-size: 13px; font-weight: 600; color: var(--color-text); margin-bottom: 4px; }
+#taxRecycleBinModal .recycle-bin-item-meta { font-size: 12px; color: var(--color-text-secondary); line-height: 1.45; margin-bottom: 6px; }
+#taxRecycleBinModal .recycle-bin-item-actions { display: flex; gap: 6px; justify-content: flex-end; }
+#taxRecycleBinModal .recycle-bin-toolbar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 16px 4px;
+}
+#taxRecycleBinModal .recycle-bin-filter-label {
+    flex: 0 0 auto;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+}
+#taxRecycleBinModal .recycle-bin-toolbar select {
+    flex: 1;
+    min-width: 0;
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    font-size: 13px;
+    background: var(--color-surface);
+}
+#taxRecycleBinModal .recycle-bin-count {
+    flex: 0 0 auto;
+    font-size: 12px;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+}
+#taxRecycleBinModal .recycle-bin-group {
+    margin: 0 0 8px;
+}
+#taxRecycleBinModal .recycle-bin-group-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0 4px;
+    position: sticky;
+    top: 0;
+    background: var(--color-surface);
+    z-index: 1;
+}
+#taxRecycleBinModal .recycle-bin-group-title {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+#taxRecycleBinModal .recycle-bin-group-count {
+    flex: 0 0 auto;
+    font-size: 11px;
+    color: var(--color-text-muted);
+}
+#taxRecycleBinModal .recycle-bin-group-head .btn {
+    flex: 0 0 auto;
+}
+#taxRecycleBinModal .batch-ms-modal-footer {
+    justify-content: space-between;
+}
+#taxRecycleBinModal .batch-ms-modal-footer .btn-primary {
+    margin-right: auto;
+}
+
+/* 强提示弹窗 */
+.consult-strong-alert-root { position: fixed; inset: 0; z-index: 10060; display: none; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
+.consult-strong-alert-root.is-open { display: flex; }
+.consult-strong-alert-mask { position: absolute; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(4px); }
+.consult-strong-alert-panel { position: relative; width: 100%; max-width: 340px; background: var(--color-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-xl); padding: 20px 18px 16px; border: 2px solid #ff7043; }
+.consult-strong-alert-title { font-size: 17px; font-weight: 700; color: #d84315; margin: 0 0 12px; text-align: center; }
+.consult-strong-alert-body { font-size: 15px; line-height: 1.55; color: var(--color-text); margin: 0 0 18px; word-break: break-word; }
+.consult-strong-alert-actions .btn { width: 100%; }
+
+/* 滚动到表单时预留 sticky Tab 高度 */
+#singleTaxRecordCard { scroll-margin-top: 52px; }
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+
+/* ===== 个人信息内分区 ===== */
+#panel-employers .consult-section-divider {
+    height: 1px;
+    margin: 4px 0 14px;
+    background: var(--color-border-light, #e8ecf1);
+}
+
+/* ===== 附加产品 ===== */
+#panel-products .consult-product-card {
+    padding: 14px 16px;
+}
+#panel-products .consult-product-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #1e6fff;
+    background: rgba(30, 111, 255, 0.1);
+}
+#panel-products .shebao-upload-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+#panel-products .shebao-upload-actions .btn {
+    flex: 1;
+    min-width: 120px;
+    text-align: center;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+#panel-products .shebao-upload-actions .btn.is-disabled {
+    opacity: 0.55;
+    pointer-events: none;
+}
+/* 视觉隐藏，保留可被 label 激活（比 display:none/hidden 在安卓 WebView 更稳） */
+#panel-products .shebao-file-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+    opacity: 0;
+}
+#panel-products .shebao-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+#panel-products .shebao-preview-grid:empty {
+    display: none;
+}
+#panel-products .shebao-preview-item {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--color-surface-alt, #f1f5f9);
+    border: 1px solid var(--color-border-light, #e2e8f0);
+}
+#panel-products .shebao-preview-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+#panel-products .shebao-upload-status {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--color-text-secondary, #64748b);
+    line-height: 1.4;
+}

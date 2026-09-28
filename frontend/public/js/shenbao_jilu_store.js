@@ -290,7 +290,7 @@
             return Promise.reject(new Error('请先登录'));
         }
         return global.authFetch(url, opts).then(function (res) {
-            return res.json();
+            return (window.authParseJson||function(res){return res.json();})(res);
         });
     }
 

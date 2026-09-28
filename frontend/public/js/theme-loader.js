@@ -31,7 +31,11 @@
     if (!cfg) {
       return;
     }
-    [
+    var page = '';
+    try {
+      page = String((location.pathname || '').split('/').pop() || '');
+    } catch (e0) {}
+    var list = [
       cfg.nav_sy_1, cfg.nav_sy_2,
       cfg.nav_db_1, cfg.nav_db_2,
       cfg.nav_bc_1, cfg.nav_bc_2,
@@ -39,9 +43,13 @@
       cfg.nav_w_1, cfg.nav_w_2,
       cfg.header_male, cfg.header_female,
       cfg.icon_family, cfg.icon_employer, cfg.icon_bank,
-      cfg.shouye_banner, cfg.shouye_zdfwdb, cfg.shouye_lb,
       cfg.daiban_header, cfg.bancha_header, cfg.message_header
-    ].forEach(preloadAsset);
+    ];
+    /* 当前 APK 首页用 /img/home/*，勿再预拉旧 banner/zdfwdb 与首屏抢带宽 */
+    if (page !== 'shouye.html') {
+      list.push(cfg.shouye_banner, cfg.shouye_zdfwdb, cfg.shouye_lb, cfg.shouye_zdb);
+    }
+    list.forEach(preloadAsset);
   }
 
   function applyBottomNavFromConfig(cfg) {
@@ -88,13 +96,63 @@
     if (lb && cfg.shouye_lb) {
       setSrcIfChanged(lb, cfg.shouye_lb);
     }
+    var zdb = document.getElementById('assetShouyeZdb');
+    if (zdb && cfg.shouye_zdb) {
+      setSrcIfChanged(zdb, cfg.shouye_zdb);
+    }
     var dh = document.getElementById('assetDaibanHeader');
-    if (dh && cfg.daiban_header) {
-      setSrcIfChanged(dh, cfg.daiban_header);
+    var daibanBuiltin = document.getElementById('daibanHeaderBuiltin');
+    var daibanHeader = document.querySelector('.daiban-header');
+    if (daibanBuiltin) {
+      daibanBuiltin.style.display = '';
+    }
+    if (dh) {
+      var dp = cfg.daiban_header ? String(cfg.daiban_header).trim() : '';
+      var useCustom =
+        dp && dp !== 'daiban.jpg' && !/(^|\/)daiban\.jpg$/i.test(dp);
+      if (useCustom) {
+        setSrcIfChanged(dh, dp);
+        dh.hidden = false;
+        if (daibanBuiltin) {
+          daibanBuiltin.style.display = 'none';
+        }
+        if (daibanHeader) {
+          daibanHeader.setAttribute('data-header-mode', 'custom');
+        }
+      } else {
+        dh.removeAttribute('src');
+        dh.hidden = true;
+        if (daibanHeader) {
+          daibanHeader.setAttribute('data-header-mode', 'builtin');
+        }
+      }
     }
     var bc = document.getElementById('assetBanchaHeader');
-    if (bc && cfg.bancha_header) {
-      setSrcIfChanged(bc, cfg.bancha_header);
+    var banchaBuiltin = document.getElementById('banchaHeaderBuiltin');
+    var banchaHeader = document.querySelector('.bancha-header');
+    if (banchaBuiltin) {
+      banchaBuiltin.style.display = '';
+    }
+    if (bc) {
+      var bp = cfg.bancha_header ? String(cfg.bancha_header).trim() : '';
+      var useBanchaCustom =
+        bp && bp !== 'db.jpg' && !/(^|\/)db\.jpg$/i.test(bp);
+      if (useBanchaCustom) {
+        setSrcIfChanged(bc, bp);
+        bc.hidden = false;
+        if (banchaBuiltin) {
+          banchaBuiltin.style.display = 'none';
+        }
+        if (banchaHeader) {
+          banchaHeader.setAttribute('data-header-mode', 'custom');
+        }
+      } else {
+        bc.removeAttribute('src');
+        bc.hidden = true;
+        if (banchaHeader) {
+          banchaHeader.setAttribute('data-header-mode', 'builtin');
+        }
+      }
     }
     var mh = document.getElementById('assetMessageHeader');
     var msgBuiltin = document.getElementById('messageHeaderBuiltin');
@@ -138,18 +196,19 @@
       root.style.setProperty('--app-accent', '#1e6fff');
       root.style.setProperty('--app-accent-mid', '#008afd');
       root.style.setProperty('--app-accent-soft', '#5aa3ff');
-      /* 首页顶部与下滑固定搜索条：与蓝主题一致 */
-      root.style.setProperty('--shouye-top-bar-rgb', '44, 128, 244');
+      /* 首页顶栏：官方 pending-tasks-bg 顶缘 #4f90f3 */
+      root.style.setProperty('--shouye-top-bar-rgb', '79, 144, 243');
     } else {
       root.style.setProperty('--app-accent', '#1e6fff');
       root.style.setProperty('--app-accent-mid', '#008afd');
       root.style.setProperty('--app-accent-soft', '#5aa3ff');
-      root.style.setProperty('--shouye-top-bar-rgb', '44, 128, 244');
+      root.style.setProperty('--shouye-top-bar-rgb', '79, 144, 243');
     }
     window.__MINE_UI_CONFIG = {
       theme: theme,
       header_male: d.header_male || 'grdb.jpg',
       header_female: d.header_female || 'nx.jpg',
+      header_guest: d.header_guest || 'mine_guest_header.jpg',
       icon_family: d.icon_family || 'jtcy.jpg',
       icon_employer: d.icon_employer || 'rzsp.jpg',
       icon_bank: d.icon_bank || 'yhk.jpg',
@@ -167,6 +226,7 @@
       mine_header: d.mine_header || d.header_male || 'grdb.jpg',
       shouye_zdfwdb: d.shouye_zdfwdb || 'zdfwdb.jpg',
       shouye_lb: d.shouye_lb || 'lb.jpg',
+      shouye_zdb: d.shouye_zdb || 'zdb.jpg',
       daiban_header: d.daiban_header || 'daiban.jpg',
       bancha_header: d.bancha_header || 'db.jpg',
       message_header: d.message_header || '',
@@ -208,7 +268,21 @@
     }
   }
 
+  function isAndroidLikeWebView() {
+    try {
+      return /Android|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(
+        String(navigator.userAgent || '')
+      );
+    } catch (e) {
+      return false;
+    }
+  }
+
   function prefetchBottomNavPages() {
+    /* 安卓 / 鸿蒙：进页不预取底栏其它页，主题色逻辑不动 */
+    if (isAndroidLikeWebView()) {
+      return;
+    }
     var pages = ['shouye.html', 'daiban.html', 'bancha.html', 'message.html', 'mine.html'];
     var here = '';
     try {
@@ -239,7 +313,7 @@
   document.documentElement.style.setProperty('--app-accent', '#1e6fff');
   document.documentElement.style.setProperty('--app-accent-mid', '#008afd');
   document.documentElement.style.setProperty('--app-accent-soft', '#5aa3ff');
-  document.documentElement.style.setProperty('--shouye-top-bar-rgb', '44, 128, 244');
+  document.documentElement.style.setProperty('--shouye-top-bar-rgb', '79, 144, 243');
   // 有缓存时立刻放行加载转圈，后台静默刷新主题，避免每个 TAB 都卡在 mine-ui 请求上
   var hadThemeCache = applyCached();
   if (hadThemeCache) {
@@ -249,7 +323,7 @@
 
   fetch('/api/public/mine-ui', { credentials: 'same-origin' })
     .then(function (r) {
-      return r.json();
+      return (window.authParseJson||function(r){return r.json();})(r);
     })
     .then(function (body) {
       if (body.code === 200 && body.data) {

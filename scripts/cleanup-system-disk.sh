@@ -4,13 +4,14 @@
 #
 # 用法：
 #   ./scripts/cleanup-system-disk.sh              # 立即清理
-#   ./scripts/cleanup-system-disk.sh --install-cron  # 幂等安装每日 04:20 crontab
+#   ./scripts/cleanup-system-disk.sh --install-cron  # 幂等安装每日 04:20（Asia/Shanghai）crontab
 #
 set -u
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SCRIPT_PATH="$ROOT/scripts/cleanup-system-disk.sh"
 LOG_FILE="${DISK_CLEANUP_LOG:-/var/log/test_platform-disk-cleanup.log}"
+CRON_TZ_NAME="${DISK_CLEANUP_CRON_TZ:-Asia/Shanghai}"
 CRON_EXPR="20 4 * * *"
 CRON_LINE="${CRON_EXPR} /bin/bash ${SCRIPT_PATH} >> ${LOG_FILE} 2>&1"
 DOCKER_LOG_MAX_BYTES="${DOCKER_LOG_MAX_BYTES:-104857600}" # 100MB
@@ -24,13 +25,19 @@ log() {
 install_cron() {
   local tmp
   tmp="$(mktemp)"
-  # 幂等：去掉旧条目后写入最新行
-  crontab -l 2>/dev/null | grep -v 'scripts/cleanup-system-disk.sh' >"$tmp" || true
-  printf '%s\n' "$CRON_LINE" >>"$tmp"
+  # 幂等：去掉旧条目（含旧 CRON_TZ 行）后写入最新行
+  crontab -l 2>/dev/null \
+    | grep -v 'scripts/cleanup-system-disk.sh' \
+    | grep -v '^CRON_TZ=.*# test_platform-disk-cleanup$' \
+    >"$tmp" || true
+  {
+    printf 'CRON_TZ=%s # test_platform-disk-cleanup\n' "$CRON_TZ_NAME"
+    printf '%s\n' "$CRON_LINE"
+  } >>"$tmp"
   crontab "$tmp"
   rm -f "$tmp"
-  log "crontab installed: $CRON_LINE"
-  crontab -l 2>/dev/null | grep -F 'cleanup-system-disk' || true
+  log "crontab installed: CRON_TZ=$CRON_TZ_NAME $CRON_LINE"
+  crontab -l 2>/dev/null | grep -E 'cleanup-system-disk|test_platform-disk-cleanup' || true
 }
 
 if [[ "${1:-}" == "--install-cron" ]]; then
@@ -50,8 +57,10 @@ log "===== start ====="
 log "df before:"
 df -h / 2>/dev/null || true
 
-# 1) Docker：清理未用镜像/容器/网络（不加 volume prune）
+# 1) Docker：清理未用镜像/容器/网络 + 构建缓存（不加 volume prune，保护数据卷）
 if command -v docker >/dev/null 2>&1; then
+  log "docker builder prune -af…"
+  docker builder prune -af 2>&1 | while IFS= read -r line; do log "  builder: $line"; done || log "builder prune skipped/failed"
   log "docker system prune -af (no volumes)…"
   docker system prune -af 2>&1 | while IFS= read -r line; do log "  docker: $line"; done || log "docker prune skipped/failed"
 else

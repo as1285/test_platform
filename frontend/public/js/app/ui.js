@@ -1,7 +1,10 @@
 /**
  * TaxApp UI：统一 Toast（阶段 3 设计系统壳）
+ * 注入优先页；业务页也可直接调 window.TaxAppUI.toast / TaxApp.ui.toast。
+ * 时长默认读 window.TOAST_DURATION_MS（toast-duration.js）。
  */
 (function (global) {
+  // === Toast 宿主与样式（单例） ===
   var STYLE_ID = 'tax-app-toast-style';
   var HOST_ID = 'tax-app-toast-host';
 

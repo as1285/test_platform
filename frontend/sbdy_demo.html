@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth-boot.js?v=20260902-adopt"></script>
+    <script src="/js/auth.js?v=20260902-adopt" defer></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>社保参保证明（演示样例）</title>
+    <style>
+        :root {
+            --ink: #0f172a;
+            --ink-soft: #475569;
+            --muted: #94a3b8;
+            --line: #e2e8f0;
+            --bg: #f4f7fb;
+            --accent: #1d6fd8;
+            --accent-deep: #1860be;
+            --accent-soft: #eff6ff;
+            --warn: #b45309;
+            --warn-soft: #fff7e8;
+            --safe-t: env(safe-area-inset-top, 0px);
+            --safe-b: env(safe-area-inset-bottom, 0px);
+            --wrap: 440px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            color: var(--ink);
+            min-height: 100vh;
+            background: var(--bg);
+            padding-bottom: calc(28px + var(--safe-b));
+        }
+        .header {
+            max-width: var(--wrap);
+            margin: 0 auto;
+            padding: calc(12px + var(--safe-t)) 20px 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .back-btn { color: var(--accent); font-size: 15px; text-decoration: none; padding: 4px 2px; }
+        .header-title { font-size: 16px; font-weight: 600; }
+        .page { max-width: var(--wrap); margin: 0 auto; padding: 8px 20px 0; }
+        .hero {
+            padding: 18px 16px;
+            border-radius: 16px;
+            margin-bottom: 12px;
+            color: #fff;
+            background: linear-gradient(135deg, #0f4c9a 0%, #1d6fd8 55%, #5aa3f0 100%);
+            box-shadow: 0 10px 24px rgba(29, 111, 216, 0.18);
+        }
+        .hero h1 { font-size: 20px; margin: 0 0 6px; }
+        .hero p { font-size: 13px; line-height: 1.5; color: rgba(255,255,255,.88); margin: 0; }
+        .card {
+            padding: 16px;
+            margin-top: 12px;
+            border: 1px solid rgba(226, 232, 240, 0.85);
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 5px 18px rgba(15, 23, 42, 0.05);
+        }
+        .card[hidden] { display: none !important; }
+        .card-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+        .card-hint { font-size: 13px; color: var(--muted); line-height: 1.45; margin-bottom: 12px; }
+        .step-title { font-size: 13px; font-weight: 600; color: var(--accent-deep); margin: 14px 0 8px; }
+        .field-label { display: block; font-size: 12px; color: var(--ink-soft); margin: 0 0 6px; }
+        .field, .field-select {
+            width: 100%;
+            min-height: 44px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 15px;
+            margin-bottom: 12px;
+            font-family: inherit;
+            background: #fff;
+        }
+        .field:focus, .field-select:focus {
+            outline: none;
+            border-color: #93c0f0;
+            box-shadow: 0 0 0 3px rgba(29, 111, 216, 0.12);
+        }
+        textarea.field { min-height: 120px; resize: vertical; line-height: 1.45; }
+        .region-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+        .region-row label {
+            flex: 1 1 calc(33.33% - 8px);
+            min-width: 72px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 10px 0;
+            text-align: center;
+            font-size: 14px;
+            color: var(--ink-soft);
+            cursor: pointer;
+        }
+        .region-row input { display: none; }
+        .region-row label:has(input:checked) {
+            border-color: var(--accent);
+            color: var(--accent-deep);
+            background: var(--accent-soft);
+            font-weight: 600;
+        }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+        .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 4px; }
+        .btn-row .btn { flex: 1 1 calc(50% - 8px); min-width: 120px; }
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            min-height: 48px;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            text-decoration: none;
+            color: #fff;
+            background: var(--accent);
+        }
+        .btn + .btn { margin-top: 8px; }
+        .btn-row .btn + .btn { margin-top: 0; }
+        .btn:disabled { opacity: .55; cursor: not-allowed; }
+        .btn-secondary { background: #fff; color: var(--ink-soft); border: 1px solid var(--line); }
+        .status { margin-top: 10px; font-size: 13px; line-height: 1.45; color: var(--accent-deep); text-align: center; word-break: break-all; }
+        .status.err { color: #c2410c; }
+        .qr-wrap { margin-top: 12px; text-align: center; }
+        .qr-wrap img { width: 180px; height: 180px; border-radius: 10px; border: 1px solid var(--line); }
+        .badge {
+            display: inline-block;
+            font-size: 12px;
+            border-radius: 999px;
+            padding: 3px 10px;
+            background: var(--warn-soft);
+            color: var(--warn);
+            margin-bottom: 8px;
+        }
+        .result-code {
+            font-family: ui-monospace, Menlo, Consolas, monospace;
+            font-size: 15px;
+            letter-spacing: 1px;
+            background: var(--accent-soft);
+            color: var(--accent-deep);
+            border-radius: 10px;
+            padding: 10px 12px;
+            text-align: center;
+            margin-bottom: 12px;
+            word-break: break-all;
+            user-select: all;
+        }
+        .note { margin-top: 10px; font-size: 12px; color: var(--muted); line-height: 1.55; }
+        details.advanced { margin: 8px 0 12px; font-size: 13px; color: var(--ink-soft); }
+        details.advanced summary { cursor: pointer; color: var(--accent); font-weight: 600; padding: 6px 0; }
+        .seg-card {
+            border: 1px dashed var(--line);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: #fafcff;
+        }
+        [hidden] { display: none !important; }
+        .sbdy-zj-only[hidden], .sbdy-zj-hn[hidden], .sbdy-sz-only[hidden], .sbdy-wh-only[hidden],
+        .sbdy-wh-hn[hidden], .sbdy-sz-wh-hn[hidden], .sbdy-js-only[hidden], .sbdy-zj-js[hidden],
+        .sbdy-sc-only[hidden] { display: none !important; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js" defer></script>
+</head>
+<body>
+    <div class="header">
+        <a class="back-btn" id="sbdyBack" href="purchase.html?from=mine">‹ 返回</a>
+        <div class="header-title">社保参保证明（演示样例）</div>
+    </div>
+    <div class="page">
+        <div class="hero">
+            <h1>参保证明演示样例</h1>
+            <p>与管理后台「社保演示」同款编辑能力：粘贴解析、分段任职、地区专属字段（period_start / segments 等）。未付费可生成（带水印），付 ¥199 后无水印无限次。</p>
+        </div>
+
+        <div class="card" id="cardSbdyPay" hidden>
+            <div class="card-title">去水印开通（可选）</div>
+            <p class="card-hint">未开通也能生成，PDF 会带「演示样例」水印。付 ¥<span id="sbdyFee">199.00</span> 一次，终身无限次生成<strong>无水印</strong>版本。</p>
+            <button type="button" class="btn" id="btnSbdyPay">支付宝付款开通 ¥199.00</button>
+            <div class="qr-wrap" id="sbdyQrWrap" hidden></div>
+            <p class="status" id="sbdyPayStatus"></p>
+        </div>
+
+        <div class="card" id="cardSbdyForm" hidden>
+            <div class="card-title">填写参保信息 <span class="badge" id="sbdyUnlockBadge">读取中…</span></div>
+
+            <label class="field-label">版式地区</label>
+            <div class="region-row">
+                <label><input type="radio" name="sbdyRegion" id="sbdyRegionZj" value="zj" checked>浙江</label>
+                <label><input type="radio" name="sbdyRegion" id="sbdyRegionSz" value="sz">深圳</label>
+                <label><input type="radio" name="sbdyRegion" id="sbdyRegionSzNew" value="sz_new">深圳新</label>
+                <label><input type="radio" name="sbdyRegion" id="sbdyRegionGz" value="gz">广州</label>
+                <label><input type="radio" name="sbdyRegion" id="sbdyRegionWh" value="wh">武汉</label>
+                <label><input type="radio" name="sbdyRegion" id="sbdyRegionHn" value="hn">湖南</label>
+                <label><input type="radio" name="sbdyRegion" id="sbdyRegionHa" value="ha">河南</label>
+                <label><input type="radio" name="sbdyRegion" id="sbdyRegionJs" value="js">江苏</label>
+                <label><input type="radio" name="sbdyRegion" id="sbdyRegionJsNew" value="js_new">江苏新</label>
+                <label><input type="radio" name="sbdyRegion" id="sbdyRegionBj" value="bj">北京</label>
+                <label><input type="radio" name="sbdyRegion" id="sbdyRegionSh" value="sh">上海</label>
+                <label><input type="radio" name="sbdyRegion" id="sbdyRegionXm" value="xm">厦门</label>
+                <label><input type="radio" name="sbdyRegion" id="sbdyRegionSc" value="sc">四川</label>
+            </div>
+
+            <div class="grid-2">
+                <div>
+                    <label class="field-label" for="sbdyPrefillStart">预填起月（可选）</label>
+                    <input class="field" type="month" id="sbdyPrefillStart">
+                </div>
+                <div>
+                    <label class="field-label" for="sbdyPrefillEnd">预填止月（可选）</label>
+                    <input class="field" type="month" id="sbdyPrefillEnd">
+                </div>
+            </div>
+            <button type="button" class="btn btn-secondary" id="sbdyPrefillBtn">按我的资料预填</button>
+
+            <div class="step-title">粘贴客户信息</div>
+            <textarea class="field" id="sbdyPasteTemplate" rows="6" maxlength="4000" placeholder="姓名:潘心茹&#10;身份证号411524200204011126&#10;时间:2025.7-2026.6&#10;公司名称：杭州某某科技有限公司&#10;税号：91330102MA7E2YNM2R"></textarea>
+            <div class="btn-row">
+                <button type="button" class="btn btn-secondary" id="btnSbdyPasteFill">解析填入</button>
+                <button type="button" class="btn btn-secondary" id="btnSbdyPasteGenerate">解析并生成</button>
+                <button type="button" class="btn btn-secondary" id="btnSbdyPasteClear">清空</button>
+            </div>
+
+            <div class="step-title">身份与单位</div>
+            <label class="field-label" for="sbdyName">姓名 *</label>
+            <input class="field" type="text" id="sbdyName" maxlength="64" placeholder="如：李晓晴">
+            <label class="field-label" for="sbdyIdNumber">证件号码 *</label>
+            <input class="field" type="text" id="sbdyIdNumber" maxlength="32" placeholder="18 位身份证号">
+            <label class="field-label" for="sbdyGender">性别</label>
+            <select class="field-select" id="sbdyGender">
+                <option value="女">女</option>
+                <option value="男">男</option>
+            </select>
+            <label class="field-label" for="sbdyCompany">参保单位</label>
+            <input class="field" type="text" id="sbdyCompany" maxlength="128" placeholder="仅填一家；多家请用下方分段">
+            <div class="sbdy-zj-hn">
+                <label class="field-label" for="sbdyCredit">统一社会信用代码</label>
+                <input class="field" type="text" id="sbdyCredit" maxlength="32" placeholder="9131…">
+            </div>
+            <div class="sbdy-zj-wh-js">
+                <label class="field-label" for="sbdyArea">参保地</label>
+                <input class="field" type="text" id="sbdyArea" maxlength="32" value="余杭区">
+            </div>
+            <div class="sbdy-js-only" hidden>
+                <label class="field-label" for="sbdyStatus">参保状态</label>
+                <input class="field" type="text" id="sbdyStatus" maxlength="24" value="正常缴费">
+            </div>
+            <div class="sbdy-sz-wh-hn" hidden>
+                <label class="field-label" for="sbdyUnitCode">单位编号</label>
+                <input class="field" type="text" id="sbdyUnitCode" maxlength="20" placeholder="可留空自动生成">
+            </div>
+            <div class="sbdy-sz-only" hidden>
+                <label class="field-label" for="sbdyComputerNo">社保电脑号</label>
+                <input class="field" type="text" id="sbdyComputerNo" maxlength="12" placeholder="可留空自动生成">
+            </div>
+            <div class="sbdy-wh-hn" hidden>
+                <label class="field-label" for="sbdyPersonNo">个人编号</label>
+                <input class="field" type="text" id="sbdyPersonNo" maxlength="20" placeholder="可留空自动生成">
+            </div>
+            <div class="sbdy-wh-only" hidden>
+                <label class="field-label" for="sbdyInsureType">参保险种</label>
+                <input class="field" type="text" id="sbdyInsureType" maxlength="32" value="企业养老">
+            </div>
+
+            <div class="sbdy-zj-js" id="sbdySegmentsWrap">
+                <div class="step-title">分段任职（多单位 / 多参保地）</div>
+                <p class="card-hint">多家单位或不同参保地时分别填写；填了分段则以分段为准。</p>
+                <div id="sbdySegments"></div>
+                <button type="button" class="btn btn-secondary" id="btnSbdyAddSegment">+ 添加一段</button>
+            </div>
+
+            <div class="step-title">缴费区间与金额</div>
+            <div class="grid-2">
+                <div>
+                    <label class="field-label" for="sbdyPeriodStart">缴费起月 *</label>
+                    <input class="field" type="month" id="sbdyPeriodStart">
+                </div>
+                <div>
+                    <label class="field-label" for="sbdyPeriodEnd">缴费止月 *</label>
+                    <input class="field" type="month" id="sbdyPeriodEnd">
+                </div>
+            </div>
+            <label class="field-label" for="sbdyBase">缴费基数（元）</label>
+            <input class="field" type="number" id="sbdyBase" value="4986" step="0.01">
+            <div class="sbdy-js-new-only" hidden>
+                <label class="field-label" for="sbdyTitleMonths">标题月数</label>
+                <input class="field" type="number" id="sbdyTitleMonths" min="1" max="600" step="1" placeholder="如 441">
+                <label class="field-label" for="sbdyTitleCompact">标题区间</label>
+                <input class="field" type="text" id="sbdyTitleCompact" maxlength="16" placeholder="如 199001-202609">
+                <p class="card-hint">明细按上面起止月；标题「出具证明前 N 个月（YYYYMM-YYYYMM）」可单独填。养老个人=基数×8%，失业个人=基数×0.5%。</p>
+            </div>
+            <label class="field-label" for="sbdyInjuryBase">工伤基数（元，空则同养老）</label>
+            <input class="field" type="number" id="sbdyInjuryBase" step="0.01" placeholder="如 2500">
+            <label class="field-label" for="sbdyUnempBase">失业基数（元，空则同工伤）</label>
+            <input class="field" type="number" id="sbdyUnempBase" step="0.01" placeholder="如 2500">
+            <p class="card-hint">工伤/失业可与养老不同；留空则工伤同养老、失业同工伤。</p>
+            <div class="sbdy-sz-only" hidden>
+                <label class="field-label" for="sbdyMedicalBase">医保基数（元）</label>
+                <input class="field" type="number" id="sbdyMedicalBase" value="4492" step="0.01">
+                <label class="field-label" for="sbdyIuBaseChangeYm">工伤/失业基数变更起月</label>
+                <input class="field" type="month" id="sbdyIuBaseChangeYm">
+                <label class="field-label" for="sbdyIuBaseAfter">变更后工伤/失业基数</label>
+                <input class="field" type="number" id="sbdyIuBaseAfter" step="0.01" placeholder="如 2520">
+                <p class="card-hint">深圳/广州：变更起月起用新基数（例：2025-03 前 2500、起 2520）。</p>
+            </div>
+
+            <details class="advanced">
+                <summary>参保状态与打印日期（可选）</summary>
+                <div class="sbdy-zj-only">
+                    <label class="field-label" for="sbdyStatusPension">养老保险状态</label>
+                    <input class="field" type="text" id="sbdyStatusPension" value="参保缴费">
+                    <label class="field-label" for="sbdyStatusMedical">医疗保险状态</label>
+                    <input class="field" type="text" id="sbdyStatusMedical" value="参保缴费">
+                    <label class="field-label" for="sbdyStatusInjury">工伤保险状态</label>
+                    <input class="field" type="text" id="sbdyStatusInjury" value="参保缴费">
+                    <label class="field-label" for="sbdyStatusUnemp">失业保险状态</label>
+                    <input class="field" type="text" id="sbdyStatusUnemp" value="参保缴费">
+                </div>
+                <div class="sbdy-sc-only" hidden>
+                    <label class="field-label" for="sbdyStatusInjuryExtra">工伤额外状态行（可空）</label>
+                    <input class="field" type="text" id="sbdyStatusInjuryExtra" placeholder="如：暂停缴费（中断）">
+                    <label class="field-label" for="sbdyMonthsPension">养老累计月数</label>
+                    <input class="field" type="number" id="sbdyMonthsPension" placeholder="空则按明细月数">
+                    <label class="field-label" for="sbdyMonthsUnemp">失业累计月数</label>
+                    <input class="field" type="number" id="sbdyMonthsUnemp" placeholder="空则按明细月数">
+                    <label class="field-label" for="sbdyMonthsInjury">工伤累计月数</label>
+                    <input class="field" type="number" id="sbdyMonthsInjury" placeholder="空则按明细月数">
+                </div>
+                <label class="field-label" for="sbdyPrintDate">打印时间文案</label>
+                <input class="field" type="text" id="sbdyPrintDate" placeholder="默认今天">
+            </details>
+
+            <div class="btn-row">
+                <button type="button" class="btn btn-secondary" id="btnSbdyDemoFillSample">填充示例</button>
+                <button type="button" class="btn" id="btnSbdyGenerate">生成参保证明 PDF</button>
+            </div>
+            <p class="status" id="sbdyGenStatus"></p>
+        </div>
+
+        <div class="card" id="cardSbdyResult" hidden>
+            <div class="card-title">生成成功</div>
+            <p class="card-hint">PDF 已生成；二维码核验授权码：</p>
+            <div class="result-code" id="sbdyAuthCode"></div>
+            <a class="btn" id="btnSbdyDownloadFile" href="#" target="_blank" rel="noopener">下载文件</a>
+            <a class="btn btn-secondary" id="btnSbdyOpenPdf" href="#" target="_blank" rel="noopener">查看 / 下载 PDF</a>
+            <button type="button" class="btn btn-secondary" id="btnSbdyCopyPdf">复制 PDF 链接</button>
+            <a class="btn btn-secondary" id="btnSbdyVerify" href="#" target="_blank" rel="noopener">打开核验页</a>
+            <p class="status" id="sbdySaveStatus"></p>
+            <p class="note">App 内如无法直接预览，请点「复制 PDF 链接」后到系统浏览器打开。演示样例仅供功能展示，非任何机构出具的正式证明。</p>
+        </div>
+    </div>
+
+    <script>
+window.SBDY_DEMO_APP = { mode: 'app', autoPrefill: false };
+    </script>
+    <script src="/js/admin/modules/sbdy-demo.js?v=20260917-bj-landscape"></script>
+    <script>
+(function () {
+    function token() {
+        try { return String(localStorage.getItem('token') || '').trim(); } catch (e) { return ''; }
+    }
+    function setStatus(el, text, isErr) {
+        if (!el) return;
+        el.textContent = text || '';
+        el.classList.toggle('err', !!isErr);
+    }
+    var cardPay = document.getElementById('cardSbdyPay');
+    var cardForm = document.getElementById('cardSbdyForm');
+    var cardResult = document.getElementById('cardSbdyResult');
+    var payStatus = document.getElementById('sbdyPayStatus');
+    var saveStatus = document.getElementById('sbdySaveStatus');
+    var qrWrap = document.getElementById('sbdyQrWrap');
+    var feeAmount = '199.00';
+    var pollTimer = null;
+    var pendingOtn = '';
+    var lastPdfUrl = '';
+
+    try {
+        var ref = document.referrer || '';
+        var back = document.getElementById('sbdyBack');
+        var fromQ = '';
+        try { fromQ = String(new URLSearchParams(location.search || '').get('from') || '').toLowerCase(); } catch (eFrom) {}
+        if (back) {
+            if (fromQ === 'consult' || /consult\.html/i.test(ref)) back.setAttribute('href', 'consult.html?tab=products');
+            else if (fromQ === 'purchase' || /purchase\.html/i.test(ref)) back.setAttribute('href', 'purchase.html?from=mine');
+            else if (/mine\.html|mine_mate60/i.test(ref)) back.setAttribute('href', 'mine.html');
+        }
+    } catch (e0) {}
+
+    if (!token()) {
+        window.location.replace('login.html?redirect=' + encodeURIComponent('sbdy_demo.html' + (location.search || '')));
+        return;
+    }
+
+    window.SBDY_DEMO_APP.showResult = function (d) {
+        lastPdfUrl = (d.links && (d.links.show_url || d.links.show_api_url)) || '';
+        var verifyUrl = (d.links && d.links.verify_url) || '';
+        document.getElementById('sbdyAuthCode').textContent = d.auth_code || '';
+        var openBtn = document.getElementById('btnSbdyOpenPdf');
+        if (lastPdfUrl && openBtn) openBtn.setAttribute('href', lastPdfUrl);
+        var dlBtn = document.getElementById('btnSbdyDownloadFile');
+        if (lastPdfUrl && dlBtn) dlBtn.setAttribute('href', lastPdfUrl);
+        var verifyBtn = document.getElementById('btnSbdyVerify');
+        if (verifyUrl) verifyBtn.setAttribute('href', verifyUrl);
+        setStatus(
+            saveStatus,
+            d.demo
+                ? '未付费版本：PDF 带「演示样例」水印。付 ¥' + feeAmount + ' 开通后重新生成即为无水印版本。'
+                : '已开通：已生成无水印版本。'
+        );
+        cardResult.hidden = false;
+        try { cardResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (eScroll) {}
+    };
+
+    function applyUnlocked(unlocked) {
+        cardPay.hidden = !!unlocked;
+        cardForm.hidden = false;
+        var badge = document.getElementById('sbdyUnlockBadge');
+        if (badge) badge.textContent = unlocked ? '已开通 · 无水印无限次' : '未开通 · 生成带演示水印';
+        if (unlocked && pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    }
+
+    function loadStatus() {
+        return authFetch('/api/sbdy-demo/status')
+            .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
+            .then(function (j) {
+                if (!j || j.code !== 200 || !j.data) throw new Error((j && j.msg) || '读取失败');
+                feeAmount = j.data.fee_amount || feeAmount;
+                document.getElementById('sbdyFee').textContent = feeAmount;
+                document.getElementById('btnSbdyPay').textContent = '支付宝付款开通 ¥' + feeAmount;
+                applyUnlocked(!!j.data.unlocked);
+                if (typeof window.loadSbdyDemoPage === 'function') window.loadSbdyDemoPage();
+            })
+            .catch(function (e) {
+                cardPay.hidden = false;
+                cardForm.hidden = false;
+                setStatus(payStatus, (e && e.message) || '读取权益失败', true);
+                if (typeof window.loadSbdyDemoPage === 'function') window.loadSbdyDemoPage();
+            });
+    }
+
+    function startPay() {
+        setStatus(payStatus, '正在创建订单…');
+        qrWrap.hidden = false;
+        qrWrap.innerHTML = '<p style="color:#888;font-size:13px;">生成付款码…</p>';
+        authFetch('/api/payments/alipay/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ product: 'sbdy_demo', sku_id: 'sku_sbdy_demo_199' })
+        })
+            .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
+            .then(function (j) {
+                if (!j || j.code !== 200 || !j.data) {
+                    var failMsg = (j && j.msg) || '创建订单失败';
+                    setStatus(payStatus, failMsg, true);
+                    qrWrap.innerHTML = '';
+                    if (typeof showPaymentCreateFailDialog === 'function') {
+                        showPaymentCreateFailDialog({ message: failMsg, source: 'sbdy_demo' });
+                    }
+                    return;
+                }
+                var qr = j.data.qr_code || j.data.payment_url || '';
+                pendingOtn = j.data.order && j.data.order.out_trade_no ? String(j.data.order.out_trade_no) : '';
+                if (typeof QRCode !== 'undefined' && QRCode.toDataURL && qr) {
+                    QRCode.toDataURL(qr, { width: 180, margin: 2, errorCorrectionLevel: 'M' }, function (err, dataUrl) {
+                        if (err || !dataUrl) {
+                            qrWrap.innerHTML = '<p style="font-size:12px;word-break:break-all;">请在支付宝打开：<br>' + qr + '</p>';
+                            return;
+                        }
+                        qrWrap.innerHTML = '<img src="' + dataUrl + '" alt="付款码">';
+                    });
+                } else if (qr) {
+                    qrWrap.innerHTML = '<p style="font-size:12px;word-break:break-all;">请复制到支付宝打开：<br>' + qr + '</p>';
+                }
+                setStatus(payStatus, '请使用支付宝扫码支付 ¥' + feeAmount);
+                if (pollTimer) clearInterval(pollTimer);
+                pollTimer = setInterval(pollPay, 2500);
+            })
+            .catch(function () {
+                setStatus(payStatus, '网络错误', true);
+                if (typeof showPaymentCreateFailDialog === 'function') {
+                    showPaymentCreateFailDialog({ message: '创建支付订单失败，网络异常', source: 'sbdy_demo' });
+                }
+            });
+    }
+
+    function pollPay() {
+        authFetch('/api/payments/alipay/latest')
+            .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
+            .then(function (j) {
+                var ord = j && j.code === 200 && j.data ? j.data.order : null;
+                if (!ord) return;
+                var st = String(ord.status || '');
+                var sku = String(ord.sku_id || '');
+                var otn = String(ord.out_trade_no || '');
+                if (st === 'paid' && (sku === 'sku_sbdy_demo_199' || sku === 'sku_sbdy_demo_50' || !pendingOtn || otn === pendingOtn)) {
+                    setStatus(payStatus, '支付成功，正在解锁…');
+                    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+                    loadStatus();
+                }
+            })
+            .catch(function () {});
+    }
+
+    function copyPdfLink() {
+        if (!lastPdfUrl) { setStatus(saveStatus, '请先生成', true); return; }
+        function done() { setStatus(saveStatus, '已复制，可到系统浏览器粘贴打开'); }
+        function fail() { setStatus(saveStatus, '复制失败，请长按上方按钮的链接手动复制', true); }
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(lastPdfUrl).then(done, fail);
+                return;
+            }
+        } catch (eClip) {}
+        try {
+            var ta = document.createElement('textarea');
+            ta.value = lastPdfUrl;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            done();
+        } catch (eTa) { fail(); }
+    }
+
+    document.getElementById('btnSbdyPay').addEventListener('click', startPay);
+    document.getElementById('btnSbdyCopyPdf').addEventListener('click', copyPdfLink);
+    loadStatus();
+})();
+    </script>
+</body>
+</html>

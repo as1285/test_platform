@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS users (
     user_type TINYINT(1) NOT NULL DEFAULT 0 COMMENT '0=普通 1=测试',
     register_salary_months_json TEXT NULL COMMENT '注册时填写的近6个月工资 JSON 数组',
     register_avg_salary_6m DECIMAL(12,2) NULL COMMENT '注册时近6个月平均工资（按已填月份计算）',
+    allow_same_month_multi TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1=允许同月多次添加个税记录（批量写入不自动去重）',
     register_source_channel VARCHAR(128) NULL COMMENT '注册来源渠道（other:自定义名）',
     registered_from_install_guide TINYINT(1) NOT NULL DEFAULT 0 COMMENT '注册时上报来自安装页引流',
     activation_source_channel VARCHAR(32) NULL COMMENT '激活码渠道（如 xianyu=闲鱼）',
@@ -84,6 +85,7 @@ CREATE TABLE IF NOT EXISTS tax_records (
     medical_insurance DECIMAL(20, 2) DEFAULT 0,
     unemployment_insurance DECIMAL(20, 2) DEFAULT 0,
     housing_fund DECIMAL(20, 2) DEFAULT 0,
+    list_order INT NOT NULL DEFAULT 0 COMMENT '同月列表顺序，越小越靠上',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_user_id (user_id),
@@ -102,6 +104,8 @@ CREATE TABLE IF NOT EXISTS tax_issue_applications (
     scope VARCHAR(64) NULL,
     status VARCHAR(64) NULL,
     query_code VARCHAR(32) NULL,
+    qr_image_url VARCHAR(512) NULL COMMENT '自定义二维码图片',
+    qr_block_image_url VARCHAR(512) NULL COMMENT '二维码+验证码整块图',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
@@ -142,13 +146,17 @@ CREATE TABLE IF NOT EXISTS shenbao_jilu_records (
     INDEX idx_shenbao_user_tab (user_id, tab)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 用户反馈（BUG / 意见优化；管理后台可回复）
+-- 用户反馈（兼容 BUG / 意见；管理后台可查看）
 CREATE TABLE IF NOT EXISTS user_feedback (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id VARCHAR(255) NOT NULL COMMENT '账号 username',
     real_name_snapshot VARCHAR(255) NULL,
-    feedback_type VARCHAR(32) NOT NULL COMMENT 'bug | suggestion',
+    feedback_type VARCHAR(32) NOT NULL COMMENT 'bug | suggestion | compat_bug',
     content TEXT NOT NULL,
+    image_urls TEXT NULL COMMENT 'JSON 数组：private/compat-feedback/...',
+    user_agent VARCHAR(512) NULL,
+    device_info VARCHAR(255) NULL,
+    contact VARCHAR(64) NULL,
     admin_reply TEXT NULL,
     replied_at DATETIME NULL,
     replied_by VARCHAR(255) NULL,
@@ -233,10 +241,13 @@ CREATE TABLE IF NOT EXISTS admin_accounts (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(255) NOT NULL UNIQUE,
     full_name VARCHAR(255) NULL COMMENT '管理后台账号姓名',
+    email VARCHAR(255) NULL COMMENT '管理登录 OTP 收件邮箱',
     salt VARCHAR(255) NOT NULL,
     hash VARCHAR(255) NOT NULL,
     is_super TINYINT(1) NOT NULL DEFAULT 0,
     banned TINYINT(1) NOT NULL DEFAULT 0,
+    login_fail_count INT NOT NULL DEFAULT 0 COMMENT '连续登录失败次数',
+    locked_until DATETIME NULL COMMENT '锁定截止时间',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_admin_username (username)
@@ -325,4 +336,22 @@ CREATE TABLE IF NOT EXISTS user_page_events (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_user_created (username, created_at),
     INDEX idx_page_created (page_path, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 广告页（二次退税）停留与操作
+CREATE TABLE IF NOT EXISTS ad_page_track_events (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(255) NULL,
+    client_id VARCHAR(128) NULL,
+    device_fp CHAR(64) NULL,
+    event_key VARCHAR(80) NOT NULL,
+    dwell_seconds INT UNSIGNED NULL,
+    meta_json VARCHAR(1024) NULL,
+    ip VARCHAR(128) NULL,
+    user_agent VARCHAR(512) NULL,
+    created_at DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    INDEX idx_created (created_at),
+    INDEX idx_event_created (event_key, created_at),
+    INDEX idx_user_created (username, created_at),
+    INDEX idx_client_created (client_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

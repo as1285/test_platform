@@ -2,8 +2,9 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260722-fetch-timeout"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script src="/js/auth-boot.js?v=20260902-adopt"></script>
+    <script src="/js/auth.js?v=20260902-adopt" defer></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>详情</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -24,6 +25,11 @@
             top: 0;
             z-index: 100;
             border-bottom: 1px solid #e5e5ea;
+        }
+        html.app-android-client.app-top-safe-shell body > .header {
+            padding-top: 14px;
+            padding-bottom: 15px;
+            min-height: 0;
         }
         .back-btn {
             position: absolute;
@@ -122,8 +128,8 @@
                 mount.innerHTML = '<div class="empty-state">缺少记录参数</div>';
                 return;
             }
-            authFetch('api/user?action=employers')
-                .then(function (r) { return r.json(); })
+            window.authFetch('api/user?action=employers')
+                .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
                 .then(function (data) {
                     if (data.code !== 200 || !data.data || !data.data.employers) {
                         mount.innerHTML = '<div class="empty-state">加载失败</div>';
@@ -152,6 +158,6 @@
                 });
         })();
     </script>
-    <script src="/js/watermark.js?v=20260722-wm-redder"></script>
+    <script src="/js/watermark.js?v=20260831-m60home"></script>
 </body>
 </html>

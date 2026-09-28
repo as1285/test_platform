@@ -1,0 +1,55 @@
+# 生成代理渠道专用 iOS WebClip 描述文件（带 ?ch=）
+#
+# 手动触发：Actions → Agent iOS mobileconfig → Run workflow → 填写渠道 ID
+# 取包：Artifacts → ios-agent-<渠道>-mobileconfig
+#
+# 本地等价：./scripts/build-agent-mobileconfig.sh <渠道ID>
+# 批量安卓+iOS：./scripts/build-agent-packages.sh --batch ch1,ch2
+name: Agent iOS mobileconfig
+
+on:
+  workflow_dispatch:
+    inputs:
+      agent_channel:
+        description: "代理渠道 ID（必填，如 quan_c）"
+        required: true
+        default: ""
+      agent_channels_batch:
+        description: "批量渠道（逗号分隔，优先于单个；留空则用上面单个）"
+        required: false
+        default: ""
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build mobileconfig
+        env:
+          APP_URL: ${{ secrets.APP_ORIGIN }}
+        run: |
+          set -euo pipefail
+          ORIGIN="${APP_URL:-https://lkj.qiyun888.top}"
+          export APP_URL="${ORIGIN%/}"
+          BATCH="${{ github.event.inputs.agent_channels_batch }}"
+          SINGLE="${{ github.event.inputs.agent_channel }}"
+          if [[ -n "$BATCH" ]]; then
+            ./scripts/build-agent-packages.sh --batch "$BATCH" --ios-only
+          elif [[ -n "$SINGLE" ]]; then
+            ./scripts/build-agent-mobileconfig.sh "$SINGLE"
+          else
+            echo "请填写 agent_channel 或 agent_channels_batch" >&2
+            exit 1
+          fi
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-agent-mobileconfig
+          path: dist/agent-ios/*.mobileconfig
+          if-no-files-found: error

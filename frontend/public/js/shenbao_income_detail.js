@@ -130,12 +130,12 @@
     }
 
     function fetchTaxRecords() {
-        if (typeof authFetch !== 'function') {
+        if (typeof window.authFetch !== 'function') {
             return Promise.reject(new Error('请先登录'));
         }
-        return authFetch('api/tax?action=records')
+        return window.authFetch('api/tax?action=records')
             .then(function (r) {
-                return r.json();
+                return (window.authParseJson||function(r){return r.json();})(r);
             })
             .then(function (j) {
                 if (j.code === 200 && j.data && Array.isArray(j.data.records)) {

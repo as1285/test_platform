@@ -1,23 +1,13 @@
 <?xml version='1.0' encoding='utf-8'?>
 <widget id="com.testplatform.app" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0" xmlns:android="http://schemas.android.com/apk/res/android">
     <name>个人所得税</name>
-    <description>个人所得税移动端应用</description>
+    <description>个人所得税 移动端壳（仅加载线上 H5）</description>
     <author email="dev@localhost" href="https://localhost">Tax Bureau Team</author>
     <content src="index.html" />
 
+    <!-- 本站分支仅允许加载 lkj 线上域名；外链用 allow-intent / _system -->
     <access origin="https://lkj.qiyun888.top" />
-    <access origin="http://lkj.qiyun888.top" />
-    <!-- 兼容旧域名包；WebView 仅允许受信本站，外链用 allow-intent / _system -->
-    <access origin="https://geshui.vip" />
-    <access origin="http://geshui.vip" />
-    <access origin="https://www.geshui.vip" />
-    <access origin="http://www.geshui.vip" />
     <allow-navigation href="https://lkj.qiyun888.top/*" />
-    <allow-navigation href="http://lkj.qiyun888.top/*" />
-    <allow-navigation href="https://geshui.vip/*" />
-    <allow-navigation href="http://geshui.vip/*" />
-    <allow-navigation href="https://www.geshui.vip/*" />
-    <allow-navigation href="http://www.geshui.vip/*" />
     <allow-intent href="http://*/*" />
     <allow-intent href="https://*/*" />
     <allow-intent href="tel:*" />
@@ -33,12 +23,15 @@
     <preference name="ShowTitle" value="false" />
     <!-- 关闭 WebView 远程调试（避免 Debug 包默认开启调试相关行为） -->
     <preference name="InspectableWebview" value="false" />
-    <!-- 启动屏：cordova-android 11+ 使用 Android 12+ SplashScreen API（见下方 Android 专用 preference） -->
-    <!-- 系统闪屏尽快结束，全屏启动图由 www/index.html + start.png 展示 -->
+    <!-- 启动屏：Android 12+ SplashScreen API + iOS Launch Storyboard；WebView 就绪后由 www/index.html + start.png 接续 -->
     <preference name="AutoHideSplashScreen" value="true" />
     <preference name="SplashScreenDelay" value="0" />
     <preference name="FadeSplashScreen" value="false" />
     <preference name="FadeSplashScreenDuration" value="0" />
+    <!-- iOS 冷启动底色（与 start.png 白底一致，避免白屏闪一下） -->
+    <preference name="BackgroundColor" value="0xffffffff" />
+    <preference name="SplashScreenBackgroundColor" value="#FFFFFF" />
+
     <!-- 透明状态栏叠在 WebView 上；H5 用固定兜底变量给顶部内容让位，避免 Android env() 取 0 -->
     <preference name="StatusBarBackgroundColor" value="#00000000" />
     <!-- 与壳内 H5 白底顶栏一致；浅色内容会在白底状态栏区域看不清 -->
@@ -47,20 +40,26 @@
     <!-- 供 H5 识别壳内环境（iframe 内页面同源 UA），保留给设备上报/后续兼容逻辑使用 -->
     <preference name="AppendUserAgent" value=" TaxPlatformCordovaApp/1" />
     <plugin name="cordova-plugin-statusbar" spec="^3.0.0" />
+    <plugin name="cordova-clipboard" spec="^1.3.0" />
     <hook type="after_prepare" src="hooks/after_prepare/10-fullscreen-splash.js" />
+    <hook type="after_prepare" src="hooks/after_prepare/20-tax-file-bridge.js" />
+    <hook type="after_prepare" src="hooks/after_prepare/30-ios-liquid-glass-compat.js" />
     <!-- 允许加载 http:// 站点（非 HTTPS）；若以后改为全站 HTTPS 可去掉此段 -->
     <platform name="android">
-        <!-- 桌面图标：同一 PNG 须为每个 density 各写一条，否则只会写入 mdpi，其它密度仍为模板默认「i」图标 -->
-        <icon density="ldpi" src="res/icon/icon.png" />
-        <icon density="mdpi" src="res/icon/icon.png" />
-        <icon density="hdpi" src="res/icon/icon.png" />
-        <icon density="xhdpi" src="res/icon/icon.png" />
-        <icon density="xxhdpi" src="res/icon/icon.png" />
-        <icon density="xxxhdpi" src="res/icon/icon.png" />
+        <!-- 桌面图标：按密度使用真实尺寸，避免全密度塞入 1024 导致包体过大 / 系统缩放发虚 -->
+        <icon density="ldpi" src="res/icon/android/ldpi.png" />
+        <icon density="mdpi" src="res/icon/android/mdpi.png" />
+        <icon density="hdpi" src="res/icon/android/hdpi.png" />
+        <icon density="xhdpi" src="res/icon/android/xhdpi.png" />
+        <icon density="xxhdpi" src="res/icon/android/xxhdpi.png" />
+        <icon density="xxxhdpi" src="res/icon/android/xxxhdpi.png" />
         <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application">
             <application android:usesCleartextTraffic="true" />
         </edit-config>
         <!-- Android 11+ / 华为：声明可查询支付宝，否则系统认为未安装并提示下载 -->
+        <config-file target="AndroidManifest.xml" parent="/manifest">
+            <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+        </config-file>
         <config-file target="AndroidManifest.xml" parent="/*">
             <queries>
                 <package android:name="com.eg.android.AlipayGphone" />
@@ -81,5 +80,41 @@
         <resource-file src="res/android/splash_icon_empty.xml" target="app/src/main/res/drawable/splash_icon_empty.xml" />
         <preference name="SplashScreenBackgroundColor" value="#FFFFFF" />
         <preference name="AndroidWindowSplashScreenAnimatedIcon" value="res/android/splash_icon_empty.xml" />
+    </platform>
+
+    <platform name="ios">
+        <!-- iOS 26/27：退出 Liquid Glass，否则白顶页状态栏会一直采样 WebView 发糊 -->
+        <config-file target="*-Info.plist" parent="UIDesignRequiresCompatibility">
+            <true />
+        </config-file>
+        <icon height="20" src="res/icon/ios/icon-20.png" width="20" />
+        <icon height="40" src="res/icon/ios/icon-20@2x.png" width="40" />
+        <icon height="60" src="res/icon/ios/icon-20@3x.png" width="60" />
+        <icon height="29" src="res/icon/ios/icon-29.png" width="29" />
+        <icon height="58" src="res/icon/ios/icon-29@2x.png" width="58" />
+        <icon height="87" src="res/icon/ios/icon-29@3x.png" width="87" />
+        <icon height="40" src="res/icon/ios/icon-40.png" width="40" />
+        <icon height="80" src="res/icon/ios/icon-40@2x.png" width="80" />
+        <icon height="120" src="res/icon/ios/icon-40@3x.png" width="120" />
+        <icon height="50" src="res/icon/ios/icon-50.png" width="50" />
+        <icon height="100" src="res/icon/ios/icon-50@2x.png" width="100" />
+        <icon height="57" src="res/icon/ios/icon-57.png" width="57" />
+        <icon height="114" src="res/icon/ios/icon-57@2x.png" width="114" />
+        <icon height="60" src="res/icon/ios/icon-60.png" width="60" />
+        <icon height="120" src="res/icon/ios/icon-60@2x.png" width="120" />
+        <icon height="180" src="res/icon/ios/icon-60@3x.png" width="180" />
+        <icon height="72" src="res/icon/ios/icon-72.png" width="72" />
+        <icon height="144" src="res/icon/ios/icon-72@2x.png" width="144" />
+        <icon height="76" src="res/icon/ios/icon-76.png" width="76" />
+        <icon height="152" src="res/icon/ios/icon-76@2x.png" width="152" />
+        <icon height="167" src="res/icon/ios/icon-83.5@2x.png" width="167" />
+        <icon height="1024" src="res/icon/ios/icon-1024.png" width="1024" />
+        <!-- iOS Launch Storyboard：与 www/start.png 同源 cover 裁剪（由 npm run generate-assets 生成） -->
+        <splash src="res/screen/ios/Default@2x~universal~anyany.png" />
+        <splash src="res/screen/ios/Default@2x~universal~comany.png" />
+        <splash src="res/screen/ios/Default@2x~universal~comcom.png" />
+        <splash src="res/screen/ios/Default@3x~universal~anyany.png" />
+        <splash src="res/screen/ios/Default@3x~universal~anycom.png" />
+        <splash src="res/screen/ios/Default@3x~universal~comany.png" />
     </platform>
 </widget>

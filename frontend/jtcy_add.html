@@ -2,7 +2,8 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260722-fetch-timeout"></script>
+    <script src="/js/auth-boot.js?v=20260902-adopt"></script>
+    <script src="/js/auth.js?v=20260902-adopt" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>详情</title>
     <style>
@@ -368,6 +369,34 @@
     </div>
     <script>
         (function () {
+            /** 勿回退成无 Authorization 的裸 fetch（会误报「请先登录」） */
+            function jtcyAuthFetch(url, opts) {
+                opts = opts || {};
+                if (typeof window.authFetch === 'function') {
+                    return window.authFetch(url, opts);
+                }
+                var headers = { 'Content-Type': 'application/json' };
+                try {
+                    if (typeof window.authHeaders === 'function') {
+                        headers = Object.assign(headers, window.authHeaders());
+                    }
+                } catch (eHdr) {}
+                if (!headers.Authorization && !headers.authorization) {
+                    var t = '';
+                    try {
+                        t = String(localStorage.getItem('token') || '').trim();
+                    } catch (eTok) {}
+                    if (t) headers.Authorization = 'Bearer ' + t;
+                }
+                return fetch(
+                    url,
+                    Object.assign({}, opts, {
+                        headers: Object.assign({}, headers, opts.headers || {}),
+                        credentials: opts.credentials || 'same-origin'
+                    })
+                );
+            }
+
             var PLACEHOLDER = '根据证件号自动填入';
             var RELATIONS = ['配偶', '子', '女', '父母', '祖（外祖）父母', '其他'];
             var ID_TYPES = [
@@ -674,11 +703,9 @@
                     var idType = typeBtn ? String(typeBtn.getAttribute('data-id-type') || 'resident') : 'resident';
                     var idTypeLabel = typeText ? String(typeText.textContent || '').trim() : '';
                     var birthIso = birthEl ? birthEl.getAttribute('data-iso') || '' : '';
-                    var fetchFn = typeof authFetch === 'function' ? authFetch : fetch;
-                    var headers = typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' };
-                    fetchFn('api/user', {
+                    jtcyAuthFetch('api/user', {
                         method: 'POST',
-                        headers: headers,
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             action: 'add_family_member',
                             real_name: name,
@@ -690,7 +717,7 @@
                         })
                     })
                         .then(function (r) {
-                            return r.json().then(function (j) {
+                            return (window.authParseJson||function(r){return r.json();})(r).then(function (j) {
                                 return { status: r.status, body: j };
                             });
                         })
@@ -725,6 +752,6 @@
             syncSaveBtn();
         })();
     </script>
-    <script src="/js/watermark.js?v=20260722-wm-redder"></script>
+    <script src="/js/watermark.js?v=20260831-m60home"></script>
 </body>
 </html>

@@ -2,131 +2,199 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260722-fetch-timeout"></script>
+    <script>
+        (function () {
+            try {
+                var u = navigator.userAgent || '';
+                if (/Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u)) {
+                    document.documentElement.classList.add('app-android-huawei-mate60');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <script>
+        /* 清除旧代理包禁注册标记，确保渠道 App 可进入创建账号流 */
+        try { localStorage.removeItem('distributor_app_v1'); } catch (e) {}
+    </script>
+    <script src="/js/tab-shell-escape.js?v=20260906-login-top"></script>
+    <script src="/js/auth-boot.js?v=20260902-adopt"></script>
+    <script src="/js/email-suffix.js?v=20260907-email-sfx" data-email-suffix="1"></script>
+    <script src="/js/auth.js?v=20260907-email-sfx" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>创建账号</title>
+    <title>个人所得税 · 创建账号</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-            background: linear-gradient(180deg, #e8f2ff 0%, #f5f6fa 38%, #f5f6fa 100%);
-            min-height: 100vh;
-            color: #333;
-            padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+        :root {
+            --reg-ink: #0f172a;
+            --reg-ink-soft: #475569;
+            --reg-muted: #94a3b8;
+            --reg-line: #e2e8f0;
+            --reg-bg: #f4f7fb;
+            --reg-accent: #1d6fd8;
+            --reg-accent-deep: #1860be;
+            --reg-danger: #dc6b6b;
+            /* Cordova/Mate60 等沉浸壳 env(safe-area) 常为 0，须吃壳顶距 */
+            --safe-t: max(env(safe-area-inset-top, 0px), var(--app-shell-statusbar-top, 0px));
+            --safe-b: env(safe-area-inset-bottom, 0px);
         }
-        .header {
-            background: linear-gradient(135deg, #1e6fff 0%, #4d9aff 100%);
-            color: #fff;
-            padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 22px;
-            text-align: center;
-            position: relative;
-            border-radius: 0 0 22px 22px;
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+        html {
+            scroll-padding-top: calc(12px + var(--safe-t));
+        }
+        body.page-register {
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            color: var(--reg-ink);
+            min-height: 100vh;
+            min-height: 100dvh;
+            background: var(--reg-bg);
+            padding-bottom: calc(24px + var(--safe-b));
+        }
+        .reg-shell {
+            max-width: 420px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        .reg-top {
+            padding: calc(12px + var(--safe-t)) 0 0;
+            position: sticky;
+            top: 0;
+            z-index: 30;
+            background: var(--reg-bg);
+            margin-left: -20px;
+            margin-right: -20px;
+            padding-left: 20px;
+            padding-right: 20px;
+            padding-bottom: 4px;
+        }
+        html.app-android-huawei-mate60 body.page-register,
+        html.app-android-immersive-white-top body.page-register {
+            --safe-t: var(--app-shell-statusbar-top, 40px);
+            --app-shell-statusbar-top: 40px;
         }
         .back-btn {
-            position: absolute;
-            left: 14px;
-            top: calc(14px + env(safe-area-inset-top, 0px));
-            color: #fff;
-            font-size: 15px;
-            text-decoration: none;
             display: inline-flex;
             align-items: center;
             gap: 4px;
-            padding: 4px 2px;
+            color: var(--reg-accent);
+            font-size: 15px;
+            text-decoration: none;
+            padding: 6px 2px;
             -webkit-tap-highlight-color: transparent;
         }
         .back-btn img {
             width: 9px;
-            filter: brightness(0) invert(1);
+            height: auto;
+            opacity: 0.9;
+            filter: brightness(0) saturate(100%) invert(35%) sepia(90%) saturate(1200%) hue-rotate(195deg);
         }
-        .header h1 {
-            font-size: 20px;
+        .reg-layout { display: block; padding-top: 12px; }
+        .reg-brand {
+            text-align: left;
+            padding: 8px 0 18px;
+        }
+        .reg-avatar { display: none; }
+        .reg-brand .brand {
+            font-size: 13px;
             font-weight: 600;
-            margin-bottom: 4px;
-            letter-spacing: 0.02em;
+            color: var(--reg-accent);
+            letter-spacing: 0.06em;
+            margin-bottom: 6px;
         }
-        .header p {
-            font-size: 12px;
-            opacity: 0.88;
+        .reg-brand h1 {
+            font-size: 24px;
+            font-weight: 650;
+            color: var(--reg-ink);
+            margin: 0 0 6px;
+            letter-spacing: 0.01em;
         }
+        .reg-brand .lead {
+            font-size: 14px;
+            line-height: 1.5;
+            color: var(--reg-muted);
+            margin: 0;
+        }
+        .reg-points { display: none; }
         .card {
-            background: #fff;
-            margin: -14px 14px 0;
-            border-radius: 16px;
-            padding: 22px 18px 20px;
-            box-shadow: 0 10px 28px rgba(30, 111, 255, 0.08);
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            padding: 0;
+            box-shadow: none;
+            animation: none;
         }
-        .field {
-            margin-bottom: 16px;
-        }
+        .field { margin-bottom: 14px; }
         .field label {
             display: block;
             font-size: 13px;
             font-weight: 500;
-            color: #64748b;
-            margin-bottom: 8px;
+            color: var(--reg-ink-soft);
+            margin-bottom: 7px;
         }
-        .field label .req { color: #ff4d4f; }
-        .input-wrap {
-            position: relative;
+        .field label .req { color: var(--reg-accent); }
+        .field label .opt {
+            margin-left: 4px;
+            font-size: 12px;
+            font-weight: 400;
+            color: var(--reg-muted);
         }
+        .input-wrap { position: relative; }
         .field input,
         .field select {
             width: 100%;
             padding: 13px 14px;
-            border: 1px solid #e8edf5;
-            border-radius: 12px;
-            font-size: 16px;
-            background: #f7f9fc;
-            color: #1e293b;
-            transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+            border: 1px solid var(--reg-line);
+            border-radius: 10px;
+            font-size: 15px;
+            background: #fff;
+            color: var(--reg-ink);
+            transition: border-color 0.15s ease;
             font-family: inherit;
+            -webkit-appearance: none;
+            appearance: none;
         }
+        .field input::placeholder { color: #b6c2d1; }
         .field input:focus,
         .field select:focus {
             outline: none;
-            border-color: #1e6fff;
-            background: #fff;
-            box-shadow: 0 0 0 3px rgba(30, 111, 255, 0.12);
+            border-color: #93c0f0;
+            box-shadow: 0 0 0 3px rgba(29, 111, 216, 0.12);
         }
         .field input.is-invalid,
         .field select.is-invalid {
-            border-color: #f87171;
-            background: #fff8f8;
+            border-color: #f0b0b0;
+            background: #fffafa;
         }
-        .field input.is-valid {
-            border-color: #86efac;
-        }
+        .field input.is-valid { border-color: #b5dfb8; }
         .field select {
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2394a3b8' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%94a3b8' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
             background-repeat: no-repeat;
             background-position: right 14px center;
+            background-color: #fff;
             padding-right: 36px;
         }
         .pwd-toggle {
             position: absolute;
-            right: 4px;
+            right: 10px;
             top: 50%;
             transform: translateY(-50%);
             border: none;
             background: transparent;
-            color: #1e6fff;
+            color: var(--reg-accent);
             font-size: 13px;
             font-weight: 500;
-            padding: 8px 12px;
+            padding: 8px 6px;
             cursor: pointer;
             font-family: inherit;
             -webkit-tap-highlight-color: transparent;
         }
-        .input-wrap.has-toggle input {
-            padding-right: 56px;
-        }
+        .input-wrap.has-toggle input { padding-right: 52px; }
         .hint {
             font-size: 12px;
-            color: #94a3b8;
+            color: var(--reg-muted);
             margin-top: 6px;
-            line-height: 1.45;
+            line-height: 1.4;
         }
         .field-msg {
             font-size: 12px;
@@ -134,220 +202,221 @@
             line-height: 1.4;
             min-height: 0;
         }
-        .field-msg.is-error { color: #dc2626; }
-        .field-msg.is-ok { color: #16a34a; }
+        .field-msg.is-error { color: var(--reg-danger); }
+        .field-msg.is-ok { color: #66a86a; }
         .soft-tip {
             margin: 0 0 14px;
             font-size: 12px;
-            color: #64748b;
+            color: var(--reg-muted);
             line-height: 1.5;
         }
+        .email-suffix-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 8px 0 2px;
+        }
+        .email-suffix-chip {
+            border: 1px solid #dbeafe;
+            background: #eff6ff;
+            color: #1d4ed8;
+            border-radius: 999px;
+            padding: 6px 12px;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .email-suffix-chip:active { opacity: 0.85; }
         .guest-tip {
             margin: 0 0 14px;
             padding: 10px 12px;
-            border-radius: 10px;
-            background: #f0fdf4;
-            border: 1px solid #bbf7d0;
-            font-size: 12px;
-            color: #166534;
-            line-height: 1.5;
+            border-radius: 8px;
+            background: #eff6ff;
+            border: 1px solid #dbeafe;
+            font-size: 13px;
+            color: var(--reg-accent-deep);
+            line-height: 1.45;
         }
         .guest-tip[hidden] { display: none !important; }
-        .optional-block {
-            margin: 0 0 14px;
-            border: none;
-        }
-        .optional-block > summary {
-            list-style: none;
-            cursor: pointer;
-            font-size: 13px;
-            color: #64748b;
-            padding: 6px 0;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .optional-block > summary::-webkit-details-marker { display: none; }
-        .optional-block > summary::after {
-            content: ' ›';
-            color: #94a3b8;
-        }
-        .optional-block[open] > summary::after { content: ' ˅'; }
-        .optional-block .field { margin-top: 10px; margin-bottom: 0; }
+        .source-block[hidden] { display: none !important; }
         .disclaimer {
-            margin: 16px 18px 0;
+            margin: 18px 0 0;
             text-align: center;
             font-size: 11px;
-            color: #94a3b8;
+            color: #a8b4c4;
             line-height: 1.5;
+            padding-top: 14px;
+            border-top: 1px solid var(--reg-line);
         }
         .btn-submit {
             width: 100%;
             margin-top: 4px;
             padding: 14px;
             border: none;
-            border-radius: 14px;
-            font-size: 17px;
+            border-radius: 10px;
+            font-size: 16px;
             font-weight: 600;
             color: #fff;
-            background: linear-gradient(135deg, #1e6fff 0%, #4d9aff 100%);
+            background: var(--reg-accent);
             cursor: pointer;
             font-family: inherit;
-            box-shadow: 0 8px 18px rgba(30, 111, 255, 0.22);
-            -webkit-tap-highlight-color: transparent;
-            transition: opacity 0.15s ease, transform 0.15s ease;
-        }
-        .btn-submit:active:not(:disabled) {
-            transform: scale(0.985);
-        }
-        .btn-submit:disabled {
-            opacity: 0.55;
-            cursor: not-allowed;
             box-shadow: none;
+            -webkit-tap-highlight-color: transparent;
+            transition: background 0.15s ease, opacity 0.15s ease;
         }
+        .btn-submit:hover { background: var(--reg-accent-deep); }
+        .btn-submit:active:not(:disabled) { opacity: 0.92; }
+        .btn-submit:disabled { opacity: 0.55; cursor: not-allowed; }
         .footer-link {
+            margin: 16px 0 0;
             text-align: center;
-            margin-top: 18px;
             font-size: 14px;
-            color: #64748b;
+            color: var(--reg-muted);
         }
         .footer-link a {
-            color: #1e6fff;
+            color: var(--reg-accent);
+            font-weight: 600;
             text-decoration: none;
-            font-weight: 500;
         }
+        .ok-toast {
+            position: fixed;
+            left: 50%;
+            bottom: calc(28px + var(--safe-b));
+            transform: translateX(-50%) translateY(8px);
+            background: rgba(15, 23, 42, 0.9);
+            color: #fff;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            z-index: 80;
+            max-width: 86vw;
+            text-align: center;
+        }
+        .ok-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .err-modal[hidden] { display: none !important; }
         .err-modal {
-            display: none;
             position: fixed;
             inset: 0;
-            z-index: 200;
+            z-index: 90;
+            display: flex;
             align-items: center;
             justify-content: center;
-            padding: 24px;
-            box-sizing: border-box;
+            padding: 20px;
         }
-        .err-modal.show { display: flex; }
         .err-modal-mask {
             position: absolute;
             inset: 0;
-            background: rgba(15, 23, 42, 0.48);
+            background: rgba(15, 23, 42, 0.4);
         }
         .err-modal-panel {
             position: relative;
             width: 100%;
-            max-width: 300px;
+            max-width: 320px;
             background: #fff;
-            border-radius: 16px;
-            padding: 22px 20px 16px;
-            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
-            text-align: center;
-            animation: errModalIn 0.2s ease;
-        }
-        @keyframes errModalIn {
-            from { opacity: 0; transform: scale(0.94) translateY(8px); }
-            to { opacity: 1; transform: scale(1) translateY(0); }
+            border-radius: 12px;
+            padding: 22px 18px 16px;
+            box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
         }
         .err-modal-title {
-            font-size: 17px;
-            font-weight: 700;
-            color: #0f172a;
-            margin: 0 0 10px;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0 0 8px;
+            color: var(--reg-ink);
         }
         .err-modal-msg {
-            font-size: 15px;
-            color: #cf1322;
-            line-height: 1.55;
-            margin: 0 0 18px;
-            word-break: break-word;
-            white-space: pre-line;
-            text-align: left;
+            font-size: 14px;
+            color: var(--reg-ink-soft);
+            line-height: 1.5;
+            margin: 0 0 16px;
         }
         .err-modal-btn {
             width: 100%;
-            padding: 12px;
             border: none;
-            border-radius: 12px;
-            background: #1e6fff;
+            border-radius: 10px;
+            padding: 12px;
+            background: var(--reg-accent);
             color: #fff;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
             font-family: inherit;
             cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
         }
-        .err-modal-btn:active { opacity: 0.9; }
-        .ok-toast {
-            position: fixed;
-            left: 50%;
-            bottom: calc(40px + env(safe-area-inset-bottom, 0px));
-            transform: translateX(-50%);
-            background: rgba(15, 23, 42, 0.9);
-            color: #fff;
-            font-size: 14px;
-            padding: 10px 16px;
-            border-radius: 10px;
-            z-index: 99;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s ease;
-            max-width: calc(100% - 40px);
+        @media (min-width: 900px) {
+            .reg-shell { max-width: 440px; padding-top: 24px; }
         }
-        .ok-toast.show { opacity: 1; }
     </style>
 </head>
 <body class="page-register">
-    <div class="header">
-        <a href="login.html" class="back-btn" id="regBackBtn">
-            <img src="/jt.png" alt="" width="9" decoding="async">
-            <span>返回</span>
-        </a>
-        <h1>创建账号</h1>
-        <p>账号、密码填好就能用，大约半分钟</p>
-    </div>
-
-
-    <div class="card">
-        <form id="regForm" autocomplete="on">
-            <p class="guest-tip" id="guestRegTip" hidden>你刚才体验留下的内容会自动带到新账号，不用重新填。</p>
-            <div class="field">
-                <label for="username">账号</label>
-                <input type="text" id="username" name="username" placeholder="手机号或自定义均可" maxlength="32" autocomplete="username" required>
-                <div class="hint">建议用手机号，方便记住</div>
-                <div class="field-msg" id="usernameMsg"></div>
+    <div class="reg-shell">
+        <div class="reg-top">
+            <a href="login.html" class="back-btn" id="regBackBtn">
+                <img src="/jt.png" alt="" width="9" decoding="async">
+                <span>返回</span>
+            </a>
+        </div>
+        <div class="reg-layout">
+            <div class="reg-brand">
+                <p class="brand">个人所得税</p>
+                <h1>创建账号</h1>
+                <p class="lead">填写账号和密码即可开始使用</p>
             </div>
-            <div class="field">
-                <label for="password">密码</label>
-                <div class="input-wrap has-toggle">
-                    <input type="password" id="password" name="password" placeholder="设一个好记的密码" minlength="1" maxlength="64" autocomplete="new-password" required>
-                    <button type="button" class="pwd-toggle" data-target="password" aria-label="显示密码">显示</button>
-                </div>
+
+            <div class="card">
+                <form id="regForm" autocomplete="on">
+                    <p class="guest-tip" id="guestRegTip" hidden>你刚才体验留下的内容会自动带到新账号，不用重新填。</p>
+                    <div class="field">
+                        <label for="username">账号</label>
+                        <input type="text" id="username" name="username" placeholder="手机号或自定义账号" maxlength="32" autocomplete="username" required>
+                        <div class="field-msg" id="usernameMsg"></div>
+                    </div>
+                    <div class="field">
+                        <label for="password">密码</label>
+                        <div class="input-wrap has-toggle">
+                            <input type="password" id="password" name="password" placeholder="设一个好记的密码" minlength="1" maxlength="64" autocomplete="new-password" required>
+                            <button type="button" class="pwd-toggle" data-target="password" aria-label="显示密码">显示</button>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label for="email">电子邮箱 <span class="opt">选填</span></label>
+                        <input type="email" id="email" name="email" placeholder="填 QQ 号或用户名，再点下方后缀" maxlength="255" autocomplete="email" inputmode="email">
+                        <div class="email-suffix-chips" id="emailSuffixChips">
+                            <button type="button" class="email-suffix-chip" data-email-suffix="@qq.com">@qq.com</button>
+                            <button type="button" class="email-suffix-chip" data-email-suffix="@163.com">@163.com</button>
+                        </div>
+                        <div class="field-msg" id="emailMsg"></div>
+                        <p class="soft-tip" style="margin-top:6px;">开通成功、专属价会发到这个邮箱。</p>
+                    </div>
+                    <div class="field source-block" id="registerSourceBlock">
+                        <label for="registerSourceChannel">从哪了解到的 <span class="req">*</span></label>
+                        <select id="registerSourceChannel" name="register_source_channel" required>
+                            <option value="">请选择来源渠道</option>
+                            <option value="douyin">抖音</option>
+                            <option value="bilibili">B站</option>
+                            <option value="tieba">百度贴吧</option>
+                            <option value="zhihu">知乎</option>
+                            <option value="friend">朋友介绍</option>
+                            <option value="github">GitHub</option>
+                            <option value="other">其他</option>
+                        </select>
+                        <div class="field" id="registerSourceOtherWrap" hidden style="margin-top:10px;">
+                            <label for="registerSourceChannelOther">具体来源 <span class="req">*</span></label>
+                            <input type="text" id="registerSourceChannelOther" name="register_source_channel_other" placeholder="如：小红书、微信群" maxlength="64" autocomplete="off">
+                        </div>
+                    </div>
+                    <p class="soft-tip" id="registerSourceAutoTip" hidden style="margin-top:8px;"></p>
+
+                    <button type="submit" class="btn-submit" id="btnSubmit">创建账号</button>
+                </form>
+                <p class="footer-link">已有账号？<a href="login.html">直接登录</a></p>
+                <p class="disclaimer">仅供界面演示与学习参考，并非官方个税申报渠道。</p>
             </div>
-            <details class="optional-block" id="optionalSourceBlock">
-                <summary>选填 · 从哪了解到的？</summary>
-                <div class="field">
-                    <select id="registerSourceChannel" name="register_source_channel">
-                        <option value="">暂不选择</option>
-                        <option value="douyin">抖音</option>
-                        <option value="bilibili">B站</option>
-                        <option value="tieba">百度贴吧</option>
-                        <option value="zhihu">知乎</option>
-                        <option value="friend">朋友介绍</option>
-                        <option value="github">GitHub</option>
-                        <option value="other">其他</option>
-                    </select>
-                </div>
-                <div class="field" id="registerSourceOtherWrap" hidden style="margin-top:10px;">
-                    <label for="registerSourceChannelOther">具体来源</label>
-                    <input type="text" id="registerSourceChannelOther" name="register_source_channel_other" placeholder="如：小红书、微信群" maxlength="64" autocomplete="off">
-                </div>
-            </details>
-
-            <p class="soft-tip">创建后即可登录使用；需要完整功能时，在个人中心填写激活码即可。</p>
-
-            <button type="submit" class="btn-submit" id="btnSubmit">创建账号</button>
-        </form>
-        <p class="footer-link">已有账号？<a href="login.html">直接登录</a></p>
+        </div>
     </div>
-    <p class="disclaimer">仅供界面演示与学习参考，并非官方个税申报渠道。</p>
     <div class="ok-toast" id="regToast" role="status"></div>
     <div class="err-modal" id="errModal" role="dialog" aria-modal="true" aria-labelledby="errModalTitle" hidden>
         <div class="err-modal-mask" id="errModalMask"></div>
@@ -362,6 +431,9 @@
         (function initInstallGuideReferralFromUrl() {
             try {
                 var q = new URLSearchParams(window.location.search);
+                if (q.get('from') === 'share' && typeof window.markShareAttribution === 'function') {
+                    window.markShareAttribution('url_param', 'register');
+                }
                 if (q.get('from') === 'install_guide' && typeof window.markInstallGuideReferral === 'function') {
                     window.markInstallGuideReferral('url_param');
                 }
@@ -369,10 +441,18 @@
                 if (back && q.get('from') === 'install_guide') {
                     back.setAttribute('href', 'install_guide.html');
                 }
+                if (back && q.get('from') === 'share') {
+                    back.setAttribute('href', 'shouye.html?guest=1&from=share&landing_ab=c');
+                }
                 if (q.get('next_download') === '1') {
                     try {
                         sessionStorage.setItem('reg_next_download_v1', '1');
                     } catch (eNd) {}
+                }
+                var loginAccount = String(q.get('account') || q.get('u') || '').trim();
+                var usernameEl = document.getElementById('username');
+                if (loginAccount && usernameEl && !String(usernameEl.value || '').trim()) {
+                    usernameEl.value = loginAccount.slice(0, 32);
                 }
                 var goDownloadCta = false;
                 try {
@@ -395,6 +475,39 @@
                     guestTip.hidden = !isGuest;
                 }
             } catch (e) {}
+        })();
+
+        (function applyRegisterSourceFromLink() {
+            try {
+                if (typeof window.captureRegisterSourceFromUrl === 'function') {
+                    window.captureRegisterSourceFromUrl();
+                }
+                var src =
+                    typeof window.getRegisterSourceChannel === 'function'
+                        ? window.getRegisterSourceChannel()
+                        : '';
+                if (!src) return;
+                var channelEl = document.getElementById('registerSourceChannel');
+                var block = document.getElementById('registerSourceBlock');
+                var tip = document.getElementById('registerSourceAutoTip');
+                var otherWrap = document.getElementById('registerSourceOtherWrap');
+                if (channelEl) {
+                    channelEl.value = src;
+                    channelEl.disabled = true;
+                }
+                if (otherWrap) otherWrap.hidden = true;
+                if (block) {
+                    block.hidden = true;
+                }
+                if (tip) {
+                    var label =
+                        typeof window.registerSourceChannelLabel === 'function'
+                            ? window.registerSourceChannelLabel(src)
+                            : src;
+                    tip.textContent = '已通过渠道链接自动识别：' + (label || src);
+                    tip.hidden = false;
+                }
+            } catch (eSrc) {}
         })();
 
         function hideErrModal() {
@@ -503,8 +616,8 @@
             }
             markInvalid(sel, false);
             if (isOther) {
-                var block = document.getElementById('optionalSourceBlock');
-                if (block) block.open = true;
+                var block = document.getElementById('registerSourceBlock');
+                if (block) block.hidden = false;
             }
         }
 
@@ -532,17 +645,67 @@
             markInvalid(this, false);
         });
 
+        function isValidRegisterEmail(raw) {
+            var s = raw == null ? '' : String(raw).trim();
+            if (!s || s.length > 255) return false;
+            if (/\s/.test(s) || s.indexOf('..') >= 0) return false;
+            var at = s.lastIndexOf('@');
+            if (at <= 0 || at !== s.indexOf('@')) return false;
+            var local = s.slice(0, at);
+            var domain = s.slice(at + 1);
+            if (local.length < 1 || local.length > 64) return false;
+            if (domain.length < 4 || domain.length > 253) return false;
+            if (local.length === 1) {
+                if (!/^[A-Za-z0-9]$/.test(local)) return false;
+            } else if (!/^[A-Za-z0-9][A-Za-z0-9._%+-]{0,62}[A-Za-z0-9]$/.test(local)) {
+                return false;
+            }
+            var labels = domain.split('.');
+            if (labels.length < 2) return false;
+            for (var i = 0; i < labels.length; i++) {
+                var lab = labels[i];
+                if (!lab || lab.length > 63) return false;
+                if (i === labels.length - 1) {
+                    if (!/^[A-Za-z]{2,24}$/.test(lab)) return false;
+                } else if (lab.length === 1) {
+                    if (!/^[A-Za-z0-9]$/.test(lab)) return false;
+                } else if (!/^[A-Za-z0-9][A-Za-z0-9-]{0,61}[A-Za-z0-9]$/.test(lab)) {
+                    return false;
+                }
+            }
+            var localKey = local.toLowerCase();
+            var domainKey = domain.toLowerCase();
+            var blockLocal = {
+                test: 1, asdf: 1, qwer: 1, abc: 1, abcd: 1, aaa: 1, aaaa: 1,
+                xxx: 1, xxxx: 1, email: 1, mail: 1, none: 1, null: 1, undefined: 1,
+                '123': 1, '1234': 1, '12345': 1, '123456': 1
+            };
+            var blockDomain = {
+                'example.com': 1, 'example.org': 1, 'example.net': 1,
+                'test.com': 1, 'test.cn': 1, 'test.org': 1,
+                'asdf.com': 1, 'aaa.com': 1, 'xxx.com': 1,
+                localhost: 1, invalid: 1, localdomain: 1
+            };
+            if (blockLocal[localKey] || blockDomain[domainKey]) return false;
+            if (localKey.length <= 3 && labels[0].toLowerCase() === localKey) return false;
+            return true;
+        }
+
         function submitRegister() {
             var usernameEl = document.getElementById('username');
             var passwordEl = document.getElementById('password');
+            var emailEl = document.getElementById('email');
             var channelEl = document.getElementById('registerSourceChannel');
             var otherEl = document.getElementById('registerSourceChannelOther');
 
             var username = usernameEl.value.trim();
             var password = passwordEl.value;
+            var email = emailEl ? String(emailEl.value || '').trim() : '';
             showErr('');
+            setFieldMsg('emailMsg', '');
             markInvalid(usernameEl, false);
             markInvalid(passwordEl, false);
+            if (emailEl) markInvalid(emailEl, false);
             if (channelEl) markInvalid(channelEl, false);
             if (otherEl) markInvalid(otherEl, false);
 
@@ -552,32 +715,73 @@
                 if (!password) markInvalid(passwordEl, true);
                 return;
             }
+            if (email && !isValidRegisterEmail(email)) {
+                showErr('邮箱格式不正确，请填写常用邮箱（如 QQ/163），也可先不填');
+                if (emailEl) markInvalid(emailEl, true);
+                setFieldMsg('emailMsg', '请填写有效邮箱，例如 name@qq.com（勿乱填）', false);
+                return;
+            }
             var sourceChannel = channelEl ? channelEl.value.trim() : '';
+            var lockedSrc =
+                typeof window.getRegisterSourceChannel === 'function'
+                    ? window.getRegisterSourceChannel()
+                    : '';
+            if (lockedSrc) {
+                sourceChannel = lockedSrc;
+            }
+            if (!sourceChannel) {
+                showErr('请选择从哪了解到的');
+                if (channelEl) markInvalid(channelEl, true);
+                var emptyBlock = document.getElementById('registerSourceBlock');
+                if (emptyBlock) emptyBlock.hidden = false;
+                return;
+            }
             var sourceChannelOther = '';
             if (sourceChannel === 'other') {
                 sourceChannelOther = otherEl ? otherEl.value.trim() : '';
                 if (!sourceChannelOther) {
                     showErr('选了「其他」的话，请写一下具体来源');
                     if (otherEl) markInvalid(otherEl, true);
-                    var block = document.getElementById('optionalSourceBlock');
-                    if (block) block.open = true;
+                    var block = document.getElementById('registerSourceBlock');
+                    if (block) block.hidden = false;
                     return;
                 }
             }
 
+            var fromInstallGuide =
+                typeof window.hasInstallGuideReferral === 'function' && window.hasInstallGuideReferral();
+            var fromShareUrl = false;
+            try {
+                fromShareUrl =
+                    String(new URLSearchParams(window.location.search).get('from') || '').toLowerCase() ===
+                    'share';
+            } catch (eFs) {}
+            if (fromShareUrl && typeof window.markShareAttribution === 'function') {
+                window.markShareAttribution('url_param', 'register');
+            }
+            var fromShare =
+                fromShareUrl ||
+                (typeof window.hasShareAttribution === 'function' && window.hasShareAttribution());
+            /* 分享注册优先，避免门闸误带的安装引导盖掉 from_share */
+            if (fromShare) {
+                fromInstallGuide = false;
+            }
             if (typeof window.trackPublicAction === 'function') {
                 window.trackPublicAction('track_register_submit', {
                     page: 'register',
-                    from_install_guide: !!(typeof window.hasInstallGuideReferral === 'function' && window.hasInstallGuideReferral())
+                    from_install_guide: !!fromInstallGuide,
+                    from_share: !!fromShare
                 });
             }
 
-            var fromInstallGuide =
-                typeof window.hasInstallGuideReferral === 'function' && window.hasInstallGuideReferral();
-            var regSalesCh =
-                typeof window.getRegisterSalesChannel === 'function'
-                    ? window.getRegisterSalesChannel(fromInstallGuide)
-                    : '';
+            var regSalesCh = '';
+            try {
+                if (typeof window.getRegisterSalesChannel === 'function') {
+                    regSalesCh = window.getRegisterSalesChannel(fromInstallGuide) || '';
+                }
+            } catch (eRegCh) {
+                regSalesCh = '';
+            }
 
             var btn = document.getElementById('btnSubmit');
             btn.disabled = true;
@@ -605,9 +809,11 @@
                     action: 'register',
                     username: username,
                     password: password,
-                    register_source_channel: sourceChannel || undefined,
+                    email: email || undefined,
+                    register_source_channel: sourceChannel,
                     register_source_channel_other: sourceChannelOther || undefined,
                     from_install_guide: fromInstallGuide ? 1 : 0,
+                    from_share: fromShare ? 1 : 0,
                     landing_variant:
                         typeof window.getLandingAbVariant === 'function'
                             ? window.getLandingAbVariant() || undefined
@@ -617,7 +823,7 @@
                     guest_username: regGuestUsername || undefined
                 })
             })
-                .then(function (r) { return r.json(); })
+                .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
                 .then(function (data) {
                     if (data.code === 200 && data.data) {
                         var d = data.data;
@@ -625,14 +831,30 @@
                             window.trackPublicAction('track_register_success', {
                                 page: 'register',
                                 from_install_guide: fromInstallGuide,
+                                from_share: fromShare,
                                 landing_variant:
                                     typeof window.getLandingAbVariant === 'function'
                                         ? window.getLandingAbVariant() || undefined
                                         : undefined
                             });
+                            if (fromShare) {
+                                window.trackPublicAction('track_share_register_success', {
+                                    page: 'register',
+                                    username: d.username || username
+                                });
+                            }
                         }
                         if (typeof window.clearInstallGuideReferral === 'function') {
                             window.clearInstallGuideReferral();
+                        }
+                        if (typeof window.clearShareAttribution === 'function') {
+                            window.clearShareAttribution();
+                        }
+                        if (typeof window.clearRegisterSourceChannel === 'function') {
+                            window.clearRegisterSourceChannel();
+                        }
+                        if (typeof window.clearIdentityLocalCaches === 'function') {
+                            window.clearIdentityLocalCaches();
                         }
                         if (d.token) {
                             localStorage.setItem('token', d.token);
@@ -686,6 +908,14 @@
                         try {
                             sessionStorage.setItem('tax_tutorial_post_login_pending', '1');
                         } catch (ePending) {}
+                        try {
+                            /* 注册时未留邮箱：进「我的」后半强制强引导（可跳过） */
+                            if (!email && !d.has_email) {
+                                sessionStorage.setItem('cg_email_nudge_after_register', '1');
+                            } else {
+                                sessionStorage.removeItem('cg_email_nudge_after_register');
+                            }
+                        } catch (eEmailPend) {}
                         var goDownload = false;
                         try {
                             goDownload = sessionStorage.getItem('reg_next_download_v1') === '1';
@@ -693,12 +923,25 @@
                         } catch (eGo) {
                             goDownload = false;
                         }
-                        showToast(goDownload ? '创建成功，马上带你去下载' : '创建成功，欢迎加入');
+                        showToast(goDownload ? '注册成功，马上带你去下载' : '注册成功');
                         setTimeout(function () {
                             if (goDownload) {
                                 window.location.href = 'install_guide.html?download=1#download';
                             } else {
-                                window.location.href = 'mine.html';
+                                /* 注册成功进「我的」，不强制跳转支付页；须顶层跳转，避免 Tab 壳底栏停在「我的」却显示首页 */
+                                if (typeof window.assignTopLocation === 'function') {
+                                    window.assignTopLocation('mine.html');
+                                } else {
+                                    try {
+                                        if (window.top && window.top !== window) {
+                                            window.top.location.href = 'mine.html';
+                                        } else {
+                                            window.location.href = 'mine.html';
+                                        }
+                                    } catch (eTopReg) {
+                                        window.location.href = 'mine.html';
+                                    }
+                                }
                             }
                         }, 450);
                         return;
@@ -718,6 +961,26 @@
             e.preventDefault();
             submitRegister();
         });
+        (function bindRegEmailSuffix() {
+            var input = document.getElementById('email');
+            var chips = document.getElementById('emailSuffixChips');
+            if (!input || !chips) return;
+            if (window.EmailSuffix && typeof window.EmailSuffix.wireEmailSuffixChips === 'function') {
+                window.EmailSuffix.wireEmailSuffixChips(chips, input);
+                return;
+            }
+            chips.addEventListener('click', function (ev) {
+                var t = ev.target;
+                var suf = t && t.getAttribute ? t.getAttribute('data-email-suffix') : '';
+                if (!suf) return;
+                ev.preventDefault();
+                var cur = String(input.value || '').trim();
+                var at = cur.indexOf('@');
+                var local = at >= 0 ? cur.slice(0, at) : cur;
+                input.value = local + suf;
+                try { input.focus(); } catch (eF) {}
+            });
+        })();
     </script>
 </body>
 </html>
