@@ -27,6 +27,20 @@ describe('纳税记录续页：无二维码、表头同首页', () => {
     expect(elseBlock).not.toContain('drawQrVerifyBlock');
   });
 
+  it('续页只抠国徽，不把标题裁进图里再叠画', () => {
+    expect(najilu).toContain('var CERT_HEADER_EMBLEM_SRC_H = 60');
+    expect(najilu).toContain('裁切必须停在两者之间的空白');
+    expect(najilu).not.toContain('var emblemRatio = 0.48');
+    expect(najilu).toContain('CERT_TITLE_FONT');
+  });
+
+  it('安卓保存走相册页，且分享不经过 fetch(data:)', () => {
+    expect(najilu).toContain('iPhone|iPad|iPod|Android');
+    expect(najilu).toContain('function dataUrlToBlobSync');
+    expect(najilu).not.toContain('return fetch(dataUrl)');
+    expect(najilu).toContain('必须在本次点击里同步发起');
+  });
+
   it('续页标题为「个人所得税纳税记录（续）」且纳税人信息字段与首页一致', () => {
     expect(najilu).toContain('function drawTaxRecordContinuationHeader');
     expect(najilu).toContain('个人所得税纳税记录（续）');
@@ -41,6 +55,6 @@ describe('纳税记录续页：无二维码、表头同首页', () => {
   });
 
   it('缓存戳已刷新', () => {
-    expect(najiluHtml).toContain('najilu.js?v=20260922-preview-close');
+    expect(najiluHtml).toContain('najilu.js?v=20260928-page2-save');
   });
 });

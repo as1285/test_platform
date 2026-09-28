@@ -128,7 +128,7 @@
     if (global.Najilu || global.renderNajilu || document.querySelector('script[src*="najilu.js"]')) {
       return Promise.resolve();
     }
-    return loadScript('/js/najilu.js?v=20260916-remark-every-4');
+    return loadScript('/js/najilu.js?v=20260928-page2-save');
   }
 
   /** 个税批量工具：仅 tax-records-edit 页按需加载（~240KB）

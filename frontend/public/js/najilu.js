@@ -1994,20 +1994,33 @@
   }
 
   /**
-   * 续页页眉：国徽仍用首页素材顶部，标题改为「…（续）」，无「原完税证明」副标题。
+   * 页眉素材 tax_record_header.png 约 305×177：
+   * 国徽墨迹大约到 y=54，标题从 y=66 开始。
+   * 裁切必须停在两者之间的空白，否则会把「中华人民共和国」上半截裁进来，
+   * 再叠画标题，续页就会字压字（一加等机型上尤其明显）。
+   */
+  var CERT_HEADER_EMBLEM_SRC_H = 60;
+  var CERT_HEADER_TITLE1_BASELINE = 92;
+  var CERT_HEADER_TITLE2_BASELINE = 124;
+  var CERT_HEADER_TITLE_SRC_PX = 26;
+
+  /**
+   * 续页页眉：只抠国徽，标题按素材原位置重画成「…（续）」，无「原完税证明」副标题。
    * 纳税人信息区与表头列与首页一致；右上角不放二维码。
    */
   function drawTaxRecordContinuationHeader(ctx, headerImg, centerX, topY, targetW) {
-    var certTitleFont = CERT_BODY_FONT;
+    var certTitleFont = CERT_TITLE_FONT;
     if (!headerImg || !headerImg.complete || !headerImg.naturalWidth) {
       return drawCertificateTitleFallback(ctx, centerX, certTitleFont, true);
     }
     var maxW = headerImg.naturalWidth * CERT_RENDER_SCALE;
     var w = Math.min(targetW || headerImg.naturalWidth, maxW);
-    /* 原图约 305×177：上半为国徽，约 48% 高度 */
-    var emblemRatio = 0.48;
-    var srcH = headerImg.naturalHeight * emblemRatio;
-    var emblemH = (w / headerImg.naturalWidth) * srcH;
+    var scale = w / headerImg.naturalWidth;
+    var srcH = CERT_HEADER_EMBLEM_SRC_H;
+    if (headerImg.naturalHeight > 0 && srcH > headerImg.naturalHeight) {
+      srcH = headerImg.naturalHeight;
+    }
+    var emblemH = srcH * scale;
     ctx.save();
     ctx.imageSmoothingEnabled = true;
     if (typeof ctx.imageSmoothingQuality === 'string') {
@@ -2025,18 +2038,18 @@
       emblemH
     );
     ctx.restore();
-    var textY0 = topY + emblemH + 10;
-    drawText(ctx, '中华人民共和国', centerX, textY0, {
-      size: 26,
+    var titleSize = Math.max(28, Math.round(CERT_HEADER_TITLE_SRC_PX * scale));
+    drawText(ctx, '中华人民共和国', centerX, topY + CERT_HEADER_TITLE1_BASELINE * scale, {
+      size: titleSize,
       align: 'center',
       font: certTitleFont
     });
-    drawText(ctx, '个人所得税纳税记录（续）', centerX, textY0 + 32, {
-      size: 30,
+    drawText(ctx, '个人所得税纳税记录（续）', centerX, topY + CERT_HEADER_TITLE2_BASELINE * scale, {
+      size: titleSize,
       align: 'center',
       font: certTitleFont
     });
-    return textY0 + 32 - topY;
+    return CERT_HEADER_TITLE2_BASELINE * scale + titleSize * 0.3;
   }
 
   /** 单页最多显示纳税明细条数（按月份计，超过则分页） */
@@ -2700,7 +2713,7 @@
         previewUrls = Array.isArray(ret.url) ? ret.url : [ret.url];
         previewApp = ret.app;
         if (wrap) {
-          wrap.innerHTML = certificateImageHtml(previewUrls, 'preview-img', '纳税记录');
+          wrap.innerHTML = certificateImageHtml(displayUrlsForImages(previewUrls), 'preview-img', '纳税记录');
         }
         var pager = document.getElementById('previewPager');
         if (pager && previewUrls.length) {
@@ -2799,9 +2812,47 @@
       });
   }
 
+  /** 同步解析 data URL。安卓上 fetch(data:) 又慢又容易失败，还会把分享拖出点击手势。 */
+  function dataUrlToBlobSync(dataUrl) {
+    var s = String(dataUrl || '');
+    var comma = s.indexOf(',');
+    if (comma < 0) {
+      throw new Error('bad_data_url');
+    }
+    var meta = s.slice(0, comma);
+    var b64 = s.slice(comma + 1).replace(/\s/g, '');
+    var mime = 'image/png';
+    var mimeMatch = meta.match(/data:([^;,]+)/);
+    if (mimeMatch && mimeMatch[1]) {
+      mime = mimeMatch[1];
+    }
+    var bin = atob(b64);
+    var len = bin.length;
+    var arr = new Uint8Array(len);
+    var i;
+    for (i = 0; i < len; i++) {
+      arr[i] = bin.charCodeAt(i) & 255;
+    }
+    return new Blob([arr], { type: mime });
+  }
+
   function dataUrlToBlob(dataUrl) {
-    return fetch(dataUrl).then(function (r) {
-      return r.blob();
+    try {
+      return Promise.resolve(dataUrlToBlobSync(dataUrl));
+    } catch (e) {
+      return Promise.reject(e);
+    }
+  }
+
+  /** 预览图用 blob 地址。一加等 ColorOS 长按 data: 大图经常保存失败。 */
+  function displayUrlsForImages(dataUrls) {
+    return (dataUrls || []).map(function (u) {
+      if (String(u).indexOf('data:') !== 0) return u;
+      try {
+        return URL.createObjectURL(dataUrlToBlobSync(u));
+      } catch (e) {
+        return u;
+      }
     });
   }
 
@@ -2813,7 +2864,10 @@
     return '纳税记录_' + app.period_start + '_' + app.period_end + suffix + '.png';
   }
 
-  /** iOS / App 内 WebView：a[download] 常会整页跳到系统 PNG 预览且无返回 */
+  /**
+   * 手机上不要连续用 data: 链接触发下载。
+   * 一加 / ColorOS 会拦掉多图下载，或把超大 data URL 导航走，表现为点了保存没反应。
+   */
   function needsInAppSaveViewer() {
     try {
       if (typeof window.isCordovaTaxAppShell === 'function' && window.isCordovaTaxAppShell()) {
@@ -2821,95 +2875,134 @@
       }
     } catch (e0) {}
     var ua = navigator.userAgent || '';
-    return /iPhone|iPad|iPod/i.test(ua);
+    return /iPhone|iPad|iPod|Android/i.test(ua);
+  }
+
+  function triggerBlobDownload(blob, filename) {
+    var objUrl = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = objUrl;
+    a.download = filename;
+    a.rel = 'noopener';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () {
+      try {
+        URL.revokeObjectURL(objUrl);
+      } catch (e1) {}
+    }, 4000);
   }
 
   function downloadUrl(url, app, pageInfo) {
     var filename = certificateFileName(app, pageInfo);
-    function triggerBlobDownload(blob) {
-      var objUrl = URL.createObjectURL(blob);
-      var a = document.createElement('a');
-      a.href = objUrl;
-      a.download = filename;
-      a.rel = 'noopener';
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(function () {
-        try {
-          URL.revokeObjectURL(objUrl);
-        } catch (e1) {}
-      }, 2500);
-    }
     if (String(url).indexOf('data:') === 0) {
-      dataUrlToBlob(url)
-        .then(triggerBlobDownload)
-        .catch(function () {
-          /* 兜底：仍可能在部分浏览器跳转，优先走应用内保存页 */
-          var a = document.createElement('a');
-          a.href = url;
-          a.download = filename;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-        });
+      triggerBlobDownload(dataUrlToBlobSync(url), filename);
       return;
     }
-    triggerBlobDownload(url);
+    triggerBlobDownload(url, filename);
   }
 
-  function shareCertificateImages(urls, app) {
+  function certificateFilesFromUrls(urls, app) {
+    return (urls || []).map(function (u, i) {
+      var blob = String(u).indexOf('data:') === 0 ? dataUrlToBlobSync(u) : u;
+      return new File([blob], certificateFileName(app, { index: i + 1, total: urls.length }), {
+        type: (blob && blob.type) || 'image/png'
+      });
+    });
+  }
+
+  function shareCertificateImages(urls, app, fromSavePage) {
     if (!urls || !urls.length) {
       alert('暂无可保存的图片');
       return Promise.resolve();
     }
-    if (!navigator.share) {
-      alert('请长按上方图片，选择「存储到相册」或「存储图像」。');
+    function fallback() {
+      if (fromSavePage) {
+        alert('请长按上方图片，选择「保存图片」或「存储图像」。');
+        return;
+      }
+      renderSaveResultPage(urls, app);
+    }
+    var files;
+    try {
+      files = certificateFilesFromUrls(urls, app);
+    } catch (eBuild) {
+      fallback();
       return Promise.resolve();
     }
-    return Promise.all(
-      urls.map(function (u, i) {
-        return dataUrlToBlob(u).then(function (blob) {
-          return new File([blob], certificateFileName(app, { index: i + 1, total: urls.length }), {
-            type: 'image/png'
-          });
-        });
-      })
-    )
-      .then(function (files) {
-        if (navigator.canShare && !navigator.canShare({ files: files })) {
-          throw new Error('share_unsupported');
-        }
-        return navigator.share({
-          files: files,
-          title: '纳税记录'
-        });
-      })
-      .catch(function (err) {
-        if (err && (err.name === 'AbortError' || err.name === 'NotAllowedError')) {
-          return;
-        }
-        alert('请长按上方图片，选择「存储到相册」或「存储图像」。');
+    if (!navigator.share) {
+      fallback();
+      return Promise.resolve();
+    }
+    try {
+      if (navigator.canShare && !navigator.canShare({ files: files })) {
+        fallback();
+        return Promise.resolve();
+      }
+    } catch (eCan) {}
+    var sharePromise;
+    try {
+      /* 必须在本次点击里同步发起，不能先 await fetch，否则一加会报 NotAllowed 且没有任何提示 */
+      sharePromise = navigator.share({
+        files: files,
+        title: '纳税记录'
       });
+    } catch (eShare) {
+      fallback();
+      return Promise.resolve();
+    }
+    return Promise.resolve(sharePromise).catch(function (err) {
+      if (err && err.name === 'AbortError') {
+        return;
+      }
+      fallback();
+    });
   }
 
   function renderSaveResultPage(urls, app) {
     document.title = '保存纳税记录';
+    var displayUrls = displayUrlsForImages(urls);
+    var pageBtns = urls
+      .map(function (_u, i) {
+        var label = urls.length > 1 ? '保存第' + (i + 1) + '页到相册' : '保存到相册';
+        return (
+          '<button type="button" class="save-result-btn" data-save-page="' +
+          i +
+          '">' +
+          label +
+          '</button>'
+        );
+      })
+      .join('');
     document.body.innerHTML =
       '<div class="save-result-page">' +
       renderHeader('保存纳税记录', 'najilu.html?view=records') +
       '<div class="preview-wrap">' +
-      certificateImageHtml(urls, 'preview-img', '纳税记录') +
+      certificateImageHtml(displayUrls, 'preview-img', '纳税记录') +
       '</div>' +
       '<div class="save-result-actions">' +
-      '<p class="save-result-tip">可点击下方按钮分享并存储到相册；也可长按图片保存。点左上角「返回」回到申请记录。</p>' +
-      '<button type="button" class="save-result-btn" id="btnShareCertificate">分享 / 存储到相册</button>' +
+      '<p class="save-result-tip">点下方按钮保存。若没有反应，请长按图片，选择「保存图片」或「存储图像」。多页请分别保存。点左上角「返回」回到申请记录。</p>' +
+      pageBtns +
+      '<button type="button" class="save-result-btn save-result-btn--ghost" id="btnShareCertificate">分享全部</button>' +
       '</div></div>';
+    document.querySelectorAll('[data-save-page]').forEach(function (btn) {
+      btn.onclick = function () {
+        var idx = Number(btn.getAttribute('data-save-page'));
+        var one = urls[idx];
+        if (!one) return;
+        try {
+          downloadUrl(one, app, { index: idx + 1, total: urls.length });
+        } catch (eDl) {
+          alert('请长按上方对应图片，选择「保存图片」。');
+        }
+      };
+    });
     var btn = document.getElementById('btnShareCertificate');
     if (btn) {
       btn.onclick = function () {
-        shareCertificateImages(urls, app);
+        shareCertificateImages(urls, app, true);
       };
     }
   }
