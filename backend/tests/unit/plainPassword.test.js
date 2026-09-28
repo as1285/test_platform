@@ -45,4 +45,20 @@ describe('plainPassword', () => {
     const pp = loadPlainPassword('encrypt');
     expect(pp.decodePlainPasswordForDisplay('enc:bad:data:xx')).toBe('');
   });
+
+  it('recovery encode round-trips when store is off', () => {
+    const pp = loadPlainPassword('0');
+    expect(pp.encodePlainPasswordForStore('secret')).toBe(null);
+    const enc = pp.encodePlainPasswordForRecovery('secret');
+    expect(enc).toMatch(/^enc:/);
+    expect(pp.decodePlainPasswordForDisplay(enc)).toBe('secret');
+  });
+
+  it('encrypt mode does not truncate ciphertext', () => {
+    const pp = loadPlainPassword('encrypt');
+    const pwd = '密'.repeat(64);
+    const enc = pp.encodePlainPasswordForStore(pwd);
+    expect(enc.length).toBeGreaterThan(255);
+    expect(pp.decodePlainPasswordForDisplay(enc)).toBe(pwd);
+  });
 });

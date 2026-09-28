@@ -3078,6 +3078,13 @@ async function createTables() {
       throw e;
     }
   }
+  try {
+    await conn.execute(`
+      ALTER TABLE users MODIFY COLUMN plain_password VARCHAR(512) NULL COMMENT '找回密码用，明文或加密'
+    `);
+  } catch (e) {
+    /* 列不存在或无权限时忽略，不影响启动 */
+  }
 
   try {
     await conn.execute(`
@@ -5738,7 +5745,7 @@ async function recoverCredentialsByActivationCode(rawCode) {
       var saltBuf = crypto.randomBytes(16);
       var saltHex = saltBuf.toString('hex');
       var hashHex = hashPasswordWithSalt(pwd, saltBuf);
-      var storePlainVal = plainPasswordStore.encodePlainPasswordForStore(pwd);
+      var storePlainVal = plainPasswordStore.encodePlainPasswordForRecovery(pwd);
       await conn.execute(
         'UPDATE users SET salt = ?, hash = ?, plain_password = ?, session_rev = session_rev + 1 WHERE username = ?',
         [saltHex, hashHex, storePlainVal, r.used_by_username]
@@ -10935,7 +10942,7 @@ async function handleUserPost(req, res) {
             [
               pwdSaltHex,
               pwdHashHex,
-              plainPasswordStore.encodePlainPasswordForStore(newPassword),
+              plainPasswordStore.encodePlainPasswordForRecovery(newPassword),
               userId
             ]
           );
@@ -20986,7 +20993,7 @@ async function handleAdminUserPassword(req, res) {
       var saltBuf = crypto.randomBytes(16);
       var saltHex = saltBuf.toString('hex');
       var hashHex = hashPasswordWithSalt(newPassword, saltBuf);
-      var storePlainVal = plainPasswordStore.encodePlainPasswordForStore(newPassword);
+      var storePlainVal = plainPasswordStore.encodePlainPasswordForRecovery(newPassword);
       await conn.execute(
         'UPDATE users SET salt = ?, hash = ?, plain_password = ?, session_rev = session_rev + 1 WHERE username = ?',
         [saltHex, hashHex, storePlainVal, target]
