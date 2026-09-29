@@ -22,7 +22,7 @@
     'ops-conversion': '/js/admin/modules/ops-conversion.js?v=20260910-ops-range',
     'ad-analytics': '/js/admin/modules/ad-analytics.js?v=20260907-hub6',
     'user-emails': '/js/admin/modules/user-emails.js?v=20260910-week-fill',
-    'abc-ops': '/js/admin/modules/abc-ops.js?v=20260907-hub6'
+    'abc-ops': '/js/admin/modules/abc-ops.js?v=20260929-abc-assign'
   };
 
   var PAGE_MODULE = {

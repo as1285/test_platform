@@ -246,6 +246,12 @@ app.get(
   mw.requireAdminAnyMenu(['abc-ops', 'insights-growth', 'install-guide-stats', 'ops-board']),
   h.handleAbcOpsPayments
 );
+app.post(
+  '/api/admin/ops/abc/assign',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['abc-ops', 'insights-growth', 'ops-board']),
+  h.handleAbcOpsAssign
+);
 app.get(
   '/api/admin/analytics/abc-install-stats',
   mw.requireAdminAuth,

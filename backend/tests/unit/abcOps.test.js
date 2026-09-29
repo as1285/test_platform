@@ -152,7 +152,95 @@ describe('abcOps handlers', () => {
     expect(routes).toContain("'/api/admin/ops/abc/overview'");
     expect(routes).toContain("'/api/admin/ops/abc/users'");
     expect(routes).toContain("'/api/admin/ops/abc/payments'");
+    expect(routes).toContain("'/api/admin/ops/abc/assign'");
+    expect(routes).toContain('handleAbcOpsAssign');
     expect(routes).toContain('handleAbcOpsOverview');
+  });
+
+  it('assigns an account to abc and clears the channel cache', async () => {
+    var calls = [];
+    var forgotten = [];
+    var api = createAbcOps({
+      getPool: function () {
+        return {
+          getConnection: async function () {
+            return {
+              execute: async function (sql, params) {
+                calls.push({ sql: sql, params: params });
+                if (String(sql).indexOf('SELECT') === 0) {
+                  return [[{ username: '13014482007', sales_promo_channel: 'friend_ch' }]];
+                }
+                return [{ affectedRows: 1 }];
+              },
+              release: function () {}
+            };
+          }
+        };
+      },
+      forgetUserSalesPromoChannel: function (username) {
+        forgotten.push(username);
+      }
+    });
+    var res = mockRes();
+    await api.handleAbcOpsAssign({ body: { username: ' 13014482007 ' } }, res);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.code).toBe(200);
+    expect(res.body.data.changed).toBe(true);
+    expect(res.body.data.previous_channel).toBe('friend_ch');
+    expect(res.body.data.sales_promo_channel).toBe('abc');
+    expect(forgotten).toEqual(['13014482007']);
+    expect(calls.some(function (c) {
+      return c.sql.indexOf('UPDATE users SET sales_promo_channel') >= 0 && c.params[0] === 'abc';
+    })).toBe(true);
+  });
+
+  it('does not rewrite an account that is already abc', async () => {
+    var updates = 0;
+    var api = createAbcOps({
+      getPool: function () {
+        return {
+          getConnection: async function () {
+            return {
+              execute: async function (sql) {
+                if (String(sql).indexOf('UPDATE') === 0) updates += 1;
+                if (String(sql).indexOf('SELECT') === 0) {
+                  return [[{ username: '13014482007', sales_promo_channel: 'abc' }]];
+                }
+                return [{ affectedRows: 1 }];
+              },
+              release: function () {}
+            };
+          }
+        };
+      },
+      forgetUserSalesPromoChannel: function () {}
+    });
+    var res = mockRes();
+    await api.handleAbcOpsAssign({ body: { username: '13014482007' } }, res);
+    expect(res.body.data.changed).toBe(false);
+    expect(res.body.msg).toContain('已经是 ABC');
+    expect(updates).toBe(0);
+  });
+
+  it('rejects a missing account', async () => {
+    var api = createAbcOps({
+      getPool: function () {
+        return {
+          getConnection: async function () {
+            return {
+              execute: async function () {
+                return [[]];
+              },
+              release: function () {}
+            };
+          }
+        };
+      }
+    });
+    var res = mockRes();
+    await api.handleAbcOpsAssign({ body: { username: 'no-such-user' } }, res);
+    expect(res.statusCode).toBe(404);
+    expect(res.body.msg).toContain('找不到');
   });
 
   it('payments list returns empty page', async () => {

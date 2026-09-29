@@ -13,19 +13,22 @@ describe('admin ABC ops module', () => {
     expect(html).toContain('id="page-abc-ops"');
     expect(html).toContain('id="page-abc-users"');
     expect(html).toContain('id="abcOpsFunnel"');
+    expect(html).toContain('id="abcOpsAssignUser"');
+    expect(html).toContain('id="btnAbcOpsAssign"');
     expect(html).toContain('id="abcOpsUserTbody"');
     expect(html).toContain('href="#abc-ops"');
-    expect(html).toContain('admin_panel.js?v=20260907-abc-ops');
-    expect(html).toContain('admin_panel.css?v=20260907-abc-ops');
-    expect(loader).toContain('abc-ops.js?v=20260907-abc-ops');
+    expect(html).toContain('admin_panel.css?v=20260929-abc-assign');
+    expect(html).toContain('loader.js?v=20260929-abc-assign');
+    expect(loader).toContain('abc-ops.js?v=20260929-abc-assign');
     expect(loader).toContain("'abc-users': 'abc-ops'");
     expect(src).toContain('api/admin/ops/abc/overview?days=');
     expect(src).toContain('api/admin/ops/abc/users?');
     expect(src).toContain('api/admin/ops/abc/payments?days=');
+    expect(src).toContain('api/admin/ops/abc/assign');
     expect(src).toContain('jumpToRegisteredUser');
     expect(panel).toContain("nav: 'abc-ops'");
     expect(panel).toContain("id: 'funnel'");
-    expect(panel).toContain("MENU_TREE_VER = 'ops-ia-v23-abc-ops'");
+    expect(panel).toContain("MENU_TREE_VER = 'ops-ia-v26-hide-orders'");
     expect(css).toContain('.abc-ops-funnel');
   });
 

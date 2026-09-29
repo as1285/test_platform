@@ -1916,6 +1916,16 @@ async function getUserSalesPromoChannel(userId) {
   }
 }
 
+/** 管理端改渠道后立刻丢掉账号渠道和用户资料缓存，避免最多 30 秒仍按旧渠道计价 */
+function forgetUserSalesPromoChannel(username) {
+  var u = String(username || '').trim();
+  if (!u) return;
+  try {
+    _salesPromoChannelCache.delete(u);
+  } catch (eCh) {}
+  invalidateUserInfoApiCache(u);
+}
+
 /**
  * 一次解析安装包上下文，避免 install-packages 重复查渠道归因 / 用户渠道。
  * @returns {{ raw: object, salesCh: string, hideXianyu: boolean }}
@@ -25137,6 +25147,7 @@ module.exports = {
   initDatabase,
   adminCanAccessTargetUser,
   appendAdminUserScope,
+  forgetUserSalesPromoChannel,
   getPool: function () {
     return pool;
   }

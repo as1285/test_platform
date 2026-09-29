@@ -483,6 +483,45 @@
       });
   }
 
+  function assignResult(text, isErr) {
+    var el = document.getElementById('abcOpsAssignResult');
+    if (el) el.textContent = text || '';
+    if (typeof global.adminToast === 'function' && text) {
+      global.adminToast(text, isErr ? { type: 'error' } : undefined);
+    }
+  }
+
+  function assignUserToAbc() {
+    var input = document.getElementById('abcOpsAssignUser');
+    var btn = document.getElementById('btnAbcOpsAssign');
+    var username = input ? String(input.value || '').trim() : '';
+    if (!username) {
+      assignResult('请填写账号', true);
+      return;
+    }
+    if (btn) btn.disabled = true;
+    assignResult('正在改成 ABC…', false);
+    fetchAdmin('api/admin/ops/abc/assign', {
+      method: 'POST',
+      body: JSON.stringify({ username: username })
+    })
+      .then(parseAdminJson)
+      .then(function (j) {
+        if (!j || j.code !== 200) {
+          assignResult((j && j.msg) || '改渠道失败', true);
+          return;
+        }
+        assignResult(j.msg || '已改为 ABC 渠道，马上生效', false);
+        if (j.data && j.data.changed) loadOverview();
+      })
+      .catch(function (e) {
+        assignResult((e && e.message) || '改渠道失败', true);
+      })
+      .then(function () {
+        if (btn) btn.disabled = false;
+      });
+  }
+
   function bind() {
     if (bound) return;
     bound = true;
@@ -491,6 +530,10 @@
     root.addEventListener('click', function (e) {
       var t = e.target && e.target.closest ? e.target.closest('button, a') : null;
       if (!t) return;
+      if (t.id === 'btnAbcOpsAssign') {
+        assignUserToAbc();
+        return;
+      }
       if (t.id === 'btnAbcOpsRefresh') {
         loadOverview();
         return;
@@ -536,6 +579,15 @@
     if (days) {
       days.addEventListener('change', function () {
         loadOverview();
+      });
+    }
+    var assignInput = document.getElementById('abcOpsAssignUser');
+    if (assignInput) {
+      assignInput.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') {
+          ev.preventDefault();
+          assignUserToAbc();
+        }
       });
     }
   }

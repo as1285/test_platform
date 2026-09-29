@@ -1,7 +1,14 @@
 /**
  * 应用装配：创建 Express app → 按域注册路由 → 启动。
  */
-const { createApp, startServer, getHandlers, getMiddleware, appendAdminUserScope } = require('./legacy/monolith');
+const {
+  createApp,
+  startServer,
+  getHandlers,
+  getMiddleware,
+  appendAdminUserScope,
+  forgetUserSalesPromoChannel
+} = require('./legacy/monolith');
 const sbdyDemo = require('./admin/sbdyDemo');
 const gjjDemo = require('./admin/gjjDemo');
 const lizhiCert = require('./admin/lizhiCert');
@@ -63,7 +70,7 @@ function buildApp() {
       featureSurveyOverview.getHandlers(),
       paymentOrders.createHandlers({ appendAdminUserScope: appendAdminUserScope }),
       opsConversion.getHandlers(),
-      abcOps.getHandlers(),
+      abcOps.getHandlers({ forgetUserSalesPromoChannel: forgetUserSalesPromoChannel }),
       adPageAnalytics.getHandlers(),
       adPages.getHandlers(),
       bankSalaryFlow.getHandlers(),

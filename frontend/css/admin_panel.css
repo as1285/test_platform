@@ -3311,6 +3311,13 @@ tr.users-detail-row > td {
     color: var(--admin-text-muted);
     line-height: 1.45;
 }
+.abc-ops-assign {
+    margin-bottom: 8px;
+}
+.abc-ops-assign-row {
+    align-items: flex-end;
+    margin-top: 8px;
+}
 .abc-ops-head-actions {
     margin: 0;
 }

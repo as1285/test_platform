@@ -752,10 +752,63 @@ function createAbcOps(deps) {
     }
   }
 
+  async function handleAbcOpsAssign(req, res) {
+    var raw = req.body && req.body.username != null ? String(req.body.username) : '';
+    var username = raw.trim();
+    if (!username || username.length > 255) {
+      return res.status(400).json({ code: 400, msg: '请填写账号' });
+    }
+    if (username.indexOf('__guest_') === 0) {
+      return res.status(400).json({ code: 400, msg: '不能改游客账号' });
+    }
+    var pool = getPool();
+    var conn = null;
+    try {
+      conn = await pool.getConnection();
+      const [rows] = await conn.execute(
+        'SELECT username, sales_promo_channel FROM users WHERE username = ? LIMIT 1',
+        [username]
+      );
+      if (!rows.length) {
+        return res.status(404).json({ code: 404, msg: '找不到这个账号' });
+      }
+      var prev =
+        rows[0].sales_promo_channel != null ? String(rows[0].sales_promo_channel).trim() : '';
+      var already = prev.toLowerCase() === 'abc';
+      if (!already) {
+        await conn.execute('UPDATE users SET sales_promo_channel = ? WHERE username = ?', [
+          'abc',
+          username
+        ]);
+      }
+      if (deps && typeof deps.forgetUserSalesPromoChannel === 'function') {
+        deps.forgetUserSalesPromoChannel(username);
+      }
+      return res.json({
+        code: 200,
+        msg: already
+          ? '这个账号已经是 ABC 渠道'
+          : '已改为 ABC 渠道，马上生效' + (prev ? '（原渠道：' + prev + '）' : ''),
+        data: {
+          username: String(rows[0].username || username),
+          previous_channel: prev,
+          sales_promo_channel: 'abc',
+          changed: !already
+        }
+      });
+    } catch (e) {
+      console.error('[abc-ops-assign]', e);
+      return res.status(500).json({ code: 500, msg: '改渠道失败' });
+    } finally {
+      if (conn) conn.release();
+    }
+  }
+
   return {
     handleAbcOpsOverview: handleAbcOpsOverview,
     handleAbcOpsUsers: handleAbcOpsUsers,
     handleAbcOpsPayments: handleAbcOpsPayments,
+    handleAbcOpsAssign: handleAbcOpsAssign,
     parsePeriod: parsePeriod,
     periodCnDateFilter: periodCnDateFilter,
     abcChannelSql: abcChannelSql,
@@ -767,12 +820,13 @@ function createAbcOps(deps) {
   };
 }
 
-function getHandlers() {
-  var api = createAbcOps();
+function getHandlers(deps) {
+  var api = createAbcOps(deps);
   return {
     handleAbcOpsOverview: api.handleAbcOpsOverview,
     handleAbcOpsUsers: api.handleAbcOpsUsers,
-    handleAbcOpsPayments: api.handleAbcOpsPayments
+    handleAbcOpsPayments: api.handleAbcOpsPayments,
+    handleAbcOpsAssign: api.handleAbcOpsAssign
   };
 }
 

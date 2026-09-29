@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20260910-bid-toast">
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20260929-abc-assign">
     <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260905-ch-psych-col">
 </head>
 <body>
@@ -1974,6 +1974,20 @@
 
                 <div id="page-abc-ops" class="page-panel" role="tabpanel">
                     <div class="page-lede"><p class="page-lede-text">只看账号 <code>sales_promo_channel=abc</code> 的注册 / 开通 / 付费，以及 <a href="install_guide.html?ch=abc" target="_blank" rel="noopener">install_guide.html?ch=abc</a> 下载页。下载页 UV 与账号无法一一对应。截止后新注册 abc 仅 admin 可见。</p></div>
+                    <section class="abc-ops-assign">
+                        <h2>指定账号改为 ABC</h2>
+                        <p class="hint mt-0">把已有账号的推广渠道改成 abc，会覆盖原来的渠道。保存后马上按 ABC 计价。</p>
+                        <div class="user-filter-fields abc-ops-assign-row">
+                            <div>
+                                <label for="abcOpsAssignUser">账号</label>
+                                <input type="text" id="abcOpsAssignUser" class="filter-text-wide" maxlength="255" placeholder="手机号或账号" autocomplete="off">
+                            </div>
+                            <div class="flex-actions">
+                                <button type="button" class="btn-primary" id="btnAbcOpsAssign">改为 ABC</button>
+                            </div>
+                        </div>
+                        <p class="hint" id="abcOpsAssignResult" aria-live="polite"></p>
+                    </section>
                     <section>
                         <div class="ops-board-head">
                             <h2>ABC 转化</h2>
@@ -4373,7 +4387,7 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260917-bj-landscape"></script>
+    <script src="/js/admin/loader.js?v=20260929-abc-assign"></script>
     <script src="/js/admin/nav.js?v=20260908-hub-tab-perm"></script>
     <script src="/js/admin-analytics-period.js?v=20260905-ch-psych-col"></script>
     <script src="/js/admin_panel.js?v=20260924-dau-same-clock"></script>
