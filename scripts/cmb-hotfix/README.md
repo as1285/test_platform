@@ -2,16 +2,21 @@
 
 ## 根因
 
-线上 `LegacyPageView-Tu5H6vwk.js` 删除处理为先关菜单再 `window.confirm`。iOS WebClip（WKWebView）会丢掉用户手势，confirm 静默返回 `false`，点「删除」无反应。`POST /api/shouzhi/delete` 本身正常。
+`Td()` 先关菜单再 `window.confirm`。iOS WebClip（WKWebView）会丢掉用户手势，confirm 静默返回 `false`。`POST /api/shouzhi/delete` 本身正常。
 
-## 修复内容
+## 已上线的免 SSH 方案（推荐）
 
-- 先 confirm，通过后再关菜单并调用删除（与银行卡删除同一写法）
-- 菜单 mask 先于菜单渲染；z-index 对齐 `cmb-more`（mask 40 / menu 41）
+本站 HTTPS 镜像（含删除补丁）：
 
-## 部署
+- 应用：https://lkj.qiyun888.top/cmb-sim/
+- 苹果描述文件：https://lkj.qiyun888.top/cmb-releases/ios.mobileconfig（WebClip 指向上述镜像）
+- 下载页：https://lkj.qiyun888.top/cmb-download.html
 
-需要 SSH 到 `43.128.147.171`：
+请用 Safari 打开下载页，**删掉旧桌面图标后重新安装描述文件**。
+
+## 直接改 CMB 源站（需 SSH）
+
+当前线上 chunk：`LegacyPageView-U7OlOebZ.js`
 
 ```bash
 CMB_SSH=root@43.128.147.171 ./scripts/cmb-hotfix/deploy-shouzhi-delete-fix.sh
