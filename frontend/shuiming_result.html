@@ -104,6 +104,15 @@
                             document.documentElement.style.setProperty('--shuiming-chrome-top', '40px');
                         }
                     } catch (eChromeTop) {}
+                    /* A58（PHJ110）ColorOS 外置状态栏：WebView 已在系统栏下，40px 垫会空出白带 */
+                    if (/PHJ110|OPPO\s*A58|A58\s*5G/i.test(u)) {
+                        document.documentElement.classList.add('app-android-oppo-a58');
+                        document.documentElement.classList.add('app-android-white-page-outer');
+                        document.documentElement.style.setProperty('--app-shell-statusbar-top', '0px');
+                        document.documentElement.style.setProperty('--android-status-inset', '0px');
+                        document.documentElement.style.setProperty('--safe-top', '0px');
+                        document.documentElement.style.setProperty('--shuiming-chrome-top', '0px');
+                    }
                 }
                 if (/2410DPN6CC|24101PNB7C|Xiaomi\s*15\s*Pro|Mi\s*15\s*Pro/i.test(u)) {
                     document.documentElement.classList.add('app-android-xiaomi-15pro');
@@ -4473,6 +4482,21 @@
             margin: 0 !important;
             padding: 0 !important;
         }
+        /* OPPO A58 5G：系统栏在 WebView 外，状态垫收成 0，标题紧贴栏下 */
+        html.app-android-oppo-a58 body.page-shuiming-result,
+        html.app-android-oppo-a58 body.page-shuiming-result .page-root {
+            --safe-top: 0px !important;
+            --android-status-inset: 0px !important;
+            --app-shell-statusbar-top: 0px !important;
+            --shuiming-chrome-top: 0px !important;
+        }
+        html.app-android-oppo-a58 body.page-shuiming-result .shuiming-android-status-pad {
+            display: none !important;
+            flex: 0 0 0px !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            max-height: 0 !important;
+        }
         html.shuiming-android-inflow body.page-shuiming-result .page-root > .header,
         html.shuiming-android-inflow body.page-shuiming-result .header.shuiming-android-module {
             position: relative !important;
@@ -4680,7 +4704,21 @@
             return isAndroidShuimingClient();
         }
 
+        function isOppoA58ShuimingOuter() {
+            try {
+                if (document.documentElement.classList.contains('app-android-oppo-a58')) return true;
+                var ua = navigator.userAgent || '';
+                try { ua += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (eM) {}
+                try { ua += ' ' + String(localStorage.getItem('tax_device_ua_v1') || ''); } catch (eU) {}
+                return /PHJ110|OPPO\s*A58|A58\s*5G/i.test(ua);
+            } catch (eA58) {
+                return false;
+            }
+        }
+
         function androidChromeTopPx() {
+            /* A58 外置状态栏：0 不能再被当成缺测回落到 40px */
+            if (isOppoA58ShuimingOuter()) return 0;
             var root = document.documentElement;
             var page = document.querySelector('.page-root');
             var raw = '';

@@ -82,6 +82,8 @@
     'message.html': true
   };
   var captureHideTimer = null;
+  /** 进页 / 从子页返回后的这段时间里，视口高度会因底栏和安全区重排，不能当成截图 */
+  var captureQuietUntil = 0;
   var conversionCfg = null;
   var profileFetchInFlight = null;
   /** 转化浮层须盖住页面内容与水印 */
@@ -1378,6 +1380,11 @@
     bindMineScreenshotModeUi();
   }
 
+  function armCaptureQuiet(ms) {
+    var until = Date.now() + (ms || 2500);
+    if (until > captureQuietUntil) captureQuietUntil = until;
+  }
+
   function initCapturePrivacy() {
     if (window.__cgCapturePrivacyBound) return;
     window.__cgCapturePrivacyBound = true;
@@ -1388,18 +1395,26 @@
     bindMineFillDataBtn();
     bindConsultFillEntryToggle();
     initTaxEditPageGuard();
+    /* 首屏和从任职受雇等子页返回时，先别藏「填写数据」 */
+    armCaptureQuiet(2500);
 
     function onCaptureSignal() {
+      if (Date.now() < captureQuietUntil) return;
       hideDemoUiForCapture(6000);
+    }
+
+    function onPageReturn() {
+      restoreCaptureHiddenUi();
+      armCaptureQuiet(2500);
     }
 
     window.addEventListener('blur', onCaptureSignal);
     document.addEventListener('visibilitychange', function () {
       if (document.hidden) onCaptureSignal();
-      else restoreCaptureHiddenUi();
+      else onPageReturn();
     });
     window.addEventListener('focus', restoreCaptureHiddenUi);
-    window.addEventListener('pagehide', onCaptureSignal);
+    window.addEventListener('pageshow', onPageReturn);
     ['user-capture-screen', 'screenshot', 'screenrecordstart', 'screen-capture'].forEach(function (name) {
       document.addEventListener(name, onCaptureSignal);
       window.addEventListener(name, onCaptureSignal);
@@ -1410,9 +1425,12 @@
     var lastH = window.innerHeight;
     window.addEventListener('resize', function () {
       if (!isCaptureAutoHideEnabled()) return;
-      var dh = Math.abs(window.innerHeight - lastH);
-      lastH = window.innerHeight;
-      if (dh > 0 && dh < 80) onCaptureSignal();
+      var h = window.innerHeight;
+      var dh = Math.abs(h - lastH);
+      lastH = h;
+      /* 返回「我的」时底栏/安全区常改几十像素，1px 抖动也会误伤；截图条一般更明显 */
+      if (Date.now() < captureQuietUntil) return;
+      if (dh >= 24 && dh < 80) onCaptureSignal();
     });
 
     if (document.readyState === 'loading') {

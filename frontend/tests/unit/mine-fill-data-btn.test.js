@@ -43,10 +43,13 @@ describe('我的页激活按钮下方填写数据', () => {
     expect(guideSrc).toContain('toggleMineFillDataBtn()');
     expect(guideSrc).toContain('function bindMineFillDataBtn');
     expect(guideSrc).toContain('goMineFillData()');
-    expect(auth).toContain('conversion-guide.js?v=20260923-fill-data');
+    expect(auth).toContain('conversion-guide.js?v=20260930-fill-stay');
     expect(auth).toContain('var(--mine-fill-data-gap,44px)');
     expect(mine).toContain('left: 16px;');
     expect(mine).toContain('right: auto;');
+    expect(mine).toContain("localStorage.getItem('cg_mine_fill_data_btn') === '0'");
+    expect(mine).toContain('cg-mine-fill-data-off');
+    expect(mine).toContain('html.cg-mine-fill-data-off body.page-mine .mine-fill-data-btn');
     expect(auth).toContain('left:16px !important;right:auto !important;');
     expect(auth).toContain('left:18px !important;right:auto !important;');
     expect(auth).not.toContain('.mine-fill-data-btn{top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-shell-statusbar-top,0px) + var(--mine-fill-data-gap,44px)) !important;right:16px !important;');
@@ -90,6 +93,21 @@ describe('填写数据入口开关运行时', () => {
     loadGuide();
     document.getElementById('mineFillDataBtn').click();
     expect(window.location.href).toMatch(/consult\.html\?tab=records/);
+  });
+
+  it('从子页返回时视口变高不会把填写数据闪掉', () => {
+    loadGuide();
+    const html = document.documentElement;
+    html.classList.add('cg-capture-hide');
+    window.dispatchEvent(new Event('pageshow'));
+    expect(html.classList.contains('cg-capture-hide')).toBe(false);
+
+    const h = window.innerHeight || 800;
+    Object.defineProperty(window, 'innerHeight', { configurable: true, writable: true, value: h - 48 });
+    window.dispatchEvent(new Event('resize'));
+    window.dispatchEvent(new Event('pagehide'));
+    window.dispatchEvent(new Event('blur'));
+    expect(html.classList.contains('cg-capture-hide')).toBe(false);
   });
 
   it('右上角开关可隐藏并再显示我的页填写数据按钮', () => {
