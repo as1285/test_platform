@@ -363,6 +363,8 @@ async function main() {
   copyDir(path.join(ROOT, 'public', 'js'), path.join(SITE, 'js'));
   copyDir(path.join(ROOT, 'public', 'img'), path.join(SITE, 'img'));
   copyDir(path.join(ROOT, 'public', 'cmb-releases'), path.join(SITE, 'cmb-releases'));
+  /* 招行模拟器补丁站：WebClip 打开本站 HTTPS /cmb-sim/，必须打进镜像，否则 404 */
+  copyDir(path.join(ROOT, 'cmb-sim'), path.join(SITE, 'cmb-sim'));
   copyDir(path.join(ROOT, 'caidan'), path.join(SITE, 'caidan'));
   copyDir(path.join(ROOT, 'bank_icons'), path.join(SITE, 'bank_icons'));
   /* iOS 主屏 / 描述文件 WebClip 启动图（apple-touch-startup-image） */
