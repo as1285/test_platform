@@ -43,7 +43,7 @@ describe('红米 K70 标准版全页黑状态栏', () => {
     expect(mine).toContain('Windows|Macintosh|X11');
   });
 
-  it('auth.js 全页黑条，标准版不再走 underlap', () => {
+  it('auth.js 标准版不再走 underlap，系统栏回退 7/20 灰根', () => {
     expect(auth).toContain('function isRedmiK70StandardClient()');
     expect(auth).toContain('function resolveMineStatusMode()');
     const modeFn = auth.slice(
@@ -53,17 +53,11 @@ describe('红米 K70 标准版全页黑状态栏', () => {
     expect(modeFn).toContain('isRedmiK70StandardClient()');
     expect(modeFn).toContain("if (isMineUnderlapPreviewBlob(clientUaBlob()))");
     expect(modeFn).toContain('isRedmiK70UltraClient() || isRedmiK70StandardClient()');
-    const start = auth.indexOf('function applyImmersiveBlueStatusBar');
-    const end = auth.indexOf('function applyMinePageChrome');
-    const fn = auth.slice(start, end);
-    expect(fn).toContain('isRedmiK70StandardClient()');
-    expect(fn).toContain("color: '#000000'");
-    expect(fn).toContain('overlays: false');
-    expect(fn).toContain('reapplyK70Light');
+    expect(auth).toContain('function applyAndroidJuly20SystemBar');
     expect(auth).toContain(
       'html.app-android-redmi-k70.app-android-client.app-top-safe-shell:not(.app-android-redmi-k70-ultra) body.page-mine::before{display:none'
     );
-    expect(auth).toContain(
+    expect(auth).not.toContain(
       'html.app-android-redmi-k70.app-top-safe-shell:not(.app-android-redmi-k70-ultra):has(body.page-shuiming)::before'
     );
     expect(auth).toContain('var redmiK70StdClient');

@@ -8,29 +8,24 @@ const shuimingResult = readFileSync(resolve(__dirname, '../../shuiming_result.ht
 const cordova = readFileSync(resolve(__dirname, '../../../cordova-app/www/index.html'), 'utf8');
 
 describe('首页蓝顶栏 / 纳税明细顶白底', () => {
-  it('安卓对齐 8 月初：蓝顶沉浸；仅 Ace2V/小米14 外置黑条；iOS 不变', () => {
+  it('安卓系统栏回退 7/20 灰根，iOS 蓝顶不变', () => {
     const start = auth.indexOf('function applyImmersiveBlueStatusBar');
     const end = auth.indexOf('function applyMinePageChrome');
     expect(start).toBeGreaterThan(0);
     expect(end).toBeGreaterThan(start);
     const fn = auth.slice(start, end);
-    expect(fn).toContain('isLikelyAndroidViewportClient()');
+    expect(fn).toContain('isAndroidStatusBarClient()');
+    expect(fn).toContain('applyAndroidJuly20SystemBar');
     expect(fn).not.toContain('ensureAndroidFixedBlackStatusPad');
-    expect(fn).toContain('isOnePlusAce2VClient()');
-    expect(fn).toContain('isXiaomi14LikeClient()');
-    expect(fn).toContain("color: '#000000'");
-    expect(fn).toContain('overlays: false');
-    expect(fn).toContain('color: topColor');
-    expect(fn).toContain('overlays: !androidOuterSolid');
+    expect(fn).not.toContain("color: '#000000'");
   });
 
   it('setupMobileStatusBar 不再把全部安卓蓝顶页刷成黑条', () => {
-    expect(auth).toContain('安卓蓝顶页：对齐 8 月初 UI');
-    expect(auth).toContain('cordovaXiaomi23127 || xiaomi14Client');
+    expect(auth).toContain('安卓系统栏对齐 7/20');
+    expect(auth).toContain("androidClient\n        ? '#f5f6fa'");
     expect(auth).not.toContain(
       'androidClient && (immersiveBlueTop || cordovaXiaomi23127 || xiaomi14Client)'
     );
-    expect(auth).not.toContain('androidClient && immersiveBlueTop\n          ? \'black\'');
     expect(auth).toContain(
       "immersiveBlueTop || !lightRootChrome ? 'black-translucent' : 'default'"
     );
@@ -49,7 +44,7 @@ describe('首页蓝顶栏 / 纳税明细顶白底', () => {
       'html.app-android-xiaomi-14.app-top-safe-shell:has(body.page-shuiming-result)::before'
     );
     expect(auth).toContain(
-      'html.app-android-xiaomi-14.app-top-safe-shell:has(body.page-xiangqing)::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,48px) !important;background:#fff !important;z-index:2147483000 !important;pointer-events:none !important;}'
+      'html.app-android-xiaomi-14.app-top-safe-shell:has(body.page-xiangqing)::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,48px) !important;background:#f5f6fa !important;z-index:2147483000 !important;pointer-events:none !important;}'
     );
     expect(auth).toContain(
       'html.app-android-xiaomi-14.app-top-safe-shell body.page-shouye::before{background-color:rgb(var(--shouye-top-bar-rgb,79, 144, 243))'
@@ -69,7 +64,7 @@ describe('首页蓝顶栏 / 纳税明细顶白底', () => {
     expect(shuimingResult).toContain('background: #fff');
     expect(shuimingResult).toContain('overscroll-behavior-y: none');
     expect(shuimingResult).toContain('width: 4px');
-    expect(shuimingResult).toContain('auth.js?v=20261006-mi14-white');
+    expect(shuimingResult).toContain('auth.js?v=20261006-android-july20-mi14');
   });
 
   it('首页脚本缓存戳已刷新', () => {
