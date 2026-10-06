@@ -34,6 +34,26 @@
                 if (/23116PN5|23116PN|(?:Xiaomi|Mi|小米)[\s_-]*14[\s_-]*Pro/i.test(u)) {
                     document.documentElement.classList.add('app-android-xiaomi-14pro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
+                } else if (
+                    /23127PN0CC|23127PN0CG|23127PN\b/i.test(u) ||
+                    (/(?:Xiaomi|Mi|小米)[\s_-]*14\b(?![\s_-]*(?:Pro|Ultra))/i.test(u) &&
+                        !/23116PN/i.test(u))
+                ) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.classList.add('app-android-xiaomi-14');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '48px');
+                    document.documentElement.style.setProperty('--android-status-inset', '48px');
+                    if (!document.querySelector('style[data-xiaomi14-shuiming-white-firstpaint]')) {
+                        var mi14Sm = document.createElement('style');
+                        mi14Sm.setAttribute('data-xiaomi14-shuiming-white-firstpaint', '1');
+                        mi14Sm.textContent =
+                            'html.app-android-xiaomi-14{--app-shell-statusbar-top:48px !important;--android-status-inset:48px !important;}' +
+                            'html.app-android-xiaomi-14.app-top-safe-shell body.page-shuiming::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,48px) !important;background:#fff !important;z-index:2147483000 !important;pointer-events:none !important;}' +
+                            'html.app-android-xiaomi-14.app-top-safe-shell body.page-shuiming > .header{padding-top:calc(14px + 48px) !important;box-sizing:border-box !important;background:#fff !important;}' +
+                            'html.app-android-xiaomi-14.app-top-safe-shell body.page-shuiming > .content{padding-top:calc(46px + 48px) !important;}';
+                        (document.head || document.documentElement).appendChild(mi14Sm);
+                    }
                 }
                 if (
                     /M2001J2[CEGI]|M2001J1[CEG]|M2102J2SC|M2007J1SC|M2007J3SC|M2007J17C/i.test(u) ||
@@ -499,7 +519,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260928-air-top" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20261006-mi14-white" defer fetchpriority="low"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>

@@ -62,8 +62,8 @@ describe('iPhone Air 收入纳税明细顶部状态栏避让', () => {
     expect(shuiming).toContain(
       'padding-top: calc(14px + var(--app-shell-statusbar-top, 59px)) !important'
     );
-    expect(shuimingResult).toContain('auth.js?v=20260928-air-top');
-    expect(shuiming).toContain('auth.js?v=20260928-air-top');
+    expect(shuimingResult).toContain('auth.js?v=20261006-mi14-white');
+    expect(shuiming).toContain('auth.js?v=20261006-mi14-white');
   });
 });
 
@@ -78,6 +78,6 @@ describe('收入纳税明细切年份二次进入顶空白', () => {
     expect(shuimingResult).toMatch(/setProperty\(\s*['"]margin-top['"]/);
     expect(shuimingResult).toContain('overscroll-behavior-y: none');
     expect(shuimingResult).toContain('resetShuimingScrollTop();');
-    expect(shuimingResult).toContain('auth.js?v=20260928-air-top');
+    expect(shuimingResult).toContain('auth.js?v=20261006-mi14-white');
   });
 });

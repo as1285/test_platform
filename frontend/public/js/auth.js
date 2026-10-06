@@ -5968,7 +5968,7 @@
         setTimeout(reapplyDark, 800);
         return;
       }
-      /* 小米 14：勿走外置清零；页内黑条 + 48px 顶距（灵动岛下 overlays 常失败） */
+      /* 小米 14：勿走外置清零；白顶页页内白条 + 48px 顶距（HyperOS overlays 常失败） */
       var xiaomi14PaintedBar =
         isXiaomi14LikeClient() ||
         root.classList.contains('app-android-xiaomi-14') ||
@@ -5984,16 +5984,24 @@
             body.style.setProperty('--android-status-inset', '48px');
           }
         } catch (eMi14Inset) {}
-        upsertMeta('theme-color', '#000000');
-        upsertMeta('msapplication-navbutton-color', '#000000');
-        setStatusBarStyleMeta('black');
-        requestShellStatusBar({
-          style: 'light',
+        upsertMeta('theme-color', '#ffffff');
+        upsertMeta('msapplication-navbutton-color', '#ffffff');
+        setStatusBarStyleMeta('default');
+        var mi14WhiteOpts = {
+          style: 'default',
           overlays: false,
-          color: '#000000',
+          color: '#ffffff',
           paint_shell: true,
-          shell_bg: '#f5f6fa'
-        });
+          shell_bg: '#ffffff'
+        };
+        requestShellStatusBar(mi14WhiteOpts);
+        var reapplyMi14White = function () {
+          requestShellStatusBar(mi14WhiteOpts);
+        };
+        setTimeout(reapplyMi14White, 0);
+        setTimeout(reapplyMi14White, 80);
+        setTimeout(reapplyMi14White, 320);
+        setTimeout(reapplyMi14White, 800);
         return;
       }
       var cordovaShell = root.classList.contains('app-cordova-shell');
@@ -6764,11 +6772,14 @@
       var immersiveBlueTop = getImmersiveBlueTopColor();
       /*
        * 安卓蓝顶页：对齐 8 月初 UI——theme-color 跟顶栏蓝 + black-translucent（沉浸蓝顶）。
-       * 仅小米 14 / 23127 外置黑条用 #000；勿再把全部安卓蓝顶页刷成黑条（9/3 回归）。
+       * 小米 14 / 23127：白顶栏页用 #fff；蓝顶页仍用 #000。K70 / 荣耀 X20 保持黑条。
        * iOS 仍用顶色 + translucent，本分支不改 iOS。
        */
-      var rootChromeBg =
-        cordovaXiaomi23127 || xiaomi14Client || redmiK70StdClient || honorX20Client
+      var xiaomi14WhiteChrome =
+        (cordovaXiaomi23127 || xiaomi14Client) && isAndroidWhiteStatusPage();
+      var rootChromeBg = xiaomi14WhiteChrome
+        ? '#ffffff'
+        : cordovaXiaomi23127 || xiaomi14Client || redmiK70StdClient || honorX20Client
           ? '#000000'
           : immersiveBlueTop
             ? immersiveBlueTop
@@ -6988,17 +6999,19 @@
       }
       if (androidClient && isXiaomi14LikeClient()) {
         document.documentElement.classList.add('app-android-xiaomi-14');
-        /* 首帧申请黑条；HyperOS 常忽略 overlays=false，CSS 另绘 48px 页内黑边兜底 */
+        /* 首帧：白顶页白条、蓝顶页黑条；HyperOS 常忽略 overlays=false，CSS 另绘 48px 页内边兜底 */
         try {
-          upsertMeta('theme-color', '#000000');
-          upsertMeta('msapplication-navbutton-color', '#000000');
-          setStatusBarStyleMeta('black');
+          var mi14FirstWhite = isAndroidWhiteStatusPage();
+          var mi14FirstColor = mi14FirstWhite ? '#ffffff' : '#000000';
+          upsertMeta('theme-color', mi14FirstColor);
+          upsertMeta('msapplication-navbutton-color', mi14FirstColor);
+          setStatusBarStyleMeta(mi14FirstWhite ? 'default' : 'black');
           requestShellStatusBar({
-            style: 'light',
+            style: mi14FirstWhite ? 'default' : 'light',
             overlays: false,
-            color: '#000000',
+            color: mi14FirstColor,
             paint_shell: true,
-            shell_bg: '#f5f6fa'
+            shell_bg: mi14FirstWhite ? '#ffffff' : '#f5f6fa'
           });
         } catch (eMi14Bar) {}
       }
@@ -7388,10 +7401,10 @@
           statusInsetCss +
           ';}' +
           'html.app-android-xiaomi-14.app-top-safe-shell{--app-shell-statusbar-top:48px !important;--android-status-inset:48px !important;}' +
-          /* 白顶栏页才铺页内黑条；蓝顶首页勿再叠黑，否则系统栏外再短一截 */
+          /* 白顶栏页铺页内白条，与导航白底衔接；蓝顶首页另刷搜索蓝 */
           'html.app-android-xiaomi-14.app-top-safe-shell:has(body.page-shuiming)::before,' +
           'html.app-android-xiaomi-14.app-top-safe-shell:has(body.page-shuiming-result)::before,' +
-          'html.app-android-xiaomi-14.app-top-safe-shell:has(body.page-xiangqing)::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,48px) !important;background:#000 !important;z-index:2147483000 !important;pointer-events:none !important;}' +
+          'html.app-android-xiaomi-14.app-top-safe-shell:has(body.page-xiangqing)::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,48px) !important;background:#fff !important;z-index:2147483000 !important;pointer-events:none !important;}' +
           /* 红米 K70 标准版：全页黑条 40px（白顶页 + 我的）；蓝顶首页勿再叠黑 */
           'html.app-android-redmi-k70.app-top-safe-shell:not(.app-android-redmi-k70-ultra){--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
           'html.app-android-redmi-k70.app-top-safe-shell:not(.app-android-redmi-k70-ultra):has(body.page-shuiming)::before,' +

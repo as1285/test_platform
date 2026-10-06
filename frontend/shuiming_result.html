@@ -168,6 +168,30 @@
                             'html.app-android-xiaomi-14pro body.page-shuiming-result .list{margin-top:calc(var(--header-height,48px) + 40px) !important;}';
                         (document.head || document.documentElement).appendChild(mi14St);
                     }
+                } else if (
+                    /23127PN0CC|23127PN0CG|23127PN\b/i.test(u) ||
+                    (/(?:Xiaomi|Mi|小米)[\s_-]*14\b(?![\s_-]*(?:Pro|Ultra))/i.test(u) &&
+                        !/23116PN/i.test(u))
+                ) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.classList.add('app-android-xiaomi-14');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '48px');
+                    document.documentElement.style.setProperty('--android-status-inset', '48px');
+                    document.documentElement.style.setProperty('--safe-top', '48px');
+                    if (!document.querySelector('style[data-xiaomi14-result-white-firstpaint]')) {
+                        var mi14StdSt = document.createElement('style');
+                        mi14StdSt.setAttribute('data-xiaomi14-result-white-firstpaint', '1');
+                        mi14StdSt.textContent =
+                            'html.app-android-xiaomi-14{--app-shell-statusbar-top:48px !important;--android-status-inset:48px !important;--safe-top:48px !important;}' +
+                            'html.app-android-xiaomi-14.app-top-safe-shell body.page-shuiming-result::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:48px !important;background:#fff !important;z-index:2147483000 !important;pointer-events:none !important;}' +
+                            'html.app-android-xiaomi-14 body.page-shuiming-result .page-root{--safe-top:48px !important;--app-shell-statusbar-top:48px !important;}' +
+                            'html.app-android-xiaomi-14 body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(var(--header-height,48px) + 48px) !important;min-height:calc(var(--header-height,48px) + 48px) !important;padding:48px 16px 0 !important;box-sizing:border-box !important;background:#fff !important;}' +
+                            'html.app-android-xiaomi-14 body.page-shuiming-result .top-fixed .header .back-btn,html.app-android-xiaomi-14 body.page-shuiming-result .top-fixed .header .header-right{top:48px !important;height:var(--header-height,48px) !important;display:flex !important;align-items:center !important;}' +
+                            'html.app-android-xiaomi-14 body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,48px) + 48px) !important;}' +
+                            'html.app-android-xiaomi-14 body.page-shuiming-result .list{margin-top:calc(var(--header-height,48px) + 48px) !important;}';
+                        (document.head || document.documentElement).appendChild(mi14StdSt);
+                    }
                 }
                 if (/Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u) &&
                     !/Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(u)) {
@@ -1178,7 +1202,7 @@
             else document.addEventListener('DOMContentLoaded', hoistIos27ResultChrome);
         })();
     </script>
-    <script src="/js/auth.js?v=20260928-air-top" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20261006-mi14-white" defer fetchpriority="low"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>

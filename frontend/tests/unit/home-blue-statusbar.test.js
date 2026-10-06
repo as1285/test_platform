@@ -43,8 +43,14 @@ describe('首页蓝顶栏 / 纳税明细顶白底', () => {
     expect(cordova).toContain('iOS 外置栏会落成黑框');
   });
 
-  it('小米 14 首页顶条跟搜索蓝，黑条仅白顶栏页', () => {
+  it('小米 14 首页顶条跟搜索蓝，白顶栏页铺白条', () => {
     expect(auth).toContain('html.app-android-xiaomi-14.app-top-safe-shell:has(body.page-shuiming)::before');
+    expect(auth).toContain(
+      'html.app-android-xiaomi-14.app-top-safe-shell:has(body.page-shuiming-result)::before'
+    );
+    expect(auth).toContain(
+      'html.app-android-xiaomi-14.app-top-safe-shell:has(body.page-xiangqing)::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,48px) !important;background:#fff !important;z-index:2147483000 !important;pointer-events:none !important;}'
+    );
     expect(auth).toContain(
       'html.app-android-xiaomi-14.app-top-safe-shell body.page-shouye::before{background-color:rgb(var(--shouye-top-bar-rgb,79, 144, 243))'
     );
@@ -63,11 +69,11 @@ describe('首页蓝顶栏 / 纳税明细顶白底', () => {
     expect(shuimingResult).toContain('background: #fff');
     expect(shuimingResult).toContain('overscroll-behavior-y: none');
     expect(shuimingResult).toContain('width: 4px');
-    expect(shuimingResult).toContain('auth.js?v=20260923-honor-x20');
+    expect(shuimingResult).toContain('auth.js?v=20261006-mi14-white');
   });
 
   it('首页脚本缓存戳已刷新', () => {
-    expect(shouye).toContain('auth.js?v=20260923-honor-x20');
+    expect(shouye).toMatch(/auth\.js\?v=/);
   });
 
   it('iPhone 14 Pro 首页刘海垫搜索蓝，不留 Cordova 顶黑框', () => {

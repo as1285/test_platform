@@ -21,6 +21,25 @@
                 if (/23116PN5|23116PN|(?:Xiaomi|Mi|小米)[\s_-]*14[\s_-]*Pro/i.test(u)) {
                     document.documentElement.classList.add('app-android-xiaomi-14pro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
+                } else if (
+                    /23127PN0CC|23127PN0CG|23127PN\b/i.test(u) ||
+                    (/(?:Xiaomi|Mi|小米)[\s_-]*14\b(?![\s_-]*(?:Pro|Ultra))/i.test(u) &&
+                        !/23116PN/i.test(u))
+                ) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.classList.add('app-android-xiaomi-14');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '48px');
+                    document.documentElement.style.setProperty('--android-status-inset', '48px');
+                    if (!document.querySelector('style[data-xiaomi14-xiangqing-white-firstpaint]')) {
+                        var mi14Xq = document.createElement('style');
+                        mi14Xq.setAttribute('data-xiaomi14-xiangqing-white-firstpaint', '1');
+                        mi14Xq.textContent =
+                            'html.app-android-xiaomi-14{--app-shell-statusbar-top:48px !important;--android-status-inset:48px !important;}' +
+                            'html.app-android-xiaomi-14.app-top-safe-shell body.page-xiangqing::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:48px !important;background:#fff !important;z-index:2147483000 !important;pointer-events:none !important;}' +
+                            'html.app-android-xiaomi-14.app-top-safe-shell body.page-xiangqing > .header{padding-top:calc(var(--xq-header-core, 44px) + 48px) !important;box-sizing:border-box !important;background:#fff !important;}';
+                        (document.head || document.documentElement).appendChild(mi14Xq);
+                    }
                 }
                 if (
                     /24129PN74|(?:Xiaomi|Mi|小米)[\s_-]*15(?![\s_-]*(?:Pro|Ultra|S))/i.test(u) &&
@@ -292,7 +311,7 @@
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
     <script src="/js/auth-boot.js?v=20260923-bs4s-restore"></script>
-    <script src="/js/auth.js?v=20260924-13pm-status" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20261006-mi14-white" defer fetchpriority="low"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope="body.page-xiangqing"></script>
