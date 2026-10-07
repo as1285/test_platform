@@ -15,7 +15,8 @@ describe('expired trial self-serve repurchase', () => {
     expect(monolith).toContain("path.indexOf('/api/payments/alipay') === 0");
     expect(monolith).toContain('/api/payments/price-bid');
     expect(monolith).toContain('allowExpiredSelfServe');
-    expect(monolith).toContain('支付宝/心理价等自助续开路径必须放行');
+    expect(monolith).toContain('支付宝/心理价/开通页所需接口必须放行');
+    expect(monolith).toContain('if (isUnactivatedAllowedRequest(req)) return true;');
   });
 
   it('purchase page soft-handles activation_expired without clearing session', () => {
@@ -24,5 +25,6 @@ describe('expired trial self-serve repurchase', () => {
     expect(authJs).toContain("localStorage.setItem('account_active', '0')");
     expect(authJs).toContain("errExpSoft.activation_expired = true");
     expect(authJs).toContain('开通页自助复购');
+    expect(authJs).toContain('android_asset');
   });
 });

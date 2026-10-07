@@ -8400,6 +8400,7 @@ function isRetainedTrackAction(action) {
  * 试用已过期但仍允许的自助续开路径。
  * 与激活码 action=activate 同等放行：过期账号可在开通页拉价、下单、轮询、心理价与相关增长活动，
  * 避免 JWT 仍带 act=1 时被 requireAuth 401 踢登录导致无法复购。
+ * 另：开通页会拉 /api/user info；与未激活白名单对齐，避免 App WebView 误弹「试用已过期」。
  */
 function isTrialExpiredSelfServeAllowedRequest(req) {
   var path = normalizeUserApiPath(req);
@@ -8411,6 +8412,8 @@ function isTrialExpiredSelfServeAllowedRequest(req) {
   if (path.indexOf('/api/growth/purchase-price-survey') === 0) return true;
   /* 开通页标价文案会回退请求此接口 */
   if (path === '/api/lizhi-cert/status') return true;
+  /* 与未激活账号同等可读的用户/税务/消息接口（开通页邮箱探测等） */
+  if (isUnactivatedAllowedRequest(req)) return true;
   return false;
 }
 
@@ -8821,7 +8824,7 @@ async function requireAuth(req, res, next) {
       return res.status(401).json({ code: 401, msg: '登录已失效，请重新登录', session_revoked: true });
     }
     /* 令牌签发时仍为已激活，但试用已过期 → 强制 C 端重新登录。
-       例外：激活码续开 + 支付宝/心理价等自助续开路径必须放行，否则过期用户无法复购。 */
+       例外：激活码续开 + 支付宝/心理价/开通页所需接口必须放行，否则过期用户无法复购。 */
     var tokAct = payload.act != null && payload.act !== '' ? Number(payload.act) : null;
     var isActivateAction =
       req.body &&

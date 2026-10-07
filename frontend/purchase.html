@@ -11,7 +11,7 @@
     <script src="/js/tab-shell-escape.js?v=20260907-pay-top2"></script>
     <script src="/js/auth-boot.js?v=20260923-bs4s-restore"></script>
     <script src="/js/email-suffix.js?v=20260907-email-sfx" data-email-suffix="1"></script>
-    <script src="/js/auth.js?v=20260909-android-aug1-blue" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20261007-expired-repurchase" defer fetchpriority="low"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 开通演示</title>
     <style>
@@ -2496,6 +2496,8 @@
 
     function purchaseAuthFetch(url, opts) {
         opts = opts || {};
+        /* 试用过期 JWT 仍可能带 act=1：开通页一律软处理，勿清会话/弹「请重新登录」 */
+        opts.allowActivationExpired = true;
         if (typeof window.authFetch === 'function') {
                     return window.authFetch(url, opts);
                 }
@@ -4207,7 +4209,7 @@
         if (hint != null) purchaseHasEmail = hint;
         if (typeof window.authFetch !== 'function') return;
         window
-            .authFetch('api/user?action=info')
+            .authFetch('api/user?action=info', { allowActivationExpired: true })
             .then(function (r) {
                 return (window.authParseJson || function (x) { return x.json(); })(r);
             })
@@ -4305,6 +4307,7 @@
                 window
                     .authFetch('api/user', {
                         method: 'POST',
+                        allowActivationExpired: true,
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ action: 'save_profile', email: val })
                     })

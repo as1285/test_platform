@@ -11332,9 +11332,13 @@
               try {
                 var locHref = String(window.location.href || '');
                 var locPath = String(window.location.pathname || '');
+                var locHash = String(window.location.hash || '');
+                /* App WebView / Cordova 路径可能带 file://、android_asset、hash 路由 */
                 onPurchasePage =
-                  /(?:^|\/)purchase\.html(?:$|\?|#)/i.test(locPath) ||
-                  /(?:^|\/)purchase\.html(?:$|\?|#)/i.test(locHref);
+                  /purchase\.html/i.test(locPath) ||
+                  /purchase\.html/i.test(locHref) ||
+                  /purchase\.html/i.test(locHash) ||
+                  /(?:^|[?#&])page=purchase(?:&|$)/i.test(locHref);
               } catch (ePg) {}
               if (onPurchasePage || opts.allowActivationExpired) {
                 try {
