@@ -68,7 +68,7 @@
     if (global.AdminAnalyticsPeriod && typeof AdminAnalyticsPeriod.getValue === 'function') {
       return AdminAnalyticsPeriod.getValue(el);
     }
-    return el ? String(el.value || fallback || '7') : fallback || '7';
+    return el ? String(el.value || fallback || '1') : fallback || '1';
   }
 
   function jumpToUser(username) {
@@ -314,7 +314,7 @@
     var funnelEl = document.getElementById('abcOpsFunnel');
     if (todayEl) todayEl.textContent = '加载中…';
     if (funnelEl) funnelEl.textContent = '加载中…';
-    var days = periodVal('abcOpsDays', '7');
+    var days = periodVal('abcOpsDays', '1');
     fetchAdmin('api/admin/ops/abc/overview?days=' + encodeURIComponent(days))
       .then(parseAdminJson)
       .then(function (j) {
