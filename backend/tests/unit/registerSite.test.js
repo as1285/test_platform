@@ -6,6 +6,8 @@ const {
   resolveAdminSiteScope,
   normalizeSiteFilter,
   appendRegisterSiteFilter,
+  isGetjob68ViewerAdmin,
+  appendExcludeGetjob68UnlessViewer,
   SITE_GETJOB68,
   SITE_LKJ,
   SITE_ALL
@@ -54,5 +56,21 @@ describe('registerSite', () => {
     appendRegisterSiteFilter(where, params, 'all', 'users');
     expect(where.length).toBe(0);
     expect(normalizeSiteFilter('')).toBe(SITE_ALL);
+  });
+
+  it('hides getjob68 users from non-top admins', () => {
+    expect(isGetjob68ViewerAdmin({ username: 'admin' })).toBe(true);
+    expect(isGetjob68ViewerAdmin({ username: 'Admin' })).toBe(true);
+    expect(isGetjob68ViewerAdmin({ username: '19106014552', is_super: true })).toBe(false);
+    expect(isGetjob68ViewerAdmin({ username: 'agent1' })).toBe(false);
+    var where = [];
+    var params = [];
+    appendExcludeGetjob68UnlessViewer(where, params, { username: 'agent1' }, 'u');
+    expect(where[0]).toContain('u.register_site');
+    expect(where[0]).toContain(SITE_GETJOB68);
+    where = [];
+    params = [];
+    appendExcludeGetjob68UnlessViewer(where, params, { username: 'admin' }, 'users');
+    expect(where.length).toBe(0);
   });
 });

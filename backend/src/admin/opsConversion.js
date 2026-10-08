@@ -233,7 +233,11 @@ function isFullScope(admin) {
 
 function appendRegisteredScope(where, params, admin, userCol) {
   var col = userCol || 'users.username';
+  var alias = String(col).indexOf('.') >= 0 ? String(col).split('.')[0] : 'users';
+  /* 新站 getjob68 注册用户仅最高管理员可见 */
+  registerSite.appendExcludeGetjob68UnlessViewer(where, params, admin, alias);
   if (!admin || !admin.username) return;
+  if (registerSite.isGetjob68ViewerAdmin(admin)) return;
   if (isFullScope(admin)) return;
   var uname = String(admin.username || '').trim();
   if (uname.toLowerCase() === 'admin') {

@@ -39,12 +39,16 @@ describe('管理后台注册站点分頁', () => {
     expect(adminJs).toContain("url += '&site='");
     expect(ops).toContain('function appendSiteQuery');
     expect(loader).toContain('ops-conversion.js?v=20261008-legacy-plain');
-    expect(html).toContain('admin_panel.js?v=20261008-legacy-plain');
+    expect(html).toContain('admin_panel.js?v=20261008-legacy-title');
   });
   it('注册列表不再用站点下拉切换，由页面固定站点', () => {
     expect(adminJs).toContain('注册站点由「新站注册 / 旧站注册」页面决定');
     expect(adminJs).toContain("siteField.style.display = 'none'");
     expect(adminJs).toContain("h2.textContent = '注册用户'");
     expect(adminJs).toContain('applyUsersListPageChrome()');
+  });
+  it('旧域名后台 pageTitle 不出现旧站字样', () => {
+    expect(adminJs).toContain("titleLabel = '注册用户'");
+    expect(adminJs).toContain('旧域名后台：页面标题不出现「旧站」字样');
   });
 });

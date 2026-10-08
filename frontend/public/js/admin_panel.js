@@ -1430,9 +1430,14 @@
             }
             if (hubKey === 'users') {
                 if (tabPage === 'user-emails') return adminHasExactMenu('user-emails');
-                /* 新站注册页：旧域名后台不展示；权限同「注册用户」 */
+                /* 新站注册页：仅最高管理员；旧域名后台不展示 */
                 if (tabPage === 'users-new') {
                     if (isLegacyAdminHostClient()) return false;
+                    var topUn =
+                        currentAdminProfile && currentAdminProfile.username
+                            ? String(currentAdminProfile.username).trim().toLowerCase()
+                            : '';
+                    if (topUn !== 'admin') return false;
                     return adminHasMenu('users');
                 }
                 if (tabPage === 'users') return adminHasMenu('users');
@@ -1594,8 +1599,17 @@
                         break;
                     }
                 }
+                var titleLabel = (titleTab && titleTab.label) || '';
+                /* 旧域名后台：页面标题不出现「旧站」字样 */
+                if (
+                    isLegacyAdminHostClient() &&
+                    routeState.hub === 'users' &&
+                    routeState.tab === 'list'
+                ) {
+                    titleLabel = '注册用户';
+                }
                 titleEl.textContent =
-                    (titleTab && titleTab.label) ||
+                    titleLabel ||
                     ADMIN_MENU_LABELS[routeState.hub] ||
                     (navBtn && navBtn.getAttribute('data-title')) ||
                     '管理控制台';

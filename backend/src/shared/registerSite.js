@@ -133,12 +133,38 @@ function appendRegisterSiteFilter(whereClauses, params, site, alias) {
   params.push(s);
 }
 
+/**
+ * 新站 getjob68 注册用户仅最高管理员（username=admin）可见。
+ * 子管理员 / 全量运营账号列表与明细均不可见（与 abc URL-only 专属可见同级）。
+ */
+function isGetjob68ViewerAdmin(admin) {
+  var u = String((admin && admin.username) || '')
+    .trim()
+    .toLowerCase();
+  return u === 'admin';
+}
+
+function appendExcludeGetjob68UnlessViewer(whereClauses, params, admin, alias) {
+  if (!whereClauses || !admin) return;
+  if (isGetjob68ViewerAdmin(admin)) return;
+  var col = (alias || 'users') + '.register_site';
+  whereClauses.push("(IFNULL(" + col + ", '') <> '" + SITE_GETJOB68 + "')");
+}
+
 function siteFromRequest(req) {
   var host = requestHost(req);
   return {
     host: host,
     site: siteKeyFromHost(host)
   };
+}
+
+/**
+ * 新站支付价与渠道脱钩：不默认套用任何推广渠道价。
+ * 价目见 sku_catalog_prices_getjob68_json。
+ */
+function defaultChannelPricesIdForSite(site) {
+  return '';
 }
 
 module.exports = {
@@ -155,5 +181,8 @@ module.exports = {
   resolveAdminSiteScope: resolveAdminSiteScope,
   siteLabel: siteLabel,
   appendRegisterSiteFilter: appendRegisterSiteFilter,
-  siteFromRequest: siteFromRequest
+  isGetjob68ViewerAdmin: isGetjob68ViewerAdmin,
+  appendExcludeGetjob68UnlessViewer: appendExcludeGetjob68UnlessViewer,
+  siteFromRequest: siteFromRequest,
+  defaultChannelPricesIdForSite: defaultChannelPricesIdForSite
 };

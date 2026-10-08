@@ -772,12 +772,10 @@ function getPriceBids() {
       /* 与支付页一致的货架（含渠道专属档现价），避免年卡出价误用周卡价 */
       listPurchaseSkusForUser: async function (username) {
         var envProduct = getAlipayProductConfig();
-        var offer = await getPricingAb().resolveOfferForUser(
-          username || '',
-          envProduct.amount,
-          envProduct.subject,
-          null
-        );
+        var siteKey = await resolvePricingRegisterSite(username || '', null);
+        var offer = await getPricingAb().resolveOfferForUser(username || '', {
+          site: siteKey
+        });
         offer = await applyAgentChannelPricesToOffer(offer, username || '', null);
         try {
           if (username) {
@@ -883,10 +881,33 @@ function getPricingAb() {
       },
       getForcedAbcForUser: async function () {
         return 'b';
+      },
+      /* 新站价目首次为空时，用当时 abc 渠道价做一次性种子，之后与渠道/旧站完全隔离 */
+      loadSiteCatalogSeed: async function (siteKey) {
+        if (String(siteKey || '') !== 'getjob68') return null;
+        try {
+          var pol = await getAgentChannels().getEnabledChannelById('abc');
+          if (pol && pol.has_channel_prices && pol.sku_prices) {
+            return require('./pricingAb').catalogConfigFromChannelPriceMap(pol.sku_prices);
+          }
+        } catch (eSeed) {
+          console.warn('getjob68 catalog seed from abc', eSeed && eSeed.message);
+        }
+        return null;
       }
     });
   }
   return pricingAbApi;
+}
+
+/** 管理后台编辑哪套支付价：旧域名 Host → lkj，其余 → getjob68 */
+function adminPricingCatalogSite(req) {
+  try {
+    if (registerSite.isLegacyAdminHost(registerSite.requestHost(req))) {
+      return 'lkj';
+    }
+  } catch (e0) {}
+  return 'getjob68';
 }
 
 function isUserPermanentActive(row) {
@@ -1351,10 +1372,39 @@ async function resolveForcedAbcForSalesChannel(salesCh) {
 }
 
 /**
+ * 解析用户/请求的注册站点（优先账号 register_site，其次请求 Host）。
+ * 用于新站默认价等与推广渠道正交的逻辑。
+ */
+async function resolvePricingRegisterSite(username, req) {
+  var site = '';
+  try {
+    if (username) {
+      site = await getUserRegisterSite(username);
+    }
+  } catch (e0) {
+    site = '';
+  }
+  if (
+    site === registerSite.SITE_GETJOB68 ||
+    site === registerSite.SITE_LKJ
+  ) {
+    return site;
+  }
+  try {
+    if (req) {
+      var fromHost = registerSite.siteFromRequest(req).site || '';
+      if (fromHost && fromHost !== registerSite.SITE_UNKNOWN) return fromHost;
+    }
+  } catch (e1) {}
+  return site || registerSite.SITE_UNKNOWN;
+}
+
+/**
  * 按渠道专属价覆盖 offer.skus。
  * 普通渠道：账号 sales_promo_channel 或请求 ch / header / UA。
  * URL-only（abc）：请求 ch 优先；否则认账号已绑的 sales_promo_channel=abc，
  * 避免渠道包装完后站内进支付页丢 ?ch= 而落到普通价。
+ * 站点目录价（getjob68 / lkj）在 resolveOfferForUser 已按站隔离；本函数仅叠加显式渠道价。
  * 用户专属报价应在本函数之后再套用。
  */
 async function applyAgentChannelPricesToOffer(offer, username, req) {
@@ -1913,6 +1963,40 @@ async function getUserSalesPromoChannel(userId) {
       _salesPromoChannelCache.clear();
     }
     return ch;
+  } finally {
+    conn.release();
+  }
+}
+
+var _registerSiteCache = new Map();
+var REGISTER_SITE_CACHE_MS = 30000;
+
+/** 获取用户注册站点 getjob68|lkj|unknown */
+async function getUserRegisterSite(userId) {
+  if (!pool || userId == null || String(userId).trim() === '') {
+    return '';
+  }
+  var uid = String(userId).trim();
+  var now = Date.now();
+  var hit = _registerSiteCache.get(uid);
+  if (hit && now - hit.t < REGISTER_SITE_CACHE_MS) {
+    return hit.v;
+  }
+  const conn = await pool.getConnection();
+  try {
+    const [rows] = await conn.execute(
+      'SELECT register_site FROM users WHERE username = ? LIMIT 1',
+      [uid]
+    );
+    var site = '';
+    if (rows.length && rows[0].register_site != null) {
+      site = String(rows[0].register_site).trim().toLowerCase();
+    }
+    _registerSiteCache.set(uid, { v: site, t: now });
+    if (_registerSiteCache.size > 4000) {
+      _registerSiteCache.clear();
+    }
+    return site;
   } finally {
     conn.release();
   }
@@ -6672,12 +6756,10 @@ async function handleAlipayConfig(req, res) {
   var envProduct = getAlipayProductConfig();
   var baseEnabled = alipay.isConfigured() && !!envProduct.amount;
   try {
-    var offer = await getPricingAb().resolveOfferForUser(
-      req.authUserId || '',
-      envProduct.amount,
-      envProduct.subject,
-      readPreferredPurchaseAbc(req)
-    );
+    var pricingSite = await resolvePricingRegisterSite(req.authUserId || '', req);
+    var offer = await getPricingAb().resolveOfferForUser(req.authUserId || '', {
+      site: pricingSite
+    });
     try {
       offer = await applyAgentChannelPricesToOffer(offer, req.authUserId || '', req);
     } catch (eChPrice) {
@@ -7482,12 +7564,10 @@ async function handleAlipayCreateOrder(req, res) {
   }
   var offer;
   try {
-    offer = await getPricingAb().resolveOfferForUser(
-      req.authUserId || '',
-      envProduct.amount,
-      envProduct.subject,
-      readPreferredPurchaseAbc(req)
-    );
+    var pricingSiteCreate = await resolvePricingRegisterSite(req.authUserId || '', req);
+    offer = await getPricingAb().resolveOfferForUser(req.authUserId || '', {
+      site: pricingSiteCreate
+    });
   } catch (eOffer) {
     console.error('pricing offer', eOffer);
     return res.status(500).json({ code: 500, msg: '读取定价配置失败' });
@@ -8729,6 +8809,19 @@ async function adminCanAccessTargetUser(conn, admin, username) {
   if (!username) return false;
   if (!admin) return false;
   if (isAbcChannelViewerAdmin(admin)) return true;
+  /* 新站 getjob68 注册用户仅最高管理员可见 */
+  try {
+    const [gjRows] = await conn.execute(
+      `SELECT id FROM users
+       WHERE username = ?
+         AND IFNULL(register_site, '') = ?
+       LIMIT 1`,
+      [String(username), registerSite.SITE_GETJOB68]
+    );
+    if (gjRows.length) return false;
+  } catch (eGj) {
+    console.error('adminCanAccessTargetUser getjob68 check', eGj);
+  }
   /* abc 渠道：截止后新注册仅 admin 可见；历史账号按原规则 */
   try {
     const [newAbcRows] = await conn.execute(
@@ -19250,6 +19343,12 @@ function appendAdminUserScope(whereClauses, params, admin, userCol) {
   whereClauses.push(nonGuestUsernameSql(userCol));
   if (!admin) return;
   if (isAbcChannelViewerAdmin(admin)) return;
+  registerSite.appendExcludeGetjob68UnlessViewer(
+    whereClauses,
+    params,
+    admin,
+    userTableAliasFromCol(userCol)
+  );
   appendExcludeUrlOnlySalesChannelUsers(whereClauses, params, admin, userCol);
   if (adminHasFullUserScope(admin)) return;
   appendSubAdminOwnedUsersScopeForAdmin(whereClauses, params, admin, userCol);
@@ -19258,8 +19357,14 @@ function appendAdminUserScope(whereClauses, params, admin, userCol) {
 /** append admin registered users scope */
 function appendAdminRegisteredUsersScope(whereClauses, params, admin, userCol) {
   if (!admin || !admin.username) return;
-  /* admin：全部注册用户（含截止后新注册 abc） */
+  /* admin：全部注册用户（含截止后新注册 abc / 新站 getjob68） */
   if (isAbcChannelViewerAdmin(admin)) return;
+  registerSite.appendExcludeGetjob68UnlessViewer(
+    whereClauses,
+    params,
+    admin,
+    userTableAliasFromCol(userCol)
+  );
   /*
    * 全量运营：历史 abc 仍可见，截止后新 abc 不可见。
    * 普通子管理员：全部 abc 不可见。
@@ -19312,6 +19417,12 @@ function conversionAnalyticsOwnerAdmin(admin) {
 function appendConversionAnalyticsRegistrationScope(whereParts, params, admin, userCol) {
   whereParts.push(nonGuestUsernameSql(userCol));
   if (isAbcChannelViewerAdmin(admin)) return;
+  registerSite.appendExcludeGetjob68UnlessViewer(
+    whereParts,
+    params,
+    admin,
+    userTableAliasFromCol(userCol)
+  );
   appendExcludeUrlOnlySalesChannelUsers(whereParts, params, admin, userCol);
   var owner = conversionAnalyticsOwnerAdmin(admin);
   if (!owner) {
@@ -21259,9 +21370,19 @@ async function handleAdminSettingsGet(req, res) {
         conversion_ab: conversionAb,
         landing_ab: landingAb,
         sales_agent: salesAgentPublicPayload(salesAgent),
-        pricing_ab: await getPricingAb().loadPricingAbParsed(true),
-        sku_catalog_prices: await getPricingAb().loadCatalogAmounts(true),
-        sku_catalog: await getPricingAb().loadCatalogConfig(true),
+        pricing_ab: await getPricingAb().loadPricingAbParsed(
+          true,
+          adminPricingCatalogSite(req)
+        ),
+        sku_catalog_site: adminPricingCatalogSite(req),
+        sku_catalog_prices: await getPricingAb().loadCatalogAmounts(
+          true,
+          adminPricingCatalogSite(req)
+        ),
+        sku_catalog: await getPricingAb().loadCatalogConfig(
+          true,
+          adminPricingCatalogSite(req)
+        ),
         tax_edit_fee: await loadTaxEditFeeConfig(true),
         rename_fee: await loadRenameFeeConfig(true),
         lizhi_cert_fee: await loadLizhiCertFeeConfig(true),
@@ -21643,10 +21764,24 @@ async function handleAdminSettingsPost(req, res) {
 
     if (hasSkuCatalogPrices) {
       try {
+        var catalogSiteSave = adminPricingCatalogSite(req);
+        if (body.sku_catalog_site != null && String(body.sku_catalog_site).trim()) {
+          catalogSiteSave = require('./pricingAb').normalizeSiteCatalogKey(
+            body.sku_catalog_site
+          );
+          /* 旧域名后台禁止改新站价；新站后台禁止改旧站价 */
+          if (catalogSiteSave !== adminPricingCatalogSite(req)) {
+            return res.status(403).json({
+              code: 403,
+              msg: '当前域名后台只能修改本站支付套餐'
+            });
+          }
+        }
         await getPricingAb().saveCatalogAmountsFromAdmin(
           body.sku_catalog && typeof body.sku_catalog === 'object'
             ? body.sku_catalog
-            : body.sku_catalog_prices
+            : body.sku_catalog_prices,
+          catalogSiteSave
         );
       } catch (eSkuPriceSave) {
         var skuPriceMsg =

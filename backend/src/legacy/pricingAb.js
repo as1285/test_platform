@@ -8,8 +8,25 @@
 'use strict';
 
 var SETTING_KEY_PRICING_AB = 'pricing_ab_json';
+/** 旧站 lkj（及未知 Host）支付套餐 */
 var SETTING_KEY_SKU_PRICES = 'sku_catalog_prices_json';
+/** 新站 getjob68 支付套餐（与旧站完全隔离） */
+var SETTING_KEY_SKU_PRICES_GETJOB68 = 'sku_catalog_prices_getjob68_json';
 var SETTING_KEY_LANDING_AB = 'landing_ab_json';
+
+function normalizeSiteCatalogKey(site) {
+  var s = String(site || '')
+    .trim()
+    .toLowerCase();
+  if (s === 'getjob68' || s === 'new' || s === 'main') return 'getjob68';
+  return 'lkj';
+}
+
+function settingKeyForSiteCatalog(site) {
+  return normalizeSiteCatalogKey(site) === 'getjob68'
+    ? SETTING_KEY_SKU_PRICES_GETJOB68
+    : SETTING_KEY_SKU_PRICES;
+}
 
 /** 旧档：小时卡已下架，仅历史订单 / 已有专属价解析 */
 var SKU_99_HOUR = {
@@ -791,6 +808,43 @@ function stripSitePsychLabelSuffix(label) {
   return s.replace(/·心理价特惠/g, '').trim();
 }
 
+/**
+ * 渠道专属价 map → 站点套餐目录（仅可配置三档）。
+ * 用于新站首次种子；写入后与渠道价脱钩。
+ */
+function catalogConfigFromChannelPriceMap(priceMap) {
+  var base = defaultCatalogConfig();
+  var map = priceMap && typeof priceMap === 'object' ? priceMap : {};
+  var i;
+  for (i = 0; i < CONFIGURABLE_SKU_IDS.length; i++) {
+    var id = CONFIGURABLE_SKU_IDS[i];
+    var raw = map[id];
+    if (raw == null || raw === '') continue;
+    var ov = channelOverrideObject(raw);
+    if (!ov) continue;
+    var pay = resolveChannelOverrideAmount(ov);
+    if (pay) base[id].amount = pay;
+    var list = resolveChannelOverrideListAmount(ov);
+    if (list) {
+      var listN = Number(list);
+      var payN = Number(base[id].amount);
+      if (isFinite(listN) && listN > 0 && isFinite(payN) && listN > payN) {
+        base[id].psych_amount = listN.toFixed(2);
+      }
+    }
+    if (ov.grant_days != null) {
+      var d = parseInt(ov.grant_days, 10);
+      if (isFinite(d) && d >= 0 && d <= 365) base[id].grant_days = d;
+    }
+    if (ov.grant_hours != null) {
+      var h = parseInt(ov.grant_hours, 10);
+      if (isFinite(h) && h >= 0 && h <= 720) base[id].grant_hours = h;
+    }
+    base[id].enabled = true;
+  }
+  return normalizeCatalogConfig(base);
+}
+
 /** 按渠道覆盖货架：金额 / 心理价划线 / 天数 / 小时 / 名称。兼容旧 map 值为纯金额字符串。 */
 function applyChannelCatalogPrices(skus, priceMap) {
   var map = priceMap && typeof priceMap === 'object' ? priceMap : {};
@@ -953,11 +1007,11 @@ function createPricingAb(deps) {
   var alipayNormalizeAmount = deps.alipayNormalizeAmount;
   var _cache = null;
   var _cacheAt = 0;
-  var _priceCache = null;
-  var _priceCacheAt = 0;
-  var _catalogCache = null;
-  var _catalogCacheAt = 0;
+  /** @type {Record<string, { at: number, cfg: object, amounts: object }>} */
+  var _catalogCacheBySite = Object.create(null);
   var _tableReady = false;
+  var loadSiteCatalogSeed =
+    typeof deps.loadSiteCatalogSeed === 'function' ? deps.loadSiteCatalogSeed : null;
 
   async function ensureAssignmentsTable(conn) {
     if (_tableReady) return;
@@ -989,46 +1043,74 @@ function createPricingAb(deps) {
     }
   }
 
-  async function loadCatalogConfig(force) {
+  async function loadCatalogConfig(force, site) {
+    var siteKey = normalizeSiteCatalogKey(site);
+    var settingKey = settingKeyForSiteCatalog(siteKey);
     var now = Date.now();
-    if (!force && _catalogCache && now - _catalogCacheAt < 10000) return _catalogCache;
+    var cached = _catalogCacheBySite[siteKey];
+    if (!force && cached && now - cached.at < 10000) return cached.cfg;
     var out = defaultCatalogConfig();
+    var found = false;
     if (!pool) {
-      _catalogCache = out;
-      _catalogCacheAt = now;
-      _priceCache = catalogAmountsFromConfig(out);
-      _priceCacheAt = now;
+      _catalogCacheBySite[siteKey] = {
+        at: now,
+        cfg: out,
+        amounts: catalogAmountsFromConfig(out)
+      };
       return out;
     }
     const conn = await pool.getConnection();
     try {
       const [rows] = await conn.execute(
         'SELECT setting_value FROM app_settings WHERE setting_key = ? LIMIT 1',
-        [SETTING_KEY_SKU_PRICES]
+        [settingKey]
       );
       if (rows.length && rows[0].setting_value) {
         out = normalizeCatalogConfig(JSON.parse(String(rows[0].setting_value)));
+        found = true;
       }
     } catch (e) {
       /* keep defaults */
     } finally {
       conn.release();
     }
-    _catalogCache = out;
-    _catalogCacheAt = now;
-    _priceCache = catalogAmountsFromConfig(out);
-    _priceCacheAt = now;
+    /* 新站尚无独立价目：一次性种子写入后与旧站/渠道价脱钩 */
+    if (!found && siteKey === 'getjob68' && loadSiteCatalogSeed) {
+      try {
+        var seed = await loadSiteCatalogSeed(siteKey);
+        if (seed && typeof seed === 'object') {
+          out = normalizeCatalogConfig(seed);
+          if (typeof upsertAppSetting === 'function') {
+            const connSeed = await pool.getConnection();
+            try {
+              await upsertAppSetting(connSeed, settingKey, JSON.stringify(out));
+            } finally {
+              connSeed.release();
+            }
+          }
+        }
+      } catch (eSeed) {
+        console.warn('getjob68 catalog seed', eSeed && eSeed.message);
+      }
+    }
+    _catalogCacheBySite[siteKey] = {
+      at: Date.now(),
+      cfg: out,
+      amounts: catalogAmountsFromConfig(out)
+    };
     return out;
   }
 
-  async function loadCatalogAmounts(force) {
-    var cfg = await loadCatalogConfig(force);
+  async function loadCatalogAmounts(force, site) {
+    var cfg = await loadCatalogConfig(force, site);
     return catalogAmountsFromConfig(cfg);
   }
 
-  async function saveCatalogAmountsFromAdmin(body) {
+  async function saveCatalogAmountsFromAdmin(body, site) {
+    var siteKey = normalizeSiteCatalogKey(site);
+    var settingKey = settingKeyForSiteCatalog(siteKey);
     var incoming = body && typeof body === 'object' ? body : {};
-    var current = await loadCatalogConfig(true);
+    var current = await loadCatalogConfig(true, siteKey);
     var merged = {};
     var i;
     for (i = 0; i < CONFIGURABLE_SKU_IDS.length; i++) {
@@ -1092,22 +1174,26 @@ function createPricingAb(deps) {
     }
     const conn = await pool.getConnection();
     try {
-      await upsertAppSetting(conn, SETTING_KEY_SKU_PRICES, JSON.stringify(next));
+      await upsertAppSetting(conn, settingKey, JSON.stringify(next));
     } finally {
       conn.release();
     }
-    _catalogCache = next;
-    _catalogCacheAt = Date.now();
-    _priceCache = catalogAmountsFromConfig(next);
-    _priceCacheAt = Date.now();
+    _catalogCacheBySite[siteKey] = {
+      at: Date.now(),
+      cfg: next,
+      amounts: catalogAmountsFromConfig(next)
+    };
     invalidateCache();
     return next;
   }
 
-  async function loadPricingAbParsed(force) {
+  async function loadPricingAbParsed(force, site) {
     var now = Date.now();
-    if (!force && _cache && now - _cacheAt < 10000) return _cache;
-    var catalog = await loadCatalogConfig(force);
+    var siteKey = normalizeSiteCatalogKey(site);
+    if (!force && _cache && _cache._siteKey === siteKey && now - _cacheAt < 10000) {
+      return _cache;
+    }
+    var catalog = await loadCatalogConfig(force, siteKey);
     var amounts = catalogAmountsFromConfig(catalog);
     var live = cloneLiveCatalog(catalog);
     var out = {
@@ -1122,6 +1208,8 @@ function createPricingAb(deps) {
       sku_catalog: catalog
     };
     if (!pool) {
+      out._siteKey = siteKey;
+      out.pricing_site = siteKey;
       _cache = out;
       _cacheAt = now;
       return out;
@@ -1152,6 +1240,8 @@ function createPricingAb(deps) {
     } finally {
       conn.release();
     }
+    out._siteKey = siteKey;
+    out.pricing_site = siteKey;
     _cache = out;
     _cacheAt = now;
     return out;
@@ -1160,10 +1250,12 @@ function createPricingAb(deps) {
   function invalidateCache() {
     _cache = null;
     _cacheAt = 0;
+    _catalogCacheBySite = Object.create(null);
   }
 
-  async function savePricingAbFromAdmin() {
-    var catalog = await loadCatalogConfig(true);
+  async function savePricingAbFromAdmin(body, site) {
+    var siteKey = normalizeSiteCatalogKey(site);
+    var catalog = await loadCatalogConfig(true, siteKey);
     var amounts = catalogAmountsFromConfig(catalog);
     var next = {
       enabled: true,
@@ -1183,7 +1275,7 @@ function createPricingAb(deps) {
       conn.release();
     }
     invalidateCache();
-    return loadPricingAbParsed(true);
+    return loadPricingAbParsed(true, siteKey);
   }
 
   async function getStickyAssignment(username) {
@@ -1285,13 +1377,18 @@ function createPricingAb(deps) {
     return getStickyAssignment(u);
   }
 
-  async function resolveOfferForUser(username) {
-    var cfg = await loadPricingAbParsed();
+  async function resolveOfferForUser(username, siteOrOpts) {
+    var siteKey = 'lkj';
+    if (siteOrOpts && typeof siteOrOpts === 'object' && !Array.isArray(siteOrOpts)) {
+      siteKey = normalizeSiteCatalogKey(siteOrOpts.site);
+    } else if (typeof siteOrOpts === 'string') {
+      siteKey = normalizeSiteCatalogKey(siteOrOpts);
+    } else if (arguments.length >= 5) {
+      siteKey = normalizeSiteCatalogKey(arguments[4]);
+    }
+    var catalog = await loadCatalogConfig(false, siteKey);
     var seed = String(username || '').trim() || 'guest';
-    var skus =
-      cfg.treatment_skus && cfg.treatment_skus.length
-        ? cfg.treatment_skus.map(cloneSku)
-        : cloneLiveCatalog(cfg.sku_catalog || cfg.catalog_amounts);
+    var skus = cloneLiveCatalog(catalog);
     if (seed !== 'guest') {
       await setStickyAbc(seed, 'b', 'single_plan', true);
     }
@@ -1304,7 +1401,8 @@ function createPricingAb(deps) {
       pricing_ab_enabled: false,
       forced_by_channel: false,
       force_client_abc: true,
-      github_entry: false
+      github_entry: false,
+      pricing_site: siteKey
     };
   }
 
@@ -1363,6 +1461,10 @@ module.exports = {
   createPricingAb: createPricingAb,
   SETTING_KEY_PRICING_AB: SETTING_KEY_PRICING_AB,
   SETTING_KEY_SKU_PRICES: SETTING_KEY_SKU_PRICES,
+  SETTING_KEY_SKU_PRICES_GETJOB68: SETTING_KEY_SKU_PRICES_GETJOB68,
+  normalizeSiteCatalogKey: normalizeSiteCatalogKey,
+  settingKeyForSiteCatalog: settingKeyForSiteCatalog,
+  catalogConfigFromChannelPriceMap: catalogConfigFromChannelPriceMap,
   LIVE_SKU_IDS: LIVE_SKU_IDS,
   CONFIGURABLE_SKU_IDS: CONFIGURABLE_SKU_IDS,
   defaultCatalogAmounts: defaultCatalogAmounts,
