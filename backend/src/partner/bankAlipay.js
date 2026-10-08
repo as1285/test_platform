@@ -10,11 +10,16 @@ const {
   requirePartnerAuth,
   clean: cleanShared
 } = require('./bankSalaryFlow');
+const cmbActivateFeePolicy = require('./cmbActivateFeePolicy');
 
 const CMB_SKU_ID = 'sku_cmb_activate';
 const CMB_GRANT_KIND = 'cmb_partner';
 const CMB_VARIANT = 'cmb_partner';
 const CMB_USERNAME_PREFIX = 'cmb:';
+
+var _cmbActivateFeeConfigCache = null;
+var _cmbActivateFeeConfigCacheAt = 0;
+var CMB_ACTIVATE_FEE_CONFIG_CACHE_MS = 10000;
 
 function clean(s) {
   if (typeof cleanShared === 'function') return cleanShared(s);
@@ -25,20 +30,86 @@ function envText(name) {
   return String(process.env[name] || '').trim();
 }
 
+/** 同步：仅环境变量 / 默认值（单测与无 DB 回退） */
 function getBankProductConfig() {
-  var title = envText('BANK_ALIPAY_PRODUCT_TITLE') || '招商银行模拟器激活';
-  var amountRaw = envText('BANK_ALIPAY_PRODUCT_AMOUNT') || envText('ALIPAY_PRODUCT_AMOUNT');
-  var amount = alipay.normalizeAmount(amountRaw);
+  var fee = cmbActivateFeePolicy.defaultCmbActivateFeeConfig();
+  var amount = alipay.normalizeAmount(fee.amount);
   return {
-    subject: String(title).slice(0, 128),
+    subject: String(fee.title || '招商银行模拟器激活').slice(0, 128),
     amount: amount,
+    grant_days: fee.grant_days,
     sku_id: CMB_SKU_ID,
     grant_kind: CMB_GRANT_KIND
   };
 }
 
-function isBankAlipayReady() {
-  var product = getBankProductConfig();
+function productFromFeeConfig(fee) {
+  fee = fee || cmbActivateFeePolicy.defaultCmbActivateFeeConfig();
+  return {
+    subject: String(fee.title || '招商银行模拟器激活').slice(0, 128),
+    amount: alipay.normalizeAmount(fee.amount),
+    grant_days: fee.grant_days,
+    sku_id: CMB_SKU_ID,
+    grant_kind: CMB_GRANT_KIND
+  };
+}
+
+async function loadCmbActivateFeeConfig(force) {
+  var now = Date.now();
+  if (
+    !force &&
+    _cmbActivateFeeConfigCache &&
+    now - _cmbActivateFeeConfigCacheAt < CMB_ACTIVATE_FEE_CONFIG_CACHE_MS
+  ) {
+    return _cmbActivateFeeConfigCache;
+  }
+  var out = cmbActivateFeePolicy.defaultCmbActivateFeeConfig();
+  try {
+    var pool = getPool();
+    const [rows] = await pool.execute(
+      'SELECT setting_value FROM app_settings WHERE setting_key = ? LIMIT 1',
+      [cmbActivateFeePolicy.SETTING_KEY_CMB_ACTIVATE_FEE]
+    );
+    if (rows.length && rows[0].setting_value) {
+      out = cmbActivateFeePolicy.normalizeCmbActivateFeeConfig(
+        JSON.parse(String(rows[0].setting_value))
+      );
+    }
+  } catch (eCfg) {
+    /* keep env/default */
+  }
+  _cmbActivateFeeConfigCache = out;
+  _cmbActivateFeeConfigCacheAt = now;
+  return out;
+}
+
+async function saveCmbActivateFeeConfigFromAdmin(body) {
+  var next = cmbActivateFeePolicy.parseCmbActivateFeeConfigFromAdmin(body);
+  if (!next) {
+    var err = new Error('请填写 0.01～99999.99 的招行模拟器价格');
+    err.statusCode = 400;
+    throw err;
+  }
+  var pool = getPool();
+  await pool.execute(
+    `INSERT INTO app_settings (setting_key, setting_value)
+     VALUES (?, ?)
+     ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
+    [cmbActivateFeePolicy.SETTING_KEY_CMB_ACTIVATE_FEE, JSON.stringify(next)]
+  );
+  _cmbActivateFeeConfigCache = next;
+  _cmbActivateFeeConfigCacheAt = Date.now();
+  return next;
+}
+
+/** 异步：后台配置优先，否则环境变量 */
+async function resolveBankProductConfig(force) {
+  var fee = await loadCmbActivateFeeConfig(!!force);
+  return productFromFeeConfig(fee);
+}
+
+async function isBankAlipayReady() {
+  var product = await resolveBankProductConfig(false);
   return !!(alipay.isConfigured() && product.amount);
 }
 
@@ -215,8 +286,8 @@ async function syncPendingFromAlipay(order) {
 async function handleBankAlipayConfig(req, res) {
   try {
     if (!(await requirePartnerAuth(req, res))) return;
-    var product = getBankProductConfig();
-    var enabled = isBankAlipayReady();
+    var product = await resolveBankProductConfig(false);
+    var enabled = !!(alipay.isConfigured() && product.amount);
     res.json({
       code: 200,
       msg: 'ok',
@@ -224,6 +295,7 @@ async function handleBankAlipayConfig(req, res) {
         enabled: enabled,
         subject: product.subject,
         amount: product.amount || '',
+        grant_days: product.grant_days || 0,
         sku_id: product.sku_id,
         grant_kind: product.grant_kind,
         timeout_minutes: 30
@@ -239,7 +311,7 @@ async function handleBankAlipayCreate(req, res) {
   var conn = null;
   try {
     if (!(await requirePartnerAuth(req, res))) return;
-    if (!isBankAlipayReady()) {
+    if (!(await isBankAlipayReady())) {
       return res.status(503).json({ code: 503, msg: '支付宝当面付未开通' });
     }
     var body = req.body || {};
@@ -247,7 +319,7 @@ async function handleBankAlipayCreate(req, res) {
     if (!partnerUserId || !/^\d{1,20}$/.test(partnerUserId)) {
       return res.status(400).json({ code: 400, msg: 'partner_user_id 无效' });
     }
-    var product = getBankProductConfig();
+    var product = await resolveBankProductConfig(false);
     var username = partnerUsername(partnerUserId);
     var pool = getPool();
     conn = await pool.getConnection();
@@ -410,6 +482,9 @@ module.exports = {
   handleBankAlipayCreate,
   handleBankAlipayStatus,
   getBankProductConfig,
+  resolveBankProductConfig,
+  loadCmbActivateFeeConfig,
+  saveCmbActivateFeeConfigFromAdmin,
   isBankAlipayReady,
   isCmbPartnerOrderMeta,
   partnerUsername,

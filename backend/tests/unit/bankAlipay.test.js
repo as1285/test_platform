@@ -44,10 +44,13 @@ describe('bankAlipay partner helpers', () => {
     expect(cfg.subject).toBe('招行激活');
     expect(cfg.amount).toBe('88.50');
     expect(cfg.sku_id).toBe(CMB_SKU_ID);
+    expect(cfg.grant_days).toBeGreaterThan(0);
 
     delete process.env.BANK_ALIPAY_PRODUCT_AMOUNT;
+    delete process.env.BANK_ALIPAY_PRODUCT_TITLE;
     process.env.ALIPAY_PRODUCT_AMOUNT = '199';
     cfg = getBankProductConfig();
     expect(cfg.amount).toBe('199.00');
   });
 });
+

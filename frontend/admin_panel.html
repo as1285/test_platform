@@ -51,7 +51,7 @@
             </div>
             <div class="wrap">
                 <div id="page-settings" class="page-panel" role="tabpanel">
-                    <div class="page-lede"><p class="page-lede-text">套餐价格与心理价、离职证明价格、改名费用、个税修改收费与激活引导弹窗</p></div>
+                    <div class="page-lede"><p class="page-lede-text">套餐价格与心理价、离职证明价格、招行模拟器价格、改名费用、个税修改收费与激活引导弹窗</p></div>
                     <section id="sectionPriceBids">
                         <h2>心理价出价</h2>
                         <p class="stat mt-0" style="margin-bottom:8px;">当前心理价位（支付页「心理价特惠」实付价）</p>
@@ -238,6 +238,19 @@
                             <div class="form-actions">
                                 <button type="button" class="btn-primary" id="btnSaveNajiluQrFee">保存完税二维码价格</button>
                                 <span class="hint" id="najiluQrFeeHint" style="margin-left:8px;"></span>
+                            </div>
+                            <p class="hint mt-0"><strong>招商银行模拟器</strong>：招行机激活当面付金额与开通天数。改完立即对未下单用户生效；已生成的待支付订单仍按原金额。天数会同步到商品标题（如 30 天显示「1个月」）。</p>
+                            <div class="form-field form-field-narrow">
+                                <label for="cmbActivateFeeAmount">招行模拟器（元）</label>
+                                <input type="number" id="cmbActivateFeeAmount" min="0.01" max="99999.99" step="0.01" value="299">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="cmbActivateFeeDays">开通天数</label>
+                                <input type="number" id="cmbActivateFeeDays" min="1" max="3650" step="1" value="30">
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn-primary" id="btnSaveCmbActivateFee">保存招行价格</button>
+                                <span class="hint" id="cmbActivateFeeHint" style="margin-left:8px;"></span>
                             </div>
                             <p class="hint mt-0"><strong>改名费用</strong>：近 30 天活跃不少于 2 天、且历史改名超过 5 次后，每次再改名需先付下面金额。填 <strong>0</strong> 则超限后也不收费、不用付款。白名单免收。改完立即对未下单用户生效；已生成的待支付订单仍按原金额。</p>
                             <div class="form-field form-field-narrow">
@@ -4390,6 +4403,6 @@
     <script src="/js/admin/loader.js?v=20260929-abc-assign"></script>
     <script src="/js/admin/nav.js?v=20260908-hub-tab-perm"></script>
     <script src="/js/admin-analytics-period.js?v=20260905-ch-psych-col"></script>
-    <script src="/js/admin_panel.js?v=20260924-dau-same-clock"></script>
+    <script src="/js/admin_panel.js?v=20261008-cmb-fee"></script>
 </body>
 </html>

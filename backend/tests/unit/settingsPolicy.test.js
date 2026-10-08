@@ -24,6 +24,7 @@ describe('settingsPolicy', () => {
     expect(isOpsSettingKey('tax_edit_fee_json')).toBe(true);
     expect(isOpsSettingKey('rename_fee_json')).toBe(true);
     expect(isOpsSettingKey('lizhi_cert_fee_json')).toBe(true);
+    expect(isOpsSettingKey('cmb_activate_fee_json')).toBe(true);
     expect(isForbiddenSettingKey('pricing_ab_json')).toBe(false);
   });
 });

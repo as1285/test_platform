@@ -175,6 +175,7 @@ const renameFeePolicy = require('../user/renameFeePolicy');
 const lizhiCertFeePolicy = require('../user/lizhiCertFeePolicy');
 const najiluQrFeePolicy = require('../user/najiluQrFeePolicy');
 const najiluQrMod = require('../admin/najiluQr');
+const bankAlipayMod = require('../partner/bankAlipay');
 const {
   computeUserLoginRisk,
   userLoginRiskMatchSql,
@@ -21173,6 +21174,7 @@ async function handleAdminSettingsGet(req, res) {
         rename_fee: await loadRenameFeeConfig(true),
         lizhi_cert_fee: await loadLizhiCertFeeConfig(true),
         najilu_qr_fee: await najiluQrMod.loadNajiluQrFeeConfig(true),
+        cmb_activate_fee: await bankAlipayMod.loadCmbActivateFeeConfig(true),
         activation_nudge: activationNudge
       }
     });
@@ -21205,6 +21207,7 @@ async function handleAdminSettingsPost(req, res) {
   var hasRenameFee = body.rename_fee != null && typeof body.rename_fee === 'object';
   var hasLizhiCertFee = body.lizhi_cert_fee != null && typeof body.lizhi_cert_fee === 'object';
   var hasNajiluQrFee = body.najilu_qr_fee != null && typeof body.najilu_qr_fee === 'object';
+  var hasCmbActivateFee = body.cmb_activate_fee != null && typeof body.cmb_activate_fee === 'object';
   var hasActivationNudge = body.activation_nudge != null && typeof body.activation_nudge === 'object';
   if (
     !hasMineUi &&
@@ -21225,11 +21228,12 @@ async function handleAdminSettingsPost(req, res) {
     !hasRenameFee &&
     !hasLizhiCertFee &&
     !hasNajiluQrFee &&
+    !hasCmbActivateFee &&
     !hasActivationNudge
   ) {
     return res.status(400).json({
       code: 400,
-      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、转化 A/B 配置、落地页 A/B 配置、C 方案销售代理、定价 A/B 配置、支付套餐、个税修改收费、改名费用、离职证明价格、完税二维码价格或激活引导弹窗配置'
+      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、转化 A/B 配置、落地页 A/B 配置、C 方案销售代理、定价 A/B 配置、支付套餐、个税修改收费、改名费用、离职证明价格、完税二维码价格、招行模拟器价格或激活引导弹窗配置'
     });
   }
 
@@ -21254,6 +21258,7 @@ async function handleAdminSettingsPost(req, res) {
       hasRenameFee ||
       hasLizhiCertFee ||
       hasNajiluQrFee ||
+      hasCmbActivateFee ||
       hasActivationNudge
     ) {
       return res.status(403).json({
@@ -21617,6 +21622,21 @@ async function handleAdminSettingsPost(req, res) {
       }
     }
 
+    if (hasCmbActivateFee) {
+      try {
+        await bankAlipayMod.saveCmbActivateFeeConfigFromAdmin(body.cmb_activate_fee);
+      } catch (eCmbFeeSave) {
+        var cmbFeeMsg =
+          eCmbFeeSave && eCmbFeeSave.message
+            ? String(eCmbFeeSave.message)
+            : '保存招行模拟器价格失败';
+        return res.status(eCmbFeeSave && eCmbFeeSave.statusCode === 400 ? 400 : 500).json({
+          code: eCmbFeeSave && eCmbFeeSave.statusCode === 400 ? 400 : 500,
+          msg: cmbFeeMsg
+        });
+      }
+    }
+
     if (hasActivationNudge) {
       await saveActivationNudgeFromAdmin(body.activation_nudge);
     }
@@ -21659,6 +21679,7 @@ async function handleAdminSettingsPost(req, res) {
     outData.rename_fee = await loadRenameFeeConfig(true);
     outData.lizhi_cert_fee = await loadLizhiCertFeeConfig(true);
     outData.najilu_qr_fee = await najiluQrMod.loadNajiluQrFeeConfig(true);
+    outData.cmb_activate_fee = await bankAlipayMod.loadCmbActivateFeeConfig(true);
     outData.activation_nudge = await loadActivationNudgeParsed();
     return res.json({ code: 200, data: outData });
   } catch (e) {

@@ -8479,6 +8479,7 @@
                         applyRenameFeeToForm(data.data.rename_fee || {});
                         applyLizhiCertFeeToForm(data.data.lizhi_cert_fee || {});
                         applyNajiluQrFeeToForm(data.data.najilu_qr_fee || {});
+                        applyCmbActivateFeeToForm(data.data.cmb_activate_fee || {});
                         var nudge = data.data.activation_nudge;
                         if (nudge) {
                             var nEn = document.getElementById('actNudgeEnabled');
@@ -8748,6 +8749,28 @@
             };
         }
 
+        function applyCmbActivateFeeToForm(cfg) {
+            cfg = cfg || {};
+            var amountEl = document.getElementById('cmbActivateFeeAmount');
+            var daysEl = document.getElementById('cmbActivateFeeDays');
+            var raw = cfg.amount != null ? cfg.amount : cfg.fee_amount;
+            if (amountEl && raw != null && String(raw).trim() !== '') {
+                amountEl.value = String(raw);
+            }
+            if (daysEl && cfg.grant_days != null && String(cfg.grant_days).trim() !== '') {
+                daysEl.value = String(cfg.grant_days);
+            }
+        }
+
+        function collectCmbActivateFeeFromForm() {
+            var amountEl = document.getElementById('cmbActivateFeeAmount');
+            var daysEl = document.getElementById('cmbActivateFeeDays');
+            return {
+                amount: amountEl ? String(amountEl.value || '').trim() : '',
+                grant_days: daysEl ? String(daysEl.value || '').trim() : '30'
+            };
+        }
+
         var btnSaveLizhiCertFee = document.getElementById('btnSaveLizhiCertFee');
         if (btnSaveLizhiCertFee) {
             btnSaveLizhiCertFee.addEventListener('click', function () {
@@ -8813,6 +8836,51 @@
                             if (hint) hint.textContent = '已保存';
                             applyNajiluQrFeeToForm((data.data && data.data.najilu_qr_fee) || fees);
                             alert('完税二维码价格已保存，未下单用户将按新价格付款');
+                        } else {
+                            if (hint) hint.textContent = '';
+                            alert(data.msg || '保存失败');
+                        }
+                    })
+                    .catch(function () {
+                        if (hint) hint.textContent = '';
+                        alert('网络错误');
+                    })
+                    .finally(function () {
+                        btn.disabled = false;
+                    });
+            });
+        }
+
+        var btnSaveCmbActivateFee = document.getElementById('btnSaveCmbActivateFee');
+        if (btnSaveCmbActivateFee) {
+            btnSaveCmbActivateFee.addEventListener('click', function () {
+                var btn = btnSaveCmbActivateFee;
+                var fees = collectCmbActivateFeeFromForm();
+                var n = Number(String(fees.amount || '').replace(/,/g, '').trim());
+                var days = parseInt(fees.grant_days, 10);
+                if (!isFinite(n) || n < 0.01 || n > 99999.99) {
+                    alert('请填写 0.01～99999.99 的招行模拟器金额');
+                    return;
+                }
+                if (!isFinite(days) || days < 1 || days > 3650) {
+                    alert('请填写 1～3650 的开通天数');
+                    return;
+                }
+                btn.disabled = true;
+                var hint = document.getElementById('cmbActivateFeeHint');
+                if (hint) hint.textContent = '保存中…';
+                adminFetch('api/admin/settings', {
+                    method: 'POST',
+                    body: JSON.stringify({ cmb_activate_fee: fees })
+                })
+                    .then(function (r) {
+                        return (window.adminParseJson||function(r){return r.json();})(r);
+                    })
+                    .then(function (data) {
+                        if (data.code === 200) {
+                            if (hint) hint.textContent = '已保存';
+                            applyCmbActivateFeeToForm((data.data && data.data.cmb_activate_fee) || fees);
+                            alert('招行模拟器价格已保存，未下单用户将按新价格付款');
                         } else {
                             if (hint) hint.textContent = '';
                             alert(data.msg || '保存失败');
