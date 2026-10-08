@@ -14,6 +14,52 @@
     return fn(url, opts);
   }
 
+  function isLegacyAdminHostClient() {
+    var h = String((global.location && global.location.hostname) || '')
+      .trim()
+      .toLowerCase();
+    return (
+      h === 'lkj.qiyun888.top' ||
+      h === 'www.lkj.qiyun888.top' ||
+      /(^|\.)lkj\.qiyun888\.top$/.test(h) ||
+      h === '103.106.188.166'
+    );
+  }
+
+  function applyOpsSiteScopeLock() {
+    var el = document.getElementById('opsBoardSite');
+    if (!el) return;
+    var scope = global._adminSiteScope;
+    var locked =
+      (scope && scope.locked) ||
+      (scope && scope.allow_filter === false) ||
+      isLegacyAdminHostClient();
+    if (locked) {
+      el.value = 'lkj';
+      el.disabled = true;
+      el.title = '旧站后台仅可查看旧站数据';
+      return;
+    }
+    el.disabled = false;
+    el.title = '按注册域名筛选';
+    if (!el.value) el.value = 'all';
+  }
+
+  function currentOpsSiteFilter() {
+    if (isLegacyAdminHostClient()) return 'lkj';
+    var el = document.getElementById('opsBoardSite');
+    var v = el ? String(el.value || 'all').trim() : 'all';
+    return v || 'all';
+  }
+
+  function appendSiteQuery(url) {
+    var site = currentOpsSiteFilter();
+    if (site && site !== 'all') {
+      return url + (url.indexOf('?') >= 0 ? '&' : '?') + 'site=' + encodeURIComponent(site);
+    }
+    return url;
+  }
+
   function esc(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;')
@@ -437,6 +483,15 @@
     }
     var boardRefresh = document.getElementById('btnOpsBoardRefresh');
     if (boardRefresh) boardRefresh.addEventListener('click', loadBoard);
+    applyOpsSiteScopeLock();
+    var boardSite = document.getElementById('opsBoardSite');
+    if (boardSite) {
+      boardSite.addEventListener('change', function () {
+        loadBoard();
+        var panel = document.getElementById('opsBoardPayDetail');
+        if (panel && !panel.hidden) loadPayDetail();
+      });
+    }
     var boardDateFrom = document.getElementById('opsBoardDateFrom');
     var boardDateTo = document.getElementById('opsBoardDateTo');
     if (boardDateFrom || boardDateTo) {
@@ -503,6 +558,7 @@
     var range = ensureBoardRange();
     if (tbody) tbody.innerHTML = '<tr><td colspan="5">加载中…</td></tr>';
     if (meta) meta.textContent = '';
+    applyOpsSiteScopeLock();
     var payUrl = 'api/admin/ops/board/payments?days=' + encodeURIComponent(days);
     if (String(days) === '1') {
       payUrl +=
@@ -511,6 +567,7 @@
         '&date_to=' +
         encodeURIComponent(range.to);
     }
+    payUrl = appendSiteQuery(payUrl);
     fetchAdmin(payUrl)
       .then(function (r) {
         return (window.adminParseJson||function(r){return r.json();})(r);
@@ -955,12 +1012,15 @@
     if (dauBox) dauBox.textContent = '加载中…';
     if (todo) todo.innerHTML = '';
     if (research) research.textContent = '加载中…';
+    applyOpsSiteScopeLock();
     var range = ensureBoardRange();
     fetchAdmin(
-      'api/admin/ops/board?days=7&date_from=' +
-        encodeURIComponent(range.from) +
-        '&date_to=' +
-        encodeURIComponent(range.to)
+      appendSiteQuery(
+        'api/admin/ops/board?days=7&date_from=' +
+          encodeURIComponent(range.from) +
+          '&date_to=' +
+          encodeURIComponent(range.to)
+      )
     )
       .then(function (r) {
         return (window.adminParseJson||function(r){return r.json();})(r);
@@ -971,6 +1031,10 @@
           if (dauBox) dauBox.textContent = (j && j.msg) || '加载失败';
           if (research) research.textContent = (j && j.msg) || '加载失败';
           return;
+        }
+        if (j.data.site_scope) {
+          global._adminSiteScope = j.data.site_scope;
+          applyOpsSiteScopeLock();
         }
         renderBoard(j.data);
       })

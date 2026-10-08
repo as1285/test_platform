@@ -5,9 +5,9 @@
     <author email="dev@localhost" href="https://localhost">Tax Bureau Team</author>
     <content src="index.html" />
 
-    <!-- 本站分支仅允许加载 lkj 线上域名；外链用 allow-intent / _system -->
-    <access origin="https://lkj.qiyun888.top" />
-    <allow-navigation href="https://lkj.qiyun888.top/*" />
+    <!-- 本站分支仅允许加载新主站域名；外链用 allow-intent / _system -->
+    <access origin="https://getjob68.club" />
+    <allow-navigation href="https://getjob68.club/*" />
     <allow-intent href="http://*/*" />
     <allow-intent href="https://*/*" />
     <allow-intent href="tel:*" />

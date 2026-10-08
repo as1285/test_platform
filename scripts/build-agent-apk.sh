@@ -43,11 +43,16 @@ if [[ -f "$ROOT/.env" ]]; then
   set +a
 fi
 if [[ -z "$APP_ORIGIN_URL" ]]; then
-  APP_ORIGIN_URL="https://lkj.qiyun888.top"
+  APP_ORIGIN_URL="https://getjob68.club"
 fi
 APP_ORIGIN_URL="${APP_ORIGIN_URL%/}/"
-if ! [[ "$APP_ORIGIN_URL" =~ ^https://lkj\.qiyun888\.top/ ]]; then
-  echo "警告: PUBLIC_SITE_URL 非本站 lkj 域名，仍写入壳: $APP_ORIGIN_URL" >&2
+APP_ORIGIN_HOST="$(python3 -c "from urllib.parse import urlparse; print(urlparse('$APP_ORIGIN_URL').hostname or '')")"
+if [[ -z "$APP_ORIGIN_HOST" ]]; then
+  echo "ERROR: 无法从 PUBLIC_SITE_URL 解析 Host: $APP_ORIGIN_URL" >&2
+  exit 1
+fi
+if ! [[ "$APP_ORIGIN_URL" =~ ^https://getjob68\.club/ ]]; then
+  echo "警告: PUBLIC_SITE_URL 非新主站 getjob68.club，仍写入壳: $APP_ORIGIN_URL" >&2
 fi
 
 mkdir -p "$OUT_DIR"
@@ -67,21 +72,45 @@ restore() {
 }
 trap restore EXIT
 
-# 同步壳内线上源，避免误打包本地/其它域名
-python3 - "$INDEX_FILE" "$APP_ORIGIN_URL" <<'PY'
+# 同步壳内线上源 + Cordova 白名单，避免误打包本地/其它域名
+python3 - "$INDEX_FILE" "$CONFIG_FILE" "$APP_ORIGIN_URL" "$APP_ORIGIN_HOST" <<'PY'
 import re, sys
-path, origin = sys.argv[1], sys.argv[2]
-text = open(path, encoding="utf-8").read()
-text2, n = re.subn(
+index_path, config_path, origin, host = sys.argv[1:5]
+text = open(index_path, encoding="utf-8").read()
+text2, n1 = re.subn(
     r"var APP_ORIGIN = '[^']*';",
     f"var APP_ORIGIN = '{origin}';",
     text,
     count=1,
 )
-if n != 1:
-    raise SystemExit("未能替换 APP_ORIGIN")
-open(path, "w", encoding="utf-8").write(text2)
+text2, n2 = re.subn(
+    r"var ALLOWED_ORIGIN_HOST = '[^']*';",
+    f"var ALLOWED_ORIGIN_HOST = '{host}';",
+    text2,
+    count=1,
+)
+if n1 != 1 or n2 != 1:
+    raise SystemExit(f"未能替换壳域名 APP_ORIGIN={n1} ALLOWED={n2}")
+open(index_path, "w", encoding="utf-8").write(text2)
+cfg = open(config_path, encoding="utf-8").read()
+origin_no_slash = origin.rstrip("/")
+cfg2, n3 = re.subn(
+    r'<access origin="https://[^"]+"\s*/>',
+    f'<access origin="{origin_no_slash}" />',
+    cfg,
+    count=1,
+)
+cfg2, n4 = re.subn(
+    r'<allow-navigation href="https://[^"]+"\s*/>',
+    f'<allow-navigation href="{origin_no_slash}/*" />',
+    cfg2,
+    count=1,
+)
+if n3 != 1 or n4 != 1:
+    raise SystemExit(f"未能替换 config.xml access={n3} allow-navigation={n4}")
+open(config_path, "w", encoding="utf-8").write(cfg2)
 print(f"==> APP_ORIGIN = {origin}")
+print(f"==> ALLOWED_ORIGIN_HOST = {host}")
 PY
 
 cat > "$DIST_FILE" <<EOF

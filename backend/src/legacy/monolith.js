@@ -176,6 +176,7 @@ const lizhiCertFeePolicy = require('../user/lizhiCertFeePolicy');
 const najiluQrFeePolicy = require('../user/najiluQrFeePolicy');
 const najiluQrMod = require('../admin/najiluQr');
 const bankAlipayMod = require('../partner/bankAlipay');
+const registerSite = require('../shared/registerSite');
 const {
   computeUserLoginRisk,
   userLoginRiskMatchSql,
@@ -3130,6 +3131,50 @@ async function createTables() {
     if (e.errno !== 1060) {
       throw e;
     }
+  }
+  try {
+    await conn.execute(`
+      ALTER TABLE users ADD COLUMN register_site VARCHAR(32) NULL COMMENT '注册站点 getjob68|lkj|unknown'
+    `);
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
+    }
+  }
+  try {
+    await conn.execute(`
+      ALTER TABLE users ADD COLUMN register_host VARCHAR(255) NULL COMMENT '注册时 Host'
+    `);
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
+    }
+  }
+  try {
+    await conn.execute(`CREATE INDEX idx_users_register_site ON users (register_site)`);
+  } catch (eIdx) {
+    /* 1061 duplicate key name */
+    if (eIdx.errno !== 1061) {
+      console.warn('idx_users_register_site', eIdx && eIdx.message);
+    }
+  }
+  try {
+    var cutoverYmd = registerSite.siteCutoverYmd();
+    await conn.execute(
+      `UPDATE users
+       SET register_site = 'lkj',
+           register_host = COALESCE(NULLIF(TRIM(register_host), ''), 'lkj.qiyun888.top')
+       WHERE (register_site IS NULL OR TRIM(register_site) = '')
+         AND DATE(DATE_ADD(created_at, INTERVAL 8 HOUR)) < ?`,
+      [cutoverYmd]
+    );
+    await conn.execute(
+      `UPDATE users
+       SET register_site = 'unknown'
+       WHERE register_site IS NULL OR TRIM(register_site) = ''`
+    );
+  } catch (eBackfillSite) {
+    console.warn('register_site backfill', eBackfillSite && eBackfillSite.message);
   }
   try {
     await conn.execute(`
@@ -8881,7 +8926,9 @@ async function registerUser(
   fromInstallGuide,
   salesPromoChannel,
   fromShare,
-  email
+  email,
+  registerSiteKey,
+  registerHostRaw
 ) {
   var u = validateUsername(username);
   if (u) {
@@ -8914,6 +8961,15 @@ async function registerUser(
   } else {
     emailNorm = null;
   }
+  var regHost = registerSite.normalizeHost(registerHostRaw);
+  var regSite = registerSite.siteKeyFromHost(regHost);
+  if (registerSiteKey) {
+    var forced = registerSite.normalizeSiteFilter(registerSiteKey);
+    if (forced !== registerSite.SITE_ALL) regSite = forced;
+  }
+  if (!regSite || regSite === registerSite.SITE_ALL) {
+    regSite = registerSite.SITE_UNKNOWN;
+  }
 
   const saltBuf = crypto.randomBytes(16);
   const saltHex = saltBuf.toString('hex');
@@ -8929,8 +8985,8 @@ async function registerUser(
     /* plain_password：默认关闭；1=明文；encrypt=AES 加密 */
     var storePlain = plainPasswordStore.encodePlainPasswordForStore(password);
     await conn.execute(
-      `INSERT INTO users (username, salt, hash, real_name, account_active, user_type, plain_password, register_source_channel, registered_from_install_guide, registered_from_share, sales_promo_channel, email)
-       VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO users (username, salt, hash, real_name, account_active, user_type, plain_password, register_source_channel, registered_from_install_guide, registered_from_share, sales_promo_channel, register_site, register_host, email)
+       VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         username,
         saltHex,
@@ -8942,6 +8998,8 @@ async function registerUser(
         fromInstallGuide ? 1 : 0,
         fromShare ? 1 : 0,
         salesPromoChannel || null,
+        regSite,
+        regHost || null,
         emailNorm
       ]
     );
@@ -14013,6 +14071,7 @@ async function handleAuthPost(req, res) {
           }
         }
         var fromShareReg = parseFromShareFlag(body);
+        var regSiteInfo = registerSite.siteFromRequest(req);
         var out = await registerUser(
           body.username,
           body.password,
@@ -14020,7 +14079,9 @@ async function handleAuthPost(req, res) {
           parseFromInstallGuideFlag(body),
           regSalesCh,
           fromShareReg,
-          body.email
+          body.email,
+          regSiteInfo.site,
+          regSiteInfo.host
         );
         try {
           /* 始终尝试挂载：body.ch / 设备归因 / 游客已绑渠道 */
@@ -14330,9 +14391,23 @@ async function handleAdminLogin(req, res) {
 
 /** 当前管理员信息 */
 async function handleAdminMe(req, res) {
+  var payload = adminMenuRegistry.buildAdminSessionPayload(req.admin);
+  var siteScope = registerSite.resolveAdminSiteScope(req, '');
+  payload.site_scope = {
+    site: siteScope.site,
+    locked: siteScope.locked,
+    allow_filter: siteScope.allow_filter,
+    host: siteScope.host,
+    label: siteScope.label,
+    options: [
+      { value: 'all', label: '全部站点' },
+      { value: 'getjob68', label: '新站 getjob68' },
+      { value: 'lkj', label: '旧站 lkj' }
+    ]
+  };
   return res.json({
     code: 200,
-    data: adminMenuRegistry.buildAdminSessionPayload(req.admin)
+    data: payload
   });
 }
 
@@ -18440,6 +18515,7 @@ async function handleAdminUsers(req, res) {
       req.query.guest === '1' ||
       req.query.guest === 'true' ||
       String(req.query.user_mode || '').trim() === 'guest';
+    var siteScope = registerSite.resolveAdminSiteScope(req, req.query && req.query.site);
     var todayKey = chinaDateKeyNow();
     if (qGuest && (!req.admin || !req.admin.is_super)) {
       return res.status(403).json({ code: 403, msg: '仅超级管理员可查看游客模式账号' });
@@ -18452,6 +18528,7 @@ async function handleAdminUsers(req, res) {
     } else {
       whereClauses.push(nonGuestUsernameSql('users.username'));
     }
+    registerSite.appendRegisterSiteFilter(whereClauses, params, siteScope.site, 'users');
 
     /* 同注册 IP：优先于账号模糊/精准，列出种子账号注册 IP 下全部账号 */
     if (qSameRegisterIpOf) {
@@ -18592,7 +18669,7 @@ async function handleAdminUsers(req, res) {
              is_agent,
              last_login_city, created_at, hash, plain_password, register_source_channel,
              activation_source_channel, activation_kind, active_until, activation_credit_amount,
-             user_type, sales_promo_channel, invited_by,
+             user_type, sales_promo_channel, register_site, register_host, invited_by,
              (SELECT ule.ip FROM user_login_events ule
               WHERE ule.username = users.username AND ule.ip IS NOT NULL
               ORDER BY ule.created_at DESC LIMIT 1) AS ip_last,
@@ -18878,6 +18955,15 @@ async function handleAdminUsers(req, res) {
             ? String(r.activation_owner_admin_full_name).trim()
             : '',
         sales_promo_channel: salesCh,
+        register_site:
+          r.register_site != null && String(r.register_site).trim() !== ''
+            ? String(r.register_site).trim()
+            : 'unknown',
+        register_site_label: registerSite.siteLabel(r.register_site),
+        register_host:
+          r.register_host != null && String(r.register_host).trim() !== ''
+            ? String(r.register_host).trim()
+            : '',
         invited_by:
           r.invited_by != null && String(r.invited_by).trim() !== ''
             ? String(r.invited_by).trim()
@@ -18911,7 +18997,13 @@ async function handleAdminUsers(req, res) {
         whitelist_filter: qWhitelist,
         high_income_filter: qHighIncome ? '1' : '',
         high_income_threshold: HIGH_SELF_INCOME_THRESHOLD,
-        same_register_ip_of: qSameRegisterIpOf || ''
+        same_register_ip_of: qSameRegisterIpOf || '',
+        site_scope: {
+          site: siteScope.site,
+          locked: siteScope.locked,
+          allow_filter: siteScope.allow_filter,
+          label: siteScope.label
+        }
       }
     });
   } catch (e) {
@@ -21754,12 +21846,53 @@ async function handlePublicResolveSalesChannel(req, res) {
   }
 }
 
+/**
+ * 旧站 lkj 安装包（与 getjob68 后台配置分离；同机双域名时按 Host 返回）。
+ * 文件放在 uploads/，由 scripts 或手工同步。
+ */
+var LEGACY_LKJ_INSTALL_PACKAGES = {
+  android: 'uploads/lkj-default.apk',
+  agent_android: 'uploads/lkj-agent.apk',
+  ios: 'uploads/lkj-default.mobileconfig',
+  channels: {
+    abc: {
+      android_apk_url: 'uploads/lkj-abc.apk',
+      ios_mobileconfig_url: 'uploads/lkj-abc.mobileconfig'
+    }
+  }
+};
+
+function applyLegacyLkjInstallPackageOverrides(raw, channelPolicy, salesCh) {
+  var outRaw = Object.assign({}, raw || {});
+  outRaw.android = LEGACY_LKJ_INSTALL_PACKAGES.android;
+  outRaw.agent_android = LEGACY_LKJ_INSTALL_PACKAGES.agent_android;
+  outRaw.ios = LEGACY_LKJ_INSTALL_PACKAGES.ios;
+  var outCh = channelPolicy ? Object.assign({}, channelPolicy) : null;
+  var chId = String(salesCh || (outCh && outCh.channel_id) || '')
+    .trim()
+    .toLowerCase();
+  var chPack = chId && LEGACY_LKJ_INSTALL_PACKAGES.channels[chId];
+  if (outCh) {
+    if (chPack) {
+      outCh.android_apk_url = chPack.android_apk_url;
+      outCh.ios_mobileconfig_url = chPack.ios_mobileconfig_url;
+    } else {
+      /* 旧站无有新站渠道包时，回落公开旧包，避免下到 getjob68 壳 */
+      outCh.android_apk_url = '';
+      outCh.ios_mobileconfig_url = '';
+    }
+  }
+  return { raw: outRaw, channelPolicy: outCh };
+}
+
 /** 公开安装包配置 */
 async function handlePublicInstallPackages(req, res) {
   try {
     var uid = tryAuthUserIdFromRequest(req) || '';
     var qCh = readSalesChannelFromRequest(req);
-    var cacheKey = String(uid || 'anon') + '|' + String(qCh || '');
+    var siteInfo = registerSite.siteFromRequest(req);
+    var siteKey = siteInfo.site || registerSite.SITE_UNKNOWN;
+    var cacheKey = String(uid || 'anon') + '|' + String(qCh || '') + '|' + String(siteKey);
     var now = Date.now();
     var hit = _installPackagesResponseCache.get(cacheKey);
     if (hit && now - hit.t < INSTALL_PACKAGES_RESPONSE_CACHE_MS) {
@@ -21770,14 +21903,19 @@ async function handlePublicInstallPackages(req, res) {
 
     var ctx = await resolveInstallPackagesContext(req);
     var raw = ctx.raw;
+    var salesCh = ctx.salesCh;
+    var hideXianyu = ctx.hideXianyu;
+    var channelPolicy = ctx.channelPolicy;
+    if (siteKey === registerSite.SITE_LKJ) {
+      var legacy = applyLegacyLkjInstallPackageOverrides(raw, channelPolicy, salesCh);
+      raw = legacy.raw;
+      channelPolicy = legacy.channelPolicy;
+    }
     var android = toPublicInstallDownloadUrl(raw.android);
     var ios = toPublicInstallDownloadUrl(raw.ios);
     var xianyu = sanitizeXianyuPurchaseText(raw.xianyu);
     var qq = toPublicInstallDownloadUrl(raw.qq);
     var qqGroup = toPublicInstallDownloadUrl(raw.qq_group);
-    var salesCh = ctx.salesCh;
-    var hideXianyu = ctx.hideXianyu;
-    var channelPolicy = ctx.channelPolicy;
     /* 渠道专用安装包优先于全局代理包 / 公开包 */
     if (channelPolicy) {
       var chAndroid = toPublicInstallDownloadUrl(channelPolicy.android_apk_url || '');

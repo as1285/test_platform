@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20261008-abc-today">
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20261008-site-pages">
     <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260905-ch-psych-col">
 </head>
 <body>
@@ -978,14 +978,21 @@
                 </div>
 
                 <div id="page-users" class="page-panel" role="tabpanel">
-                    <div class="page-lede"><p class="page-lede-text">账号查询、状态管理与风险处置</p></div>
+                    <div class="page-lede"><p class="page-lede-text" id="usersPageLede">账号查询、状态管理与风险处置</p></div>
                     <section>
-                        <h2>注册用户</h2>
+                        <h2 id="usersPageTitle">注册用户</h2>
                         <div class="user-filter-bar">
                             <div class="user-filter-fields">
                                 <div class="user-filter-field">
                                     <label for="filterUsername">账号</label>
                                     <input type="text" id="filterUsername" class="filter-control" placeholder="搜索账号" autocomplete="off">
+                                </div>
+                                <div class="user-filter-field" id="filterRegisterSiteField" hidden>
+                                    <label for="filterRegisterSite">注册站点</label>
+                                    <select id="filterRegisterSite" class="filter-control" title="由页面决定：新站注册 / 旧站注册" disabled>
+                                        <option value="getjob68">新站 getjob68</option>
+                                        <option value="lkj" selected>旧站 lkj</option>
+                                    </select>
                                 </div>
                                 <div class="user-filter-field">
                                     <label for="filterExact">精准查询</label>
@@ -1110,6 +1117,7 @@
                                         <th class="col-w-120">账号</th>
                                         <th class="col-tax-mod">当日修改</th>
                                         <th class="col-w-88">姓名</th>
+                                        <th class="col-w-100">注册站点</th>
                                         <th class="col-w-120">注册/激活渠道</th>
                                         <th class="col-w-72">密码</th>
                                         <th class="col-w-72">激活</th>
@@ -2878,7 +2886,13 @@
                     <section>
                         <div class="ops-board-head">
                             <h2>运营看板</h2>
-                            <div class="ops-board-head-actions" style="display:flex;align-items:center;gap:8px">
+                            <div class="ops-board-head-actions" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                                <label for="opsBoardSite" class="hint" style="margin:0">站点</label>
+                                <select id="opsBoardSite" class="filter-select" aria-label="注册站点">
+                                    <option value="all" selected>全部站点</option>
+                                    <option value="getjob68">新站 getjob68</option>
+                                    <option value="lkj">旧站 lkj</option>
+                                </select>
                                 <span class="hint">所选区间</span>
                                 <input type="date" id="opsBoardDateFrom" class="filter-select ops-board-date" aria-label="开始日期">
                                 <span class="hint">至</span>
@@ -4400,9 +4414,9 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260929-abc-assign"></script>
+    <script src="/js/admin/loader.js?v=20261008-site-pages"></script>
     <script src="/js/admin/nav.js?v=20260908-hub-tab-perm"></script>
     <script src="/js/admin-analytics-period.js?v=20260905-ch-psych-col"></script>
-    <script src="/js/admin_panel.js?v=20261008-cmb-fee"></script>
+    <script src="/js/admin_panel.js?v=20261008-site-pages"></script>
 </body>
 </html>

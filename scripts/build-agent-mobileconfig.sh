@@ -32,7 +32,7 @@ fi
 
 APP_URL="${APP_URL:-${HTTPS_APP_URL:-${PUBLIC_SITE_URL:-}}}"
 if [[ -z "${APP_URL}" ]]; then
-  APP_URL="https://lkj.qiyun888.top"
+  APP_URL="https://getjob68.club"
 fi
 APP_URL="${APP_URL%/}"
 

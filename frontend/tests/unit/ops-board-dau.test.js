@@ -71,12 +71,12 @@ const boardPayload = {
 describe('运营看板同时点日活', () => {
   it('页面、接口字段与缓存戳齐全', () => {
     expect(html).toContain('id="opsBoardDau"');
-    expect(html).toContain('admin_panel.css?v=20260915-dau-clock');
-    expect(html).toContain('loader.js?v=20260915-dau-clock');
+    expect(html).toContain('admin_panel.css?v=20261008-site-pages');
+    expect(html).toContain('loader.js?v=20261008-site-pages');
     expect(ops).toContain('function renderDau(');
     expect(ops).toContain('function sparkLineSvg(');
     expect(ops).toContain('data.dau');
-    expect(loader).toContain('ops-conversion.js?v=20260915-dau-clock');
+    expect(loader).toContain('ops-conversion.js?v=20261008-site-pages');
     expect(css).toContain('.ops-board-dau-kpis');
     expect(css).toContain('.ops-board-dau-charts');
   });

@@ -147,6 +147,8 @@ services:
       # 多机域名：与前端 site-config / APP_URL 保持一致（见 .env.example）
       PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-${APP_URL:-}}
       SITE_TRUSTED_HOSTS: ${SITE_TRUSTED_HOSTS:-}
+      # 北京日历切换日：此前注册一律算 lkj（默认 2026-10-08）
+      SITE_CUTOVER_YMD: ${SITE_CUTOVER_YMD:-2026-10-08}
       # QQ 邮箱 SMTP（发件邮箱与 SMTP_PASS 授权码，未配置时仅后台展示监控、不发邮件）
       SMTP_HOST: ${SMTP_HOST:-smtp.qq.com}
       SMTP_PORT: ${SMTP_PORT:-465}

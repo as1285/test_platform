@@ -8,6 +8,7 @@ const purchasePriceSurvey = require('../growth/purchasePriceSurvey');
 const taxEditFeePolicy = require('../tax/taxEditFeePolicy');
 const { isValidUserEmail } = require('./userEmailBulk');
 const { adminHasFullUserScope } = require('./fullUserScope');
+const registerSite = require('../shared/registerSite');
 
 var HIGH_INCOME = 15000;
 var GUEST_PREFIX = '__guest_';
@@ -478,12 +479,14 @@ async function handleOpsBoard(req, res) {
     var kpiFrom = kpiRange.from;
     var kpiTo = kpiRange.to;
     var kpiIsToday = kpiRange.is_today;
+    var siteScope = registerSite.resolveAdminSiteScope(req, req.query && req.query.site);
     var pool = getPool();
     const conn = await pool.getConnection();
     try {
-      var cnDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
+      var cnDay = 'DATE(DATE_ADD(users.created_at, INTERVAL 8 HOUR))';
       var cnActDay = 'DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR))';
-      var cnPaidDay = 'DATE(DATE_ADD(COALESCE(paid_at, created_at), INTERVAL 8 HOUR))';
+      var cnPaidDay =
+        'DATE(DATE_ADD(COALESCE(payment_orders.paid_at, payment_orders.created_at), INTERVAL 8 HOUR))';
 
       var userWhere = [
         'users.list_hidden_at IS NULL',
@@ -491,6 +494,7 @@ async function handleOpsBoard(req, res) {
       ];
       var userParams = [];
       appendRegisteredScope(userWhere, userParams, req.admin, 'users.username');
+      registerSite.appendRegisterSiteFilter(userWhere, userParams, siteScope.site, 'users');
       var userWhereSql = ' WHERE ' + userWhere.join(' AND ');
 
       /* 今日注册按注册 IP 去重：同 IP 多账号只计 1；无注册 IP 的账号按用户名各计 1 */
@@ -530,6 +534,7 @@ async function handleOpsBoard(req, res) {
       actWhere.push(cnActDay + ' >= ? AND ' + cnActDay + ' <= ?');
       actParams.push(kpiFrom, kpiTo);
       actWhere.push('(u.activation_cancelled_at IS NULL)');
+      registerSite.appendRegisterSiteFilter(actWhere, actParams, siteScope.site, 'u');
       const [actRows] = await conn.query(
         'SELECT COUNT(DISTINCT ac.used_by_username) AS activate_today FROM activation_codes ac' +
           ' LEFT JOIN users u ON u.username = ac.used_by_username WHERE ' +
@@ -537,46 +542,57 @@ async function handleOpsBoard(req, res) {
         actParams
       );
 
-      var payWhere = ["status = 'paid'", cnPaidDay + ' >= ? AND ' + cnPaidDay + ' <= ?'];
+      var payWhere = [
+        "payment_orders.status = 'paid'",
+        cnPaidDay + ' >= ? AND ' + cnPaidDay + ' <= ?'
+      ];
       var payParams = [kpiFrom, kpiTo];
+      registerSite.appendRegisterSiteFilter(payWhere, payParams, siteScope.site, 'u');
       /* 与支付分析一致：个税修改费单独拆出，其余已付计入「付费了单」 */
       var taxEditSkuSql =
-        "(sku_id IN ('" +
+        "(payment_orders.sku_id IN ('" +
         taxEditFeePolicy.TAX_EDIT_SINGLE_SKU_ID +
         "','" +
         taxEditFeePolicy.TAX_EDIT_DAILY_SKU_ID +
-        "') OR grant_kind IN ('tax_edit_single','tax_edit_daily'))";
+        "') OR payment_orders.grant_kind IN ('tax_edit_single','tax_edit_daily'))";
+      var payFromSql =
+        ' FROM payment_orders LEFT JOIN users u ON u.username = payment_orders.username WHERE ';
       const [payRows] = await conn.query(
         `SELECT COUNT(*) AS pay_orders,
-                COALESCE(SUM(amount), 0) AS pay_gmv,
-                COALESCE(SUM(CASE WHEN ${taxEditSkuSql} THEN 0 ELSE amount END), 0) AS pay_orders_gmv,
-                COALESCE(SUM(CASE WHEN ${taxEditSkuSql} THEN amount ELSE 0 END), 0) AS tax_edit_gmv
-         FROM payment_orders WHERE ` + payWhere.join(' AND '),
+                COALESCE(SUM(payment_orders.amount), 0) AS pay_gmv,
+                COALESCE(SUM(CASE WHEN ${taxEditSkuSql} THEN 0 ELSE payment_orders.amount END), 0) AS pay_orders_gmv,
+                COALESCE(SUM(CASE WHEN ${taxEditSkuSql} THEN payment_orders.amount ELSE 0 END), 0) AS tax_edit_gmv
+         ${payFromSql}` + payWhere.join(' AND '),
         payParams
       );
       const [paySkuRows] = await conn.query(
-        `SELECT COALESCE(NULLIF(TRIM(sku_id), ''), '(unknown)') AS sku_id,
+        `SELECT COALESCE(NULLIF(TRIM(payment_orders.sku_id), ''), '(unknown)') AS sku_id,
                 COALESCE(
                   MAX(CASE
-                    WHEN subject IS NULL OR TRIM(subject) = '' THEN NULL
-                    WHEN subject REGEXP '档位[0-9]+$' THEN NULL
-                    ELSE subject
+                    WHEN payment_orders.subject IS NULL OR TRIM(payment_orders.subject) = '' THEN NULL
+                    WHEN payment_orders.subject REGEXP '档位[0-9]+$' THEN NULL
+                    ELSE payment_orders.subject
                   END),
-                  MAX(subject)
+                  MAX(payment_orders.subject)
                 ) AS subject,
-                MAX(grant_kind) AS grant_kind,
+                MAX(payment_orders.grant_kind) AS grant_kind,
                 COUNT(*) AS orders,
-                COALESCE(SUM(amount), 0) AS gmv
-         FROM payment_orders
-         WHERE ` +
+                COALESCE(SUM(payment_orders.amount), 0) AS gmv
+         ${payFromSql}` +
           payWhere.join(' AND ') +
           `
-         GROUP BY COALESCE(NULLIF(TRIM(sku_id), ''), '(unknown)')
+         GROUP BY COALESCE(NULLIF(TRIM(payment_orders.sku_id), ''), '(unknown)')
          ORDER BY gmv DESC, orders DESC`,
         payParams
       );
 
       var stockBuilt = baseInactiveWhere(req.admin);
+      registerSite.appendRegisterSiteFilter(
+        stockBuilt.where,
+        stockBuilt.params,
+        siteScope.site,
+        'users'
+      );
       var stockSql = ' WHERE ' + stockBuilt.where.join(' AND ');
       const [stockRows] = await conn.query(
         `SELECT
@@ -605,6 +621,7 @@ async function handleOpsBoard(req, res) {
       ];
       var refundParams = [];
       appendRegisteredScope(refundWhere, refundParams, req.admin, 'users.username');
+      registerSite.appendRegisterSiteFilter(refundWhere, refundParams, siteScope.site, 'users');
       const [refundRows] = await conn.query(
         'SELECT COUNT(*) AS refund_eligible FROM users WHERE ' + refundWhere.join(' AND '),
         refundParams
@@ -644,6 +661,12 @@ async function handleOpsBoard(req, res) {
       res.json({
         code: 200,
         data: {
+          site_scope: {
+            site: siteScope.site,
+            locked: siteScope.locked,
+            allow_filter: siteScope.allow_filter,
+            label: siteScope.label
+          },
           today: {
             date: kpiTo,
             date_from: kpiFrom,
@@ -1290,12 +1313,14 @@ async function handleOpsBoardPayments(req, res) {
       parseBjDate(req.query && req.query.date);
     var kpiRange = hasRange ? resolveKpiRange(req.query) : null;
     var kpiDay = kpiRange && kpiRange.is_single ? kpiRange.from : parseBjDate(req.query && req.query.date);
+    var siteScope = registerSite.resolveAdminSiteScope(req, req.query && req.query.site);
     var pool = getPool();
     var conn = await pool.getConnection();
     try {
-      var cnPaidDay = 'DATE(DATE_ADD(COALESCE(paid_at, created_at), INTERVAL 8 HOUR))';
+      var cnPaidDay =
+        'DATE(DATE_ADD(COALESCE(payment_orders.paid_at, payment_orders.created_at), INTERVAL 8 HOUR))';
       var todayBjSql = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
-      var payWhere = ["status = 'paid'"];
+      var payWhere = ["payment_orders.status = 'paid'"];
       var payParams = [];
       if (kpiRange) {
         payWhere.push(cnPaidDay + ' >= ? AND ' + cnPaidDay + ' <= ?');
@@ -1309,14 +1334,18 @@ async function handleOpsBoardPayments(req, res) {
         );
         payParams.push(days - 1);
       }
+      registerSite.appendRegisterSiteFilter(payWhere, payParams, siteScope.site, 'u');
       const [rows] = await conn.query(
-        `SELECT id, username, sku_id, subject, grant_kind, amount,
-                out_trade_no, alipay_trade_no, paid_at, created_at
+        `SELECT payment_orders.id, payment_orders.username, payment_orders.sku_id,
+                payment_orders.subject, payment_orders.grant_kind, payment_orders.amount,
+                payment_orders.out_trade_no, payment_orders.alipay_trade_no,
+                payment_orders.paid_at, payment_orders.created_at
          FROM payment_orders
+         LEFT JOIN users u ON u.username = payment_orders.username
          WHERE ` +
           payWhere.join(' AND ') +
           `
-         ORDER BY COALESCE(paid_at, created_at) DESC, id DESC
+         ORDER BY COALESCE(payment_orders.paid_at, payment_orders.created_at) DESC, payment_orders.id DESC
          LIMIT 500`,
         payParams
       );

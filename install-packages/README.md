@@ -40,5 +40,5 @@ cp install-packages/ios/personal.mobileconfig frontend/个人.mobileconfig
 后台「安装分发 → 代理专属渠道」为该渠道填写 `android_apk_url` / `ios_mobileconfig_url`。
 公开接口 `GET /api/public/install-packages?ch=<渠道>` 优先返回该渠道包。
 
-当前站点：`https://lkj.qiyun888.top`
-APK 壳内 APP_ORIGIN：`https://lkj.qiyun888.top/`
+当前站点（新）：`https://getjob68.club` — APK 壳内 `APP_ORIGIN=https://getjob68.club/`  
+旧站：`https://lkj.qiyun888.top` — 安装页按 Host 返回 `uploads/lkj-*.apk|mobileconfig`（壳内仍为 lkj）
