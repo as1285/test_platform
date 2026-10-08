@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20261008-site-pages">
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20261008-legacy-plain">
     <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260905-ch-psych-col">
 </head>
 <body>
@@ -1117,7 +1117,7 @@
                                         <th class="col-w-120">账号</th>
                                         <th class="col-tax-mod">当日修改</th>
                                         <th class="col-w-88">姓名</th>
-                                        <th class="col-w-100">注册站点</th>
+                                        <th class="col-w-100" id="usersRegisterSiteTh">注册站点</th>
                                         <th class="col-w-120">注册/激活渠道</th>
                                         <th class="col-w-72">密码</th>
                                         <th class="col-w-72">激活</th>
@@ -2887,12 +2887,14 @@
                         <div class="ops-board-head">
                             <h2>运营看板</h2>
                             <div class="ops-board-head-actions" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                                <span id="opsBoardSiteWrap" style="display:inline-flex;align-items:center;gap:8px">
                                 <label for="opsBoardSite" class="hint" style="margin:0">站点</label>
                                 <select id="opsBoardSite" class="filter-select" aria-label="注册站点">
                                     <option value="all" selected>全部站点</option>
                                     <option value="getjob68">新站 getjob68</option>
                                     <option value="lkj">旧站 lkj</option>
                                 </select>
+                                </span>
                                 <span class="hint">所选区间</span>
                                 <input type="date" id="opsBoardDateFrom" class="filter-select ops-board-date" aria-label="开始日期">
                                 <span class="hint">至</span>
@@ -4414,9 +4416,9 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20261008-site-pages"></script>
+    <script src="/js/admin/loader.js?v=20261008-legacy-plain"></script>
     <script src="/js/admin/nav.js?v=20260908-hub-tab-perm"></script>
     <script src="/js/admin-analytics-period.js?v=20260905-ch-psych-col"></script>
-    <script src="/js/admin_panel.js?v=20261008-site-pages"></script>
+    <script src="/js/admin_panel.js?v=20261008-legacy-plain"></script>
 </body>
 </html>

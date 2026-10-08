@@ -105,6 +105,30 @@ describe('menuRegistry', () => {
       tab: 'emails',
       contentPage: 'user-emails'
     });
+    expect(parseAdminRoute('users')).toEqual({
+      page: 'users',
+      hub: 'users',
+      tab: 'new',
+      contentPage: 'users-new'
+    });
+    expect(parseAdminRoute('users/new')).toEqual({
+      page: 'users',
+      hub: 'users',
+      tab: 'new',
+      contentPage: 'users-new'
+    });
+    expect(parseAdminRoute('users/list')).toEqual({
+      page: 'users',
+      hub: 'users',
+      tab: 'list',
+      contentPage: 'users'
+    });
+    expect(parseAdminRoute('users-new')).toEqual({
+      page: 'users',
+      hub: 'users',
+      tab: 'new',
+      contentPage: 'users-new'
+    });
     expect(parseAdminRoute('server-monitor')).toEqual({
       page: 'login-log',
       hub: 'login-log',

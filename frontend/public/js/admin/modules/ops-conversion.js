@@ -28,12 +28,18 @@
 
   function applyOpsSiteScopeLock() {
     var el = document.getElementById('opsBoardSite');
+    var wrap = document.getElementById('opsBoardSiteWrap');
     if (!el) return;
     var scope = global._adminSiteScope;
+    var legacy = isLegacyAdminHostClient();
     var locked =
       (scope && scope.locked) ||
       (scope && scope.allow_filter === false) ||
-      isLegacyAdminHostClient();
+      legacy;
+    if (wrap) {
+      wrap.style.display = legacy ? 'none' : 'inline-flex';
+      wrap.hidden = !!legacy;
+    }
     if (locked) {
       el.value = 'lkj';
       el.disabled = true;

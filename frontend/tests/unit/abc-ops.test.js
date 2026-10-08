@@ -17,9 +17,9 @@ describe('admin ABC ops module', () => {
     expect(html).toContain('id="btnAbcOpsAssign"');
     expect(html).toContain('id="abcOpsUserTbody"');
     expect(html).toContain('href="#abc-ops"');
-    expect(html).toContain('admin_panel.css?v=20261008-site-pages');
-    expect(html).toContain('loader.js?v=20261008-site-pages');
-    expect(loader).toContain('abc-ops.js?v=20261008-site-pages');
+    expect(html).toContain('admin_panel.css?v=20261008-legacy-plain');
+    expect(html).toContain('loader.js?v=20261008-legacy-plain');
+    expect(loader).toContain('abc-ops.js?v=20261008-legacy-plain');
     expect(html).toMatch(/id="abcOpsDays"[^>]*data-default="1"/);
     expect(loader).toContain("'abc-users': 'abc-ops'");
     expect(src).toContain('api/admin/ops/abc/overview?days=');

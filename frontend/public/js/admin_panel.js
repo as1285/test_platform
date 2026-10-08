@@ -1509,6 +1509,15 @@
             bar.innerHTML = visible
                 .map(function (t) {
                     var isOn = t.id === active ? ' is-active' : '';
+                    var tabLabel = t.label;
+                    /* 旧域名后台：TAB 仍叫「注册用户」，不出现「旧站」字样 */
+                    if (
+                        hubKey === 'users' &&
+                        t.id === 'list' &&
+                        isLegacyAdminHostClient()
+                    ) {
+                        tabLabel = '注册用户';
+                    }
                     return (
                         '<button type="button" class="admin-hub-tab' +
                         isOn +
@@ -1519,7 +1528,7 @@
                         '" aria-selected="' +
                         (t.id === active ? 'true' : 'false') +
                         '">' +
-                        t.label +
+                        tabLabel +
                         '</button>'
                     );
                 })
@@ -6029,15 +6038,31 @@
         }
 
         function applyUsersListPageChrome() {
+            var legacyHost = isLegacyAdminHostClient();
             var site = currentUsersListSite();
+            var showSiteCol = !legacyHost && site === 'getjob68';
             var h2 = document.getElementById('usersPageTitle');
             var lede = document.getElementById('usersPageLede');
             var siteField = document.getElementById('filterRegisterSiteField');
-            if (siteField) siteField.hidden = true;
+            if (siteField) {
+                siteField.hidden = true;
+                siteField.style.display = 'none';
+            }
             var siteSel = document.getElementById('filterRegisterSite');
             if (siteSel) {
                 siteSel.value = site;
                 siteSel.disabled = true;
+            }
+            var siteTh = document.getElementById('usersRegisterSiteTh');
+            if (siteTh) {
+                siteTh.hidden = !showSiteCol;
+                siteTh.style.display = showSiteCol ? '' : 'none';
+            }
+            /* 旧域名后台：不展示站点文案，保持原来的「注册用户」 */
+            if (legacyHost) {
+                if (h2) h2.textContent = '注册用户';
+                if (lede) lede.textContent = '账号查询、状态管理与风险处置';
+                return;
             }
             if (site === 'getjob68') {
                 if (h2) h2.textContent = '新站注册用户';
@@ -6146,13 +6171,12 @@
                     applyUsersListPageChrome();
                     var list = data.data.users || [];
                     var total = data.data.total || 0;
+                    var showSiteCol =
+                        !isLegacyAdminHostClient() && registerSite === 'getjob68';
+                    var usersColspan = showSiteCol ? 13 : 12;
                     var statText = '共 ' + total + ' 个账号';
-                    if (registerSite === 'getjob68') {
+                    if (showSiteCol) {
                         statText += ' · 新站 getjob68';
-                    } else if (registerSite === 'lkj') {
-                        statText += ' · 旧站 lkj';
-                    } else if (data.data.site_scope && data.data.site_scope.label) {
-                        statText += ' · ' + data.data.site_scope.label;
                     }
                     if (data.data.high_income_filter === '1') {
                         statText += '（未激活且自己填月收入>1.5万）';
@@ -6455,19 +6479,21 @@
                             esc(u.real_name || '—') +
                             nameChangeBadge +
                             '</td>';
-                        var siteLabel =
-                            u.register_site_label ||
-                            (u.register_site === 'getjob68'
-                                ? '新站 getjob68'
-                                : u.register_site === 'lkj'
-                                  ? '旧站 lkj'
-                                  : u.register_site || '—');
-                        html +=
-                            '<td class="cell-break" title="' +
-                            esc(u.register_host || '') +
-                            '">' +
-                            esc(siteLabel) +
-                            '</td>';
+                        if (showSiteCol) {
+                            var siteLabel =
+                                u.register_site_label ||
+                                (u.register_site === 'getjob68'
+                                    ? '新站 getjob68'
+                                    : u.register_site === 'lkj'
+                                      ? '旧站 lkj'
+                                      : u.register_site || '—');
+                            html +=
+                                '<td class="cell-break" title="' +
+                                esc(u.register_host || '') +
+                                '">' +
+                                esc(siteLabel) +
+                                '</td>';
+                        }
                         var channelLabel =
                             u.channel_analysis_label || u.register_source_channel_label || '';
                         if (!channelLabel && u.is_agent) {
@@ -8091,13 +8117,8 @@
         }
 
         document.getElementById('btnSearchUsers').onclick = function() { loadUsers(1); };
-        var filterRegisterSiteEl = document.getElementById('filterRegisterSite');
-        if (filterRegisterSiteEl) {
-            applyAdminSiteScopeToSelect(filterRegisterSiteEl, window._adminSiteScope);
-            filterRegisterSiteEl.addEventListener('change', function () {
-                loadUsers(1);
-            });
-        }
+        /* 注册站点由「新站注册 / 旧站注册」页面决定，不再用下拉筛选 */
+        applyUsersListPageChrome();
         ['filterNameChangesGt', 'filterTaxModDaysGt'].forEach(function (id) {
             var el = document.getElementById(id);
             if (!el) return;
@@ -11180,16 +11201,12 @@
             if (data.first_page) window._adminFirstPage = String(data.first_page);
             if (data.site_scope) {
                 window._adminSiteScope = data.site_scope;
-                applyAdminSiteScopeToSelect(
-                    document.getElementById('filterRegisterSite'),
-                    data.site_scope
-                );
                 applyAdminSiteScopeToSelect(document.getElementById('opsBoardSite'), data.site_scope);
             } else if (isLegacyAdminHostClient()) {
                 window._adminSiteScope = { site: 'lkj', locked: true, allow_filter: false };
-                applyAdminSiteScopeToSelect(document.getElementById('filterRegisterSite'), window._adminSiteScope);
                 applyAdminSiteScopeToSelect(document.getElementById('opsBoardSite'), window._adminSiteScope);
             }
+            applyUsersListPageChrome();
             applySuperOnlyUi();
             if (data.hubs && typeof data.hubs === 'object') {
                 Object.keys(data.hubs).forEach(function (k) {
