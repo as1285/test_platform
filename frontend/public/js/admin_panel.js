@@ -6536,10 +6536,16 @@
                         html += '<td class="col-ops">' + ops + '</td>';
                         html += '</tr>';
                         html += '<tr id="user_detail_row_' + detailKey + '" class="users-detail-row" style="display:none;">';
-                        html += '<td colspan="13"><div id="user_detail_box_' + detailKey + '" style="padding:4px 0;color:#888;">点击详情加载设备与页面记录…</div></td>';
+                        html +=
+                            '<td colspan="' +
+                            usersColspan +
+                            '"><div id="user_detail_box_' +
+                            detailKey +
+                            '" style="padding:4px 0;color:#888;">点击详情加载设备与页面记录…</div></td>';
                         html += '</tr>';
                     });
-                    document.getElementById('userTbody').innerHTML = html || '<tr><td colspan="13">暂无数据</td></tr>';
+                    document.getElementById('userTbody').innerHTML =
+                        html || '<tr><td colspan="' + usersColspan + '">暂无数据</td></tr>';
                     highlightPendingUserRow();
 
                     // 重新绑定事件
