@@ -18609,6 +18609,12 @@ async function handleAdminUsers(req, res) {
       req.query.guest === 'true' ||
       String(req.query.user_mode || '').trim() === 'guest';
     var siteScope = registerSite.resolveAdminSiteScope(req, req.query && req.query.site);
+    var qSalesCh = sanitizeSalesChannelId(
+      (req.query && (req.query.sales_ch || req.query.promo_channel)) || ''
+    );
+    var qExcludeSalesCh = sanitizeSalesChannelId(
+      (req.query && req.query.exclude_sales_ch) || ''
+    );
     var todayKey = chinaDateKeyNow();
     if (qGuest && (!req.admin || !req.admin.is_super)) {
       return res.status(403).json({ code: 403, msg: '仅超级管理员可查看游客模式账号' });
@@ -18622,6 +18628,14 @@ async function handleAdminUsers(req, res) {
       whereClauses.push(nonGuestUsernameSql('users.username'));
     }
     registerSite.appendRegisterSiteFilter(whereClauses, params, siteScope.site, 'users');
+    if (qSalesCh) {
+      whereClauses.push("LOWER(TRIM(IFNULL(users.sales_promo_channel, ''))) = ?");
+      params.push(qSalesCh);
+    }
+    if (qExcludeSalesCh) {
+      whereClauses.push("LOWER(TRIM(IFNULL(users.sales_promo_channel, ''))) <> ?");
+      params.push(qExcludeSalesCh);
+    }
 
     /* 同注册 IP：优先于账号模糊/精准，列出种子账号注册 IP 下全部账号 */
     if (qSameRegisterIpOf) {

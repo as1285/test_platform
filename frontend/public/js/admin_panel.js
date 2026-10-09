@@ -949,6 +949,7 @@
                 'rename-tax-daily': 'users',
                 'user-emails': 'users',
                 'users-new': 'users',
+                'users-lkj-abc': 'users',
                 'users-deleted': 'users',
                 'user-data': 'users',
                 'tax-records-edit': 'users',
@@ -1225,6 +1226,7 @@
                 tabs: [
                     { id: 'new', label: '新站注册', page: 'users-new' },
                     { id: 'list', label: '旧站注册', page: 'users' },
+                    { id: 'lkj-abc', label: '旧站ABC', page: 'users-lkj-abc' },
                     { id: 'rename', label: '同行 · 高频改名', page: 'rename-tax-daily' },
                     { id: 'emails', label: '邮箱管理', page: 'user-emails' },
                     { id: 'deleted', label: '已删除', page: 'users-deleted' },
@@ -1383,7 +1385,7 @@
         function adminPagePanelId(pageKey) {
             if (pageKey === 'downline-admins') return 'page-admin-accounts';
             if (pageKey === 'peer-accounts') return 'page-rename-tax-daily';
-            if (pageKey === 'users-new') return 'page-users';
+            if (pageKey === 'users-new' || pageKey === 'users-lkj-abc') return 'page-users';
             if (pageKey === 'insights-product' || pageKey === 'insights-growth') {
                 /* hub 壳：实际展示 content 子页 */
                 return 'page-' + pageKey;
@@ -1438,6 +1440,15 @@
                             ? String(currentAdminProfile.username).trim().toLowerCase()
                             : '';
                     if (topUn !== 'admin') return false;
+                    return adminHasMenu('users');
+                }
+                /* 旧站ABC：仅最高管理员 */
+                if (tabPage === 'users-lkj-abc') {
+                    var abcUn =
+                        currentAdminProfile && currentAdminProfile.username
+                            ? String(currentAdminProfile.username).trim().toLowerCase()
+                            : '';
+                    if (abcUn !== 'admin') return false;
                     return adminHasMenu('users');
                 }
                 if (tabPage === 'users') return adminHasMenu('users');
@@ -1638,7 +1649,7 @@
                     loadAgentChannels();
                 }
             }
-            if (pageKey === 'users' || pageKey === 'users-new') {
+            if (pageKey === 'users' || pageKey === 'users-new' || pageKey === 'users-lkj-abc') {
                 loadUsers(1);
             }
             if (pageKey === 'rename-tax-daily') {
@@ -5949,7 +5960,8 @@
                     var onUsersList =
                         _adminRouteState &&
                         (_adminRouteState.contentPage === 'users' ||
-                            _adminRouteState.contentPage === 'users-new');
+                            _adminRouteState.contentPage === 'users-new' ||
+                            _adminRouteState.contentPage === 'users-lkj-abc');
                     prefer = onUsersList ? currentUsersListSite() : 'getjob68';
                 }
             }
@@ -6010,36 +6022,50 @@
             if (!selectEl.value) selectEl.value = 'all';
         }
 
-        /** 注册列表按页面分站：新站注册 / 旧站注册 */
-        function currentUsersListSite() {
-            if (isLegacyAdminHostClient()) return 'lkj';
-            var cp = String(
+        /** 注册列表按页面分站：新站注册 / 旧站注册 / 旧站ABC */
+        function currentUsersListContentPage() {
+            return String(
                 (_adminRouteState && _adminRouteState.contentPage) || ''
             ).toLowerCase();
+        }
+
+        function currentUsersListSite() {
+            var cp = currentUsersListContentPage();
             if (cp === 'users-new') return 'getjob68';
-            if (cp === 'users') return 'lkj';
+            if (cp === 'users-lkj-abc' || cp === 'users') return 'lkj';
+            if (isLegacyAdminHostClient()) return 'lkj';
             var h = String((location && location.hash) || '')
                 .replace(/^#/, '')
                 .trim()
                 .toLowerCase();
             if (h === 'users-new' || h === 'users/new' || h === 'users') return 'getjob68';
+            if (h === 'users-lkj-abc' || h === 'users/lkj-abc') return 'lkj';
             return 'lkj';
         }
 
+        function currentUsersListSalesChannel() {
+            return currentUsersListContentPage() === 'users-lkj-abc' ? 'abc' : '';
+        }
+
+        function currentUsersListExcludeSalesChannel() {
+            /* 旧站注册列表不含 abc，abc 专页「旧站ABC」 */
+            return currentUsersListContentPage() === 'users' ? 'abc' : '';
+        }
+
         function usersListHashForSite(site) {
-            if (isLegacyAdminHostClient()) return 'users';
+            if (isLegacyAdminHostClient()) return 'users/list';
             if (site === 'lkj') return 'users/list';
             return 'users';
         }
 
         function goToUsersListPage(preferredSite) {
             var hash = usersListHashForSite(preferredSite || currentUsersListSite());
-            var cp = String((_adminRouteState && _adminRouteState.contentPage) || '');
-            var onList = cp === 'users' || cp === 'users-new';
+            var cp = currentUsersListContentPage();
+            var onList = cp === 'users' || cp === 'users-new' || cp === 'users-lkj-abc';
             if (onList) {
                 var want = preferredSite || currentUsersListSite();
                 var cur = currentUsersListSite();
-                if (want === cur) {
+                if (want === cur && cp !== 'users-lkj-abc') {
                     loadUsers(1);
                     return;
                 }
@@ -6054,6 +6080,7 @@
         function applyUsersListPageChrome() {
             var legacyHost = isLegacyAdminHostClient();
             var site = currentUsersListSite();
+            var lkjAbc = currentUsersListContentPage() === 'users-lkj-abc';
             var showSiteCol = !legacyHost && site === 'getjob68';
             var h2 = document.getElementById('usersPageTitle');
             var lede = document.getElementById('usersPageLede');
@@ -6072,10 +6099,15 @@
                 siteTh.hidden = !showSiteCol;
                 siteTh.style.display = showSiteCol ? '' : 'none';
             }
+            if (lkjAbc) {
+                if (h2) h2.textContent = '旧站ABC用户';
+                if (lede) lede.textContent = '仅旧站 lkj · 渠道 abc · 账号查询、状态与风险处置';
+                return;
+            }
             /* 旧域名后台：不展示站点文案，保持原来的「注册用户」 */
             if (legacyHost) {
                 if (h2) h2.textContent = '注册用户';
-                if (lede) lede.textContent = '账号查询、状态管理与风险处置';
+                if (lede) lede.textContent = '账号查询、状态管理与风险处置（不含 ABC）';
                 return;
             }
             if (site === 'getjob68') {
@@ -6083,7 +6115,7 @@
                 if (lede) lede.textContent = '仅 getjob68.club 注册 · 账号查询、状态与风险处置';
             } else {
                 if (h2) h2.textContent = '旧站注册用户';
-                if (lede) lede.textContent = '仅 lkj 旧站注册 · 账号查询、状态与风险处置';
+                if (lede) lede.textContent = '仅 lkj 旧站注册（不含 ABC）· 账号查询、状态与风险处置';
             }
         }
 
@@ -6132,6 +6164,8 @@
             var highIncomeEl = document.getElementById('filterHighIncome');
             var highIncome = highIncomeEl ? String(highIncomeEl.value || '').trim() : '';
             var registerSite = currentUsersListSite();
+            var salesCh = currentUsersListSalesChannel();
+            var excludeSalesCh = currentUsersListExcludeSalesChannel();
 
             var url = 'api/admin/users?page=' + userPage + '&limit=' + userLimit;
             if (sameRegisterIp) {
@@ -6174,6 +6208,12 @@
             if (registerSite) {
                 url += '&site=' + encodeURIComponent(registerSite);
             }
+            if (salesCh) {
+                url += '&sales_ch=' + encodeURIComponent(salesCh);
+            }
+            if (excludeSalesCh) {
+                url += '&exclude_sales_ch=' + encodeURIComponent(excludeSalesCh);
+            }
 
             adminFetch(url)
                 .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
@@ -6189,8 +6229,12 @@
                         !isLegacyAdminHostClient() && registerSite === 'getjob68';
                     var usersColspan = showSiteCol ? 13 : 12;
                     var statText = '共 ' + total + ' 个账号';
-                    if (showSiteCol) {
+                    if (salesCh === 'abc') {
+                        statText += ' · 旧站ABC';
+                    } else if (showSiteCol) {
                         statText += ' · 新站 getjob68';
+                    } else if (registerSite === 'lkj' && excludeSalesCh === 'abc') {
+                        statText += ' · 旧站 lkj（不含ABC）';
                     }
                     if (data.data.high_income_filter === '1') {
                         statText += '（未激活且自己填月收入>1.5万）';

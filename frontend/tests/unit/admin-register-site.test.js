@@ -15,31 +15,39 @@ const menuRegistry = readFileSync(
 );
 
 describe('管理后台注册站点分頁', () => {
-  it('用户中心拆成新站注册 / 旧站注册两个 TAB', () => {
+  it('用户中心拆成新站注册 / 旧站注册 / 旧站ABC 三个 TAB', () => {
     expect(adminJs).toContain("label: '新站注册'");
     expect(adminJs).toContain("label: '旧站注册'");
+    expect(adminJs).toContain("label: '旧站ABC'");
     expect(adminJs).toContain("page: 'users-new'");
+    expect(adminJs).toContain("page: 'users-lkj-abc'");
     expect(adminJs).toContain("defaultTab: 'new'");
-    expect(adminJs).toContain("if (pageKey === 'users-new') return 'page-users'");
+    expect(adminJs).toContain("if (pageKey === 'users-new' || pageKey === 'users-lkj-abc') return 'page-users'");
     expect(html).toContain('id="usersPageTitle"');
     expect(html).toContain('id="filterRegisterSiteField"');
     /* 后端 hubs 会覆盖前端定义，必须同步拆 TAB */
     expect(menuRegistry).toContain("label: '新站注册'");
     expect(menuRegistry).toContain("label: '旧站注册'");
+    expect(menuRegistry).toContain("label: '旧站ABC'");
     expect(menuRegistry).toContain("page: 'users-new'");
+    expect(menuRegistry).toContain("page: 'users-lkj-abc'");
     expect(menuRegistry).toContain("defaultTab: 'new'");
   });
 
   it('新站页固定 getjob68，旧站页固定 lkj；旧域名后台隐藏新站 TAB', () => {
     expect(adminJs).toContain('function currentUsersListSite');
     expect(adminJs).toContain("if (cp === 'users-new') return 'getjob68'");
-    expect(adminJs).toContain("if (cp === 'users') return 'lkj'");
+    expect(adminJs).toContain("if (cp === 'users-lkj-abc' || cp === 'users') return 'lkj'");
+    expect(adminJs).toContain('function currentUsersListSalesChannel');
+    expect(adminJs).toContain("url += '&sales_ch='");
+    expect(adminJs).toContain("url += '&exclude_sales_ch='");
     expect(adminJs).toContain("if (tabPage === 'users-new')");
+    expect(adminJs).toContain("if (tabPage === 'users-lkj-abc')");
     expect(adminJs).toContain('isLegacyAdminHostClient()');
     expect(adminJs).toContain("url += '&site='");
     expect(ops).toContain('function appendSiteQuery');
     expect(loader).toContain('ops-conversion.js?v=20261008-legacy-plain');
-    expect(html).toContain('admin_panel.js?v=20261008-legacy-title');
+    expect(html).toContain('admin_panel.js?v=20261009-lkj-abc');
   });
   it('注册列表不再用站点下拉切换，由页面固定站点', () => {
     expect(adminJs).toContain('注册站点由「新站注册 / 旧站注册」页面决定');

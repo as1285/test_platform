@@ -192,6 +192,17 @@ const ADMIN_PAGE_DEFS = [
     nav_hidden: true
   },
   {
+    page: 'users-lkj-abc',
+    menu_key: 'users',
+    label: '旧站ABC',
+    group: 'users',
+    module: 'users',
+    order: 12,
+    alias_menus: ['users'],
+    assignable: false,
+    nav_hidden: true
+  },
+  {
     page: 'rename-tax-daily',
     menu_key: 'rename-tax-daily',
     label: '同行 · 高频改名',
@@ -596,6 +607,7 @@ const ADMIN_HUB_DEFS = {
     tabs: [
       { id: 'new', label: '新站注册', page: 'users-new' },
       { id: 'list', label: '旧站注册', page: 'users' },
+      { id: 'lkj-abc', label: '旧站ABC', page: 'users-lkj-abc' },
       { id: 'rename', label: '同行 · 高频改名', page: 'rename-tax-daily' },
       { id: 'emails', label: '邮箱管理', page: 'user-emails' },
       { id: 'deleted', label: '已删除', page: 'users-deleted' },
