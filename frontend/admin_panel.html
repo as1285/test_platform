@@ -1909,6 +1909,14 @@
                                 <label for="installGuideStatsDays">统计区间</label>
                                 <select id="installGuideStatsDays" class="js-analytics-period-select filter-select" data-day-options="1,7,30,90,180,365" data-default="custom"></select>
                             </div>
+                            <span id="installGuideStatsSiteWrap" style="display:inline-flex;align-items:center;gap:8px;margin-left:12px">
+                                <label for="installGuideStatsSite" class="hint" style="margin:0">站点</label>
+                                <select id="installGuideStatsSite" class="filter-select" aria-label="安装统计站点">
+                                    <option value="all" selected>全部站点</option>
+                                    <option value="getjob68">新站 getjob68</option>
+                                    <option value="lkj">旧站 lkj</option>
+                                </select>
+                            </span>
                             <button type="button" class="btn-page" id="btnRefreshInstallGuideStats">刷新</button>
                         </div>
                         <div id="installGuideStatsMount" class="analytics-conv-wrap" aria-live="polite">加载中…</div>

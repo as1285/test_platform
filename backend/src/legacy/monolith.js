@@ -177,6 +177,7 @@ const najiluQrFeePolicy = require('../user/najiluQrFeePolicy');
 const najiluQrMod = require('../admin/najiluQr');
 const bankAlipayMod = require('../partner/bankAlipay');
 const registerSite = require('../shared/registerSite');
+const installGuideStatsSite = require('../admin/installGuideStatsSite');
 const {
   computeUserLoginRisk,
   userLoginRiskMatchSql,
@@ -3265,6 +3266,53 @@ async function createTables() {
     );
   } catch (eBackfillSite) {
     console.warn('register_site backfill', eBackfillSite && eBackfillSite.message);
+  }
+  try {
+    await conn.execute(`
+      ALTER TABLE install_guide_track_events
+        ADD COLUMN request_host VARCHAR(255) NULL COMMENT '请求 Host'
+    `);
+  } catch (eIgHost) {
+    if (eIgHost.errno !== 1060) {
+      throw eIgHost;
+    }
+  }
+  try {
+    await conn.execute(`
+      ALTER TABLE install_guide_track_events
+        ADD COLUMN register_site VARCHAR(32) NULL COMMENT '站点 getjob68|lkj|unknown'
+    `);
+  } catch (eIgSite) {
+    if (eIgSite.errno !== 1060) {
+      throw eIgSite;
+    }
+  }
+  try {
+    await conn.execute(
+      `CREATE INDEX idx_ig_track_site_created ON install_guide_track_events (register_site, created_at)`
+    );
+  } catch (eIgIdx) {
+    if (eIgIdx.errno !== 1061) {
+      console.warn('idx_ig_track_site_created', eIgIdx && eIgIdx.message);
+    }
+  }
+  try {
+    var igCutover = registerSite.siteCutoverYmd();
+    await conn.execute(
+      `UPDATE install_guide_track_events
+       SET register_site = 'lkj',
+           request_host = COALESCE(NULLIF(TRIM(request_host), ''), 'lkj.qiyun888.top')
+       WHERE (register_site IS NULL OR TRIM(register_site) = '')
+         AND DATE(DATE_ADD(created_at, INTERVAL 8 HOUR)) < ?`,
+      [igCutover]
+    );
+    await conn.execute(
+      `UPDATE install_guide_track_events
+       SET register_site = 'unknown'
+       WHERE register_site IS NULL OR TRIM(register_site) = ''`
+    );
+  } catch (eIgBackfill) {
+    console.warn('install_guide_track register_site backfill', eIgBackfill && eIgBackfill.message);
   }
   try {
     await conn.execute(`
@@ -11722,12 +11770,29 @@ function recordInstallGuideTrackEvent(req, action, meta) {
   } catch (e1) {}
   var ip = sanitizeAuditText(getClientIp(req), 128);
   var ua = sanitizeAuditText(normalizeUserAgentHeader(req), 512);
+  var reqHost = '';
+  var reqSite = registerSite.SITE_UNKNOWN;
+  try {
+    var siteInfo = registerSite.siteFromRequest(req);
+    reqHost = sanitizeAuditText(siteInfo.host || '', 255);
+    reqSite = siteInfo.site || registerSite.SITE_UNKNOWN;
+  } catch (eSite0) {}
   pool
     .execute(
       `INSERT INTO install_guide_track_events
-       (client_id, device_fp, event_key, dwell_seconds, meta_json, ip, user_agent)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [cid || null, fp || null, act.substring(0, 80), dwell, metaJson, ip || null, ua || null]
+       (client_id, device_fp, event_key, dwell_seconds, meta_json, ip, user_agent, request_host, register_site)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        cid || null,
+        fp || null,
+        act.substring(0, 80),
+        dwell,
+        metaJson,
+        ip || null,
+        ua || null,
+        reqHost || null,
+        reqSite || registerSite.SITE_UNKNOWN
+      ]
     )
     .catch(function (e) {
       console.error('recordInstallGuideTrackEvent', e);
@@ -15955,10 +16020,15 @@ async function handleAdminActivationChannelFunnel(req, res) {
 async function handleAdminInstallGuideStats(req, res) {
   try {
     var period = parseAnalyticsPeriod(req.query.days, 90);
+    var siteScope = registerSite.resolveAdminSiteScope(req, req.query && req.query.site);
+    var trackSiteFilter = installGuideStatsSite.trackSiteFilterSql(siteScope.site, '');
     var cnDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
     var pf = analyticsPeriodCnDateFilter(cnDay, period);
-    var cnSince = pf.sql;
-    var sinceParams = pf.params.slice();
+    var cnSince = pf.sql + ' AND ' + trackSiteFilter.sql;
+    var sinceParams = pf.params.slice().concat(trackSiteFilter.params);
+    /* 未按站点筛选时，保留原始区间条件供 by_site 汇总 */
+    var cnSinceAll = pf.sql;
+    var sinceParamsAll = pf.params.slice();
     const conn = await pool.getConnection();
     try {
       const [viewRows] = await conn.query(
@@ -16059,11 +16129,19 @@ async function handleAdminInstallGuideStats(req, res) {
          ORDER BY h ASC`,
         sinceParams
       );
-      var registerUserWhere =
-        cnUserSince +
-        ' AND u.activation_refunded_at IS NULL' +
-        ' AND COALESCE(u.user_type, 0) <> ' +
-        USER_TYPE_GUEST;
+      var registerUserWhereClauses = [
+        cnUserSince,
+        'u.activation_refunded_at IS NULL',
+        'COALESCE(u.user_type, 0) <> ' + USER_TYPE_GUEST
+      ];
+      var registerSinceParams = userSinceParams.slice();
+      registerSite.appendRegisterSiteFilter(
+        registerUserWhereClauses,
+        registerSinceParams,
+        siteScope.site,
+        'u'
+      );
+      var registerUserWhere = registerUserWhereClauses.join(' AND ');
       var registerFromInstallWhere =
         registerUserWhere +
         ' AND (' +
@@ -16091,40 +16169,40 @@ async function handleAdminInstallGuideStats(req, res) {
          FROM ${registerIpInner} t
          GROUP BY h
          ORDER BY h ASC`,
-        userSinceParams
+        registerSinceParams
       );
       const [regDailyRows] = await conn.query(
         `SELECT DATE(DATE_ADD(first_at, INTERVAL 8 HOUR)) AS d, COUNT(*) AS registered
          FROM ${registerIpInner} t
          GROUP BY d
          ORDER BY d ASC`,
-        userSinceParams
+        registerSinceParams
       );
       const [regPeriodRows] = await conn.query(
         `SELECT COUNT(*) AS registered FROM ${registerIpInner} t`,
-        userSinceParams
+        registerSinceParams
       );
       const [regFromInstallRows] = await conn.query(
         `SELECT DATE(DATE_ADD(first_at, INTERVAL 8 HOUR)) AS d, COUNT(*) AS registered_from_install
          FROM ${registerFromInstallInner} t
          GROUP BY d
          ORDER BY d ASC`,
-        userSinceParams
+        registerSinceParams
       );
       const [regFromInstallPeriodRows] = await conn.query(
         `SELECT COUNT(*) AS registered_from_install FROM ${registerFromInstallInner} t`,
-        userSinceParams
+        registerSinceParams
       );
       const [regFromInstallReportedRows] = await conn.query(
         `SELECT DATE(DATE_ADD(first_at, INTERVAL 8 HOUR)) AS d, COUNT(*) AS registered_from_install_reported
          FROM ${registerReportedInner} t
          GROUP BY d
          ORDER BY d ASC`,
-        userSinceParams
+        registerSinceParams
       );
       const [regFromInstallReportedPeriodRows] = await conn.query(
         `SELECT COUNT(*) AS registered_from_install_reported FROM ${registerReportedInner} t`,
-        userSinceParams
+        registerSinceParams
       );
       const [guestDailyRows] = await conn.query(
         `SELECT ${cnUserDay} AS d, COUNT(*) AS new_guests
@@ -16638,6 +16716,106 @@ async function handleAdminInstallGuideStats(req, res) {
       var totalRegisteredFromInstallReported =
         Number((regFromInstallReportedPeriodRows[0] || {}).registered_from_install_reported) || 0;
 
+      var bySite = [];
+      var visitorExprSite = `COALESCE(NULLIF(TRIM(ip), ''), NULLIF(client_id, ''), device_fp)`;
+      if (siteScope.site === registerSite.SITE_ALL) {
+        const [bySiteTrackRows] = await conn.query(
+          `SELECT IFNULL(NULLIF(TRIM(register_site), ''), 'unknown') AS site,
+                  COUNT(DISTINCT CASE
+                    WHEN event_key = 'track_install_page_view'
+                    THEN ${visitorExprSite}
+                  END) AS page_views,
+                  COUNT(DISTINCT CASE
+                    WHEN event_key = 'track_install_page_view'
+                    THEN ${visitorExprSite}
+                  END) AS unique_visitors,
+                  COUNT(CASE
+                    WHEN event_key IN ('track_install_apk_click', 'track_install_ios_click')
+                    THEN 1
+                  END) AS download_clicks,
+                  COUNT(DISTINCT CASE
+                    WHEN event_key IN ('track_install_apk_click', 'track_install_ios_click')
+                    THEN ${visitorExprSite}
+                  END) AS download_uv
+           FROM install_guide_track_events
+           WHERE ${cnSinceAll}
+           GROUP BY IFNULL(NULLIF(TRIM(register_site), ''), 'unknown')`,
+          sinceParamsAll
+        );
+        var bySiteRegWhere =
+          userPf.sql +
+          ' AND u.activation_refunded_at IS NULL' +
+          ' AND COALESCE(u.user_type, 0) <> ' +
+          USER_TYPE_GUEST;
+        var bySiteRegParams = userPf.params.slice();
+        var bySitePerson = userRegisterPersonKeySql('u');
+        const [bySiteRegRows] = await conn.query(
+          `SELECT IFNULL(NULLIF(TRIM(t.site), ''), 'unknown') AS site, COUNT(*) AS registered
+           FROM (
+             SELECT ${bySitePerson} AS person,
+                    SUBSTRING_INDEX(GROUP_CONCAT(IFNULL(u.register_site, 'unknown') ORDER BY u.created_at), ',', 1) AS site,
+                    MIN(u.created_at) AS first_at
+             FROM users u
+             ${userRegisterIpJoinSql('u')}
+             WHERE ${bySiteRegWhere}
+             GROUP BY person
+           ) t
+           GROUP BY IFNULL(NULLIF(TRIM(t.site), ''), 'unknown')`,
+          bySiteRegParams
+        );
+        var bySiteInstallWhere =
+          bySiteRegWhere +
+          ' AND (' +
+          'u.registered_from_install_guide = 1' +
+          ' OR EXISTS (' +
+          'SELECT 1 FROM user_devices ud' +
+          " INNER JOIN install_guide_track_events ig ON ig.event_key = 'track_install_page_view'" +
+          ' AND DATE(DATE_ADD(ig.created_at, INTERVAL 8 HOUR)) = DATE(DATE_ADD(u.created_at, INTERVAL 8 HOUR))' +
+          ' AND (' +
+          "(ig.device_fp IS NOT NULL AND ig.device_fp <> '' AND ig.device_fp = ud.device_fp)" +
+          ' OR (' +
+          "ig.client_id IS NOT NULL AND ig.client_id <> ''" +
+          " AND ud.client_id IS NOT NULL AND ud.client_id <> ''" +
+          ' AND ig.client_id = ud.client_id' +
+          '))' +
+          ' WHERE ud.username = u.username' +
+          '))';
+        const [bySiteRegInstallRows] = await conn.query(
+          `SELECT IFNULL(NULLIF(TRIM(t.site), ''), 'unknown') AS site, COUNT(*) AS registered_from_install
+           FROM (
+             SELECT ${bySitePerson} AS person,
+                    SUBSTRING_INDEX(GROUP_CONCAT(IFNULL(u.register_site, 'unknown') ORDER BY u.created_at), ',', 1) AS site,
+                    MIN(u.created_at) AS first_at
+             FROM users u
+             ${userRegisterIpJoinSql('u')}
+             WHERE ${bySiteInstallWhere}
+             GROUP BY person
+           ) t
+           GROUP BY IFNULL(NULLIF(TRIM(t.site), ''), 'unknown')`,
+          bySiteRegParams
+        );
+        bySite = installGuideStatsSite.mergeBySiteRows(
+          bySiteTrackRows,
+          bySiteRegRows,
+          bySiteRegInstallRows
+        );
+      } else {
+        bySite = [
+          {
+            site: siteScope.site,
+            label: siteScope.label,
+            page_views: pv,
+            unique_visitors: uv,
+            download_clicks: Number((funnelStageRows[0] || {}).stage_b) || 0,
+            download_uv: Number((funnelStageRows[0] || {}).stage_b) || 0,
+            registered: totalRegistered,
+            registered_from_install: totalRegisteredFromInstall,
+            register_rate_pct: pctText(totalRegisteredFromInstall, uv),
+            download_rate_pct: pctText(Number((funnelStageRows[0] || {}).stage_b) || 0, uv)
+          }
+        ];
+      }
+
       var recentVisitors = buildInstallGuideRecentVisitors(recentRows, 3);
 
       var funnelRaw = funnelStageRows[0] || {};
@@ -16882,7 +17060,15 @@ async function handleAdminInstallGuideStats(req, res) {
               by_hour: byHour
             },
             recent_visitors: recentVisitors,
-            download_register_funnel: downloadRegisterFunnel
+            download_register_funnel: downloadRegisterFunnel,
+            by_site: bySite,
+            site_scope: {
+              site: siteScope.site,
+              locked: !!siteScope.locked,
+              host: siteScope.host || '',
+              label: siteScope.label,
+              allow_filter: !!siteScope.allow_filter
+            }
           },
           conversionAnalyticsPeriodMeta(period)
         )
@@ -16912,10 +17098,12 @@ function abcInstallTrackMetaSql(alias) {
 async function handleAdminAbcInstallStats(req, res) {
   try {
     var period = parseAnalyticsPeriod(req.query.days, 90);
+    var siteScope = registerSite.resolveAdminSiteScope(req, req.query && req.query.site);
+    var trackSiteFilter = installGuideStatsSite.trackSiteFilterSql(siteScope.site, '');
     var cnDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
     var pf = analyticsPeriodCnDateFilter(cnDay, period);
-    var sinceSql = pf.sql;
-    var sinceParams = pf.params.slice();
+    var sinceSql = pf.sql + ' AND ' + trackSiteFilter.sql;
+    var sinceParams = pf.params.slice().concat(trackSiteFilter.params);
     var abcSql = abcInstallTrackMetaSql('');
     var visitorExpr = "COALESCE(NULLIF(TRIM(ip), ''), NULLIF(client_id, ''), device_fp)";
     var cnHour = 'HOUR(DATE_ADD(created_at, INTERVAL 8 HOUR))';

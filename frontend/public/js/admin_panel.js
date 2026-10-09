@@ -3638,6 +3638,35 @@
                 '</div></div>';
             html += '</div>';
 
+            var bySiteRows = Array.isArray(data.by_site) ? data.by_site : [];
+            if (bySiteRows.length) {
+                html += '<p class="stat" style="margin:0 0 8px;">按域名拆分（新站 / 旧站）</p>';
+                html +=
+                    '<p class="hint" style="margin:0 0 10px;">浏览/下载按埋点 request Host 归因；注册按账号 register_site。切换上方「站点」可只看单一域名。</p>';
+                html += '<div class="scroll-x" style="margin-bottom:16px;"><table><thead><tr>';
+                html +=
+                    '<th>域名</th><th>浏览 PV</th><th>访客 UV</th><th>下载点击</th><th>下载人数</th><th>下载率</th><th>安装页归因注册</th><th>安装→注册率</th><th>全站注册</th></tr></thead><tbody>';
+                bySiteRows.forEach(function (row) {
+                    html += '<tr>';
+                    html += '<td><strong>' + esc(row.label || row.site || '—') + '</strong></td>';
+                    html += '<td>' + esc(String(row.page_views != null ? row.page_views : 0)) + '</td>';
+                    html +=
+                        '<td>' + esc(String(row.unique_visitors != null ? row.unique_visitors : 0)) + '</td>';
+                    html +=
+                        '<td>' + esc(String(row.download_clicks != null ? row.download_clicks : 0)) + '</td>';
+                    html += '<td>' + esc(String(row.download_uv != null ? row.download_uv : 0)) + '</td>';
+                    html += '<td>' + esc(row.download_rate_pct || '—') + '</td>';
+                    html +=
+                        '<td>' +
+                        esc(String(row.registered_from_install != null ? row.registered_from_install : 0)) +
+                        '</td>';
+                    html += '<td>' + esc(row.register_rate_pct || '—') + '</td>';
+                    html += '<td>' + esc(String(row.registered != null ? row.registered : 0)) + '</td>';
+                    html += '</tr>';
+                });
+                html += '</tbody></table></div>';
+            }
+
             var landingAb = data.landing_ab || null;
             var landingVariants =
                 landingAb && Array.isArray(landingAb.variants) ? landingAb.variants : [];
@@ -4218,8 +4247,16 @@
             if (!el) return;
             var daysEl = document.getElementById('installGuideStatsDays');
             var days = analyticsPeriodVal(daysEl);
+            var siteEl = document.getElementById('installGuideStatsSite');
+            var site = siteEl && siteEl.value ? String(siteEl.value) : 'all';
+            if (isLegacyAdminHostClient()) site = 'lkj';
             el.textContent = '加载中…';
-            adminFetch('api/admin/analytics/install-guide-stats?days=' + encodeURIComponent(days))
+            adminFetch(
+                'api/admin/analytics/install-guide-stats?days=' +
+                    encodeURIComponent(days) +
+                    '&site=' +
+                    encodeURIComponent(site)
+            )
                 .then(function (r) {
                     return (window.adminParseJson||function(r){return r.json();})(r);
                 })
@@ -4227,6 +4264,13 @@
                     if (j.code !== 200 || !j.data) {
                         el.textContent = j.msg || '加载失败';
                     } else {
+                        if (j.data.site_scope) {
+                            window._adminSiteScope = j.data.site_scope;
+                            applyAdminSiteScopeToSelect(
+                                document.getElementById('installGuideStatsSite'),
+                                j.data.site_scope
+                            );
+                        }
                         renderInstallGuideStats(j.data);
                     }
                     loadInstallRegisterAnalysis();
@@ -11041,6 +11085,21 @@
         var installGuideStatsDays = document.getElementById('installGuideStatsDays');
         if (installGuideStatsDays) {
             installGuideStatsDays.addEventListener('change', function () {
+                loadInstallGuideStats();
+            });
+        }
+        var installGuideStatsSite = document.getElementById('installGuideStatsSite');
+        if (installGuideStatsSite) {
+            if (window._adminSiteScope) {
+                applyAdminSiteScopeToSelect(installGuideStatsSite, window._adminSiteScope);
+            } else if (isLegacyAdminHostClient()) {
+                applyAdminSiteScopeToSelect(installGuideStatsSite, {
+                    site: 'lkj',
+                    locked: true,
+                    allow_filter: false
+                });
+            }
+            installGuideStatsSite.addEventListener('change', function () {
                 loadInstallGuideStats();
             });
         }
