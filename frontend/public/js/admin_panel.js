@@ -10426,6 +10426,24 @@
             return el ? String(el.value || '').trim() : '';
         }
 
+        function agentChannelIsAbc() {
+            var idEl = document.getElementById('agentChId');
+            return String((idEl && idEl.value) || '').trim().toLowerCase() === 'abc';
+        }
+
+        function syncAgentChannelAbcSlots() {
+            var abc = agentChannelIsAbc();
+            document.querySelectorAll('#agentChannelForm tr[data-ch-slot]').forEach(function (tr) {
+                var slot = tr.getAttribute('data-ch-slot');
+                var drop = abc && (slot === 'week' || slot === 'biweek' || slot === 'month');
+                tr.hidden = !!drop;
+                if (!drop) return;
+                tr.querySelectorAll('input').forEach(function (input) {
+                    input.value = '';
+                });
+            });
+        }
+
         function resetAgentChannelForm() {
             var idEl = document.getElementById('agentChId');
             if (idEl) {
@@ -10450,6 +10468,7 @@
             if (noteEl) noteEl.value = '';
             var enEl = document.getElementById('agentChEnabled');
             if (enEl) enEl.checked = true;
+            syncAgentChannelAbcSlots();
         }
 
         function fillAgentChannelForm(c) {
@@ -10482,6 +10501,7 @@
             if (noteEl) noteEl.value = String(c.note || '');
             var enEl = document.getElementById('agentChEnabled');
             if (enEl) enEl.checked = c.enabled !== false;
+            syncAgentChannelAbcSlots();
         }
 
         function formatAgentChannelPrices(c) {
@@ -10624,7 +10644,11 @@
                     note: String(document.getElementById('agentChNote').value || '').trim(),
                     enabled: !!(document.getElementById('agentChEnabled') && document.getElementById('agentChEnabled').checked)
                 };
+                syncAgentChannelAbcSlots();
                 AGENT_CH_SKU_SLOTS.forEach(function (slot) {
+                    if (agentChannelIsAbc() && (slot.key === 'week' || slot.key === 'biweek' || slot.key === 'month')) {
+                        return;
+                    }
                     payload['price_' + slot.key] = agentChFieldVal(slot.priceId);
                     payload['psych_' + slot.key] = agentChFieldVal(slot.psychId);
                     payload['days_' + slot.key] = agentChFieldVal(slot.daysId);
@@ -10654,6 +10678,10 @@
                         btnSaveAgentChannel.disabled = false;
                     });
             });
+        }
+        var agentChIdInput = document.getElementById('agentChId');
+        if (agentChIdInput) {
+            agentChIdInput.addEventListener('input', syncAgentChannelAbcSlots);
         }
         var btnResetAgentChannel = document.getElementById('btnResetAgentChannel');
         if (btnResetAgentChannel) {

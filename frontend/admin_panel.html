@@ -393,7 +393,7 @@
                             </div>
                             <div class="form-field mt-10">
                                 <label>渠道专属套餐（可自定义价格 / 天数 / 小时 / 心理价位；留空跟随全站）</label>
-                                <p class="hint mt-6 mb-8">最多 5 档。前 3 档对应全站周卡/双周卡/月卡（留空跟随全站）。第 4、5 档需填写<strong>价格</strong>和<strong>天数或小时</strong>才会出现在支付页。<strong>名称</strong>会显示在支付页（如「小时卡」「日卡」「月卡」）；天数 0–3650，小时 0–23（可组合）。只改价格不改名称时，支付页仍显示全站默认「周卡/双周卡」文案。<strong>心理价位</strong>为划线对照原价（须高于实付价）；留空则不显示渠道划线。</p>
+                                <p class="hint mt-6 mb-8">最多 5 档。前 3 档对应全站周卡/双周卡/月卡（留空跟随全站）。第 4、5 档需填写<strong>价格</strong>和<strong>天数或小时</strong>才会出现在支付页。渠道 <code>abc</code> 只保留月卡和永久，前 3 档不出售。<strong>名称</strong>会显示在支付页（如「小时卡」「日卡」「月卡」）；天数 0–3650，小时 0–23（可组合）。只改价格不改名称时，支付页仍显示全站默认「周卡/双周卡」文案。<strong>心理价位</strong>为划线对照原价（须高于实付价）；留空则不显示渠道划线。</p>
                                 <div class="mine-ui-block max-w-920" style="overflow-x:auto">
                                     <table class="data-table agent-ch-sku-table" style="min-width:720px">
                                         <thead>
@@ -407,7 +407,7 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <tr>
+                                            <tr data-ch-slot="week">
                                                 <td>1</td>
                                                 <td><input class="input-block" type="text" id="agentChLabelWeek" maxlength="32" placeholder="如 体验卡"></td>
                                                 <td><input class="input-block" type="number" id="agentChPriceWeek" min="0.01" max="99999" step="0.01" placeholder="199"></td>
@@ -415,7 +415,7 @@
                                                 <td><input class="input-block" type="number" id="agentChHoursWeek" min="0" max="23" step="1" placeholder="0"></td>
                                                 <td><input class="input-block" type="number" id="agentChPsychWeek" min="0.01" max="99999" step="0.01" placeholder="可选" aria-label="档位1心理价位"></td>
                                             </tr>
-                                            <tr>
+                                            <tr data-ch-slot="biweek">
                                                 <td>2</td>
                                                 <td><input class="input-block" type="text" id="agentChLabelBiweek" maxlength="32" placeholder="如 双周卡"></td>
                                                 <td><input class="input-block" type="number" id="agentChPriceBiweek" min="0.01" max="99999" step="0.01" placeholder="299"></td>
@@ -423,7 +423,7 @@
                                                 <td><input class="input-block" type="number" id="agentChHoursBiweek" min="0" max="23" step="1" placeholder="0"></td>
                                                 <td><input class="input-block" type="number" id="agentChPsychBiweek" min="0.01" max="99999" step="0.01" placeholder="可选" aria-label="档位2心理价位"></td>
                                             </tr>
-                                            <tr>
+                                            <tr data-ch-slot="month">
                                                 <td>3</td>
                                                 <td><input class="input-block" type="text" id="agentChLabelMonth" maxlength="32" placeholder="如 月卡"></td>
                                                 <td><input class="input-block" type="number" id="agentChPriceMonth" min="0.01" max="99999" step="0.01" placeholder="399"></td>
@@ -431,7 +431,7 @@
                                                 <td><input class="input-block" type="number" id="agentChHoursMonth" min="0" max="23" step="1" placeholder="0"></td>
                                                 <td><input class="input-block" type="number" id="agentChPsychMonth" min="0.01" max="99999" step="0.01" placeholder="可选" aria-label="档位3心理价位"></td>
                                             </tr>
-                                            <tr>
+                                            <tr data-ch-slot="t4">
                                                 <td>4</td>
                                                 <td><input class="input-block" type="text" id="agentChLabelT4" maxlength="32" placeholder="如 季卡"></td>
                                                 <td><input class="input-block" type="number" id="agentChPriceT4" min="0.01" max="99999" step="0.01" placeholder="598"></td>
@@ -439,7 +439,7 @@
                                                 <td><input class="input-block" type="number" id="agentChHoursT4" min="0" max="23" step="1" placeholder="0"></td>
                                                 <td><input class="input-block" type="number" id="agentChPsychT4" min="0.01" max="99999" step="0.01" placeholder="可选" aria-label="档位4心理价位"></td>
                                             </tr>
-                                            <tr>
+                                            <tr data-ch-slot="t5">
                                                 <td>5</td>
                                                 <td><input class="input-block" type="text" id="agentChLabelT5" maxlength="32" placeholder="如 年卡"></td>
                                                 <td><input class="input-block" type="number" id="agentChPriceT5" min="0.01" max="99999" step="0.01" placeholder="998"></td>

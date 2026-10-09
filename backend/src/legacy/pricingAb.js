@@ -941,6 +941,15 @@ function applyChannelCatalogPrices(skus, priceMap) {
   return next;
 }
 
+/** abc 等「只卖渠道档」：丢掉不在专属价 map 里的全站套餐，避免空档回落周卡/双周卡。 */
+function keepChannelMappedSkus(skus, priceMap) {
+  var map = priceMap && typeof priceMap === 'object' ? priceMap : {};
+  return (Array.isArray(skus) ? skus : []).filter(function (s) {
+    var id = String((s && s.id) || '');
+    return !!id && map[id] != null && map[id] !== '';
+  });
+}
+
 function prependGithubEntrySku(skus) {
   var next = Array.isArray(skus) ? skus.map(cloneSku) : [];
   var i;
@@ -1666,6 +1675,7 @@ module.exports = {
   isGithubChannel: isGithubChannel,
   applyGithubChannelCatalogPrices: applyGithubChannelCatalogPrices,
   applyChannelCatalogPrices: applyChannelCatalogPrices,
+  keepChannelMappedSkus: keepChannelMappedSkus,
   GITHUB_CHANNEL_AMOUNT_BY_SKU: GITHUB_CHANNEL_AMOUNT_BY_SKU,
   prependGithubEntrySku: prependGithubEntrySku,
   SKU_98_3DAY: SKU_98_3DAY,

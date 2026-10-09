@@ -60,7 +60,7 @@ const {
   userEffectivelyActiveSql,
   activationFieldsForApi
 } = require('./inviteReward');
-const { createPricingAb, DEFAULT_PRICING_AB, applyChannelCatalogPrices } = require('./pricingAb');
+const { createPricingAb, DEFAULT_PRICING_AB, applyChannelCatalogPrices, keepChannelMappedSkus } = require('./pricingAb');
 const agentChannelsLib = require('./agentChannels');
 const createAgentChannels = agentChannelsLib.createAgentChannels;
 
@@ -1440,6 +1440,10 @@ async function applyAgentChannelPricesToOffer(offer, username, req) {
   }
   if (!pol || !pol.has_channel_prices || !pol.sku_prices) return offer;
   offer.skus = applyChannelCatalogPrices(offer.skus, pol.sku_prices);
+  /* 旧域名 abc：小时卡/日卡/周卡已去掉，货架只留渠道价里的月卡和永久 */
+  if (String(pol.channel_id || '').trim().toLowerCase() === 'abc') {
+    offer.skus = keepChannelMappedSkus(offer.skus, pol.sku_prices);
+  }
   offer.forced_by_channel = true;
   offer.channel_prices = true;
   offer.channel_id = pol.channel_id;

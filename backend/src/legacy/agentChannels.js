@@ -258,6 +258,8 @@ function createAgentChannels(deps) {
   }
 
   var CHANNEL_SKU_IDS = ['sku_300_7d', 'sku_348_14d', 'sku_398_30d', 'sku_ch_t4', 'sku_ch_t5'];
+  /* 旧域名 abc：去掉小时卡/日卡/周卡（前 3 档），只留月卡与永久 */
+  var ABC_DROPPED_SKU_IDS = ['sku_300_7d', 'sku_348_14d', 'sku_398_30d'];
   var CHANNEL_SKU_META = {
     sku_300_7d: { key: 'week', default_days: 7, default_label: '档位1' },
     sku_348_14d: { key: 'biweek', default_days: 14, default_label: '档位2' },
@@ -449,6 +451,19 @@ function createAgentChannels(deps) {
     return !!(map && typeof map === 'object' && Object.keys(map).length);
   }
 
+  function omitAbcDroppedSkuPrices(channelId, prices) {
+    var id = String(channelId == null ? '' : channelId)
+      .trim()
+      .toLowerCase();
+    if (id !== 'abc' || !prices || typeof prices !== 'object') return prices || {};
+    var out = {};
+    Object.keys(prices).forEach(function (k) {
+      if (ABC_DROPPED_SKU_IDS.indexOf(k) >= 0) return;
+      out[k] = prices[k];
+    });
+    return out;
+  }
+
   /** API/表单展示用扁平字段 */
   function flattenSkuPrices(prices) {
     var p = prices || {};
@@ -490,7 +505,7 @@ function createAgentChannels(deps) {
 
   function mapChannelRow(r) {
     var abc = effectivePricingAbc(r.default_pricing_abc);
-    var prices = normalizeSkuPrices(r.sku_prices_json);
+    var prices = omitAbcDroppedSkuPrices(r.channel_id, normalizeSkuPrices(r.sku_prices_json));
     var flat = flattenSkuPrices(prices);
     var row = {
       channel_id: String(r.channel_id || ''),
@@ -644,7 +659,7 @@ function createAgentChannels(deps) {
         priceSrc['label_' + key] = input && input['label_' + key];
       });
     }
-    var prices = normalizeSkuPrices(priceSrc);
+    var prices = omitAbcDroppedSkuPrices(channelId, normalizeSkuPrices(priceSrc));
     var pricesJson = skuPricesHasAny(prices) ? JSON.stringify(prices) : null;
     if (!channelId) {
       var err = new Error('渠道 ID 无效（仅字母数字下划线连字符，最长 64）');
@@ -767,6 +782,7 @@ function createAgentChannels(deps) {
     effectivePricingAbc: effectivePricingAbc,
     normalizePackageUrl: normalizePackageUrl,
     normalizeSkuPrices: normalizeSkuPrices,
+    omitAbcDroppedSkuPrices: omitAbcDroppedSkuPrices,
     formatGrantLabel: formatGrantLabel,
     CHANNEL_SKU_IDS: CHANNEL_SKU_IDS
   };

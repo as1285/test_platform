@@ -131,6 +131,22 @@ describe('agentChannels normalize', () => {
       grant_hours: 0
     });
   });
+
+  it('abc drops 小时卡/日卡/周卡 and keeps 月卡/永久', () => {
+    const raw = {
+      sku_300_7d: { amount: '60.00', grant_days: 0, grant_hours: 1, label: '小时卡' },
+      sku_348_14d: { amount: '100.00', grant_days: 1, grant_hours: 0, label: '日卡' },
+      sku_398_30d: { amount: '200.00', grant_days: 7, grant_hours: 0, label: '周卡' },
+      sku_ch_t4: { amount: '300.00', grant_days: 30, grant_hours: 0, label: '月卡' },
+      sku_ch_t5: { amount: '498.00', grant_days: 3650, grant_hours: 0, label: '永久' }
+    };
+    expect(api.omitAbcDroppedSkuPrices('abc', raw)).toEqual({
+      sku_ch_t4: raw.sku_ch_t4,
+      sku_ch_t5: raw.sku_ch_t5
+    });
+    expect(api.omitAbcDroppedSkuPrices('ABC', raw).sku_300_7d).toBeUndefined();
+    expect(api.omitAbcDroppedSkuPrices('other', raw)).toBe(raw);
+  });
 });
 
 describe('abc URL-only attribution; account bind applies channel prices', () => {

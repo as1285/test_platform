@@ -12,6 +12,7 @@ const {
   isGithubChannel,
   applyGithubChannelCatalogPrices,
   applyChannelCatalogPrices,
+  keepChannelMappedSkus,
   prependGithubEntrySku,
   SKU_98_3DAY
 } = require('../../src/legacy/pricingAb');
@@ -634,5 +635,22 @@ describe('GitHub legacy helpers (no longer applied in resolveOfferForUser)', () 
     expect(perm.list_amount).toBe('2700.00');
     expect(perm.list_amount).not.toBe(year.list_amount);
     expect(perm.amount).toBe('1998.00');
+  });
+
+  it('abc shelf keeps only mapped 月卡 and 永久', () => {
+    const base = [
+      { id: 'sku_300_7d', amount: '300.00', label: '周卡', grant_days: 7, grant_hours: 0 },
+      { id: 'sku_348_14d', amount: '348.00', label: '双周卡', grant_days: 14, grant_hours: 0 },
+      { id: 'sku_398_30d', amount: '398.00', label: '月卡', grant_days: 30, grant_hours: 0 }
+    ];
+    const map = {
+      sku_ch_t4: { amount: '300.00', grant_days: 30, grant_hours: 0, label: '月卡' },
+      sku_ch_t5: { amount: '498.00', grant_days: 3650, grant_hours: 0, label: '永久' }
+    };
+    const out = keepChannelMappedSkus(applyChannelCatalogPrices(base, map), map);
+    expect(out.map((s) => s.id)).toEqual(['sku_ch_t4', 'sku_ch_t5']);
+    expect(out.map((s) => s.label)).toEqual(['月卡', '永久']);
+    expect(out.map((s) => s.amount)).toEqual(['300.00', '498.00']);
+    expect(out.find((s) => s.id === 'sku_ch_t5').grant_kind).toBe('permanent');
   });
 });
