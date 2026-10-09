@@ -46,6 +46,13 @@
                     document.documentElement.classList.add('app-android-immersive-white-top');
                     document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
                 }
+                if (/OXF-AN10|HUAWEIOXF-AN10|HONOROXF-AN10|(?:荣耀|HONOR|Honor)[\s_-]*V30[\s_-]*Pro\b/i.test(u) && !/Magic[\s_-]*V/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-honor-oxf');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                }
                 /* iPhone 16 Pro Max：首帧打标，避免 iOS 26 误走 17 Pro Max 档 */
                 if (
                     /iPhone|iPad|iPod/i.test(u) ||
@@ -119,6 +126,10 @@
             border-bottom: 1px solid #e3e4e8;
             box-sizing: border-box;
         }
+        html.app-android-honor-oxf body.page-login .header {
+            padding-top: 55px !important;
+            min-height: calc(44px + 40px) !important;
+        }
 
         .back-btn {
             position: absolute;
@@ -163,18 +174,18 @@
             -moz-osx-font-smoothing: grayscale;
         }
 
-        /* Logo：对齐目标 UI——浅蓝圆底 + 深蓝人像剪影 + 白色微笑曲线 */
+        /* Logo：对齐官方——柔光外晕 + 双色人像剪影 + 白色微笑 */
         .avatar-section {
             display: flex;
             justify-content: center;
-            padding: 40px 0 56px;
+            padding: 36px 0 48px;
         }
 
         .avatar {
-            width: 88px;
-            height: 88px;
+            width: 112px;
+            height: 112px;
             border-radius: 50%;
-            overflow: hidden;
+            overflow: visible;
             background: transparent;
             flex-shrink: 0;
             line-height: 0;
@@ -182,8 +193,8 @@
 
         .avatar-img {
             display: block;
-            width: 88px;
-            height: 88px;
+            width: 112px;
+            height: 112px;
         }
         
         /* 表单：APK .login-input 底部分割线 #c4c6cf */
@@ -472,9 +483,9 @@
             background: #eaf4ff;
         }
 
-        /* 其他登录方式分隔线 + 数字身份入口（对齐目标 UI） */
+        /* 其他登录方式：官方短划线「— 其他登录方式 —」+ 红色数字身份圆标 */
         .other-login-section {
-            padding: 28px 16px calc(28px + env(safe-area-inset-bottom, 0px));
+            padding: 32px 16px calc(28px + env(safe-area-inset-bottom, 0px));
             max-width: 343px;
             margin: 0 auto;
             width: 100%;
@@ -484,45 +495,53 @@
         .other-login-divider {
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 10px;
-            color: #c4c6cf;
+            color: #b8bbc3;
             font-size: 13px;
             line-height: 1;
-            margin-bottom: 20px;
+            margin-bottom: 22px;
+            letter-spacing: 0.02em;
         }
+        /* 官方是短横，不是通栏长线 */
         .other-login-divider::before,
         .other-login-divider::after {
             content: "";
-            flex: 1;
+            flex: 0 0 22px;
+            width: 22px;
             height: 1px;
-            background: #e3e4e8;
+            background: #c8cbd2;
         }
         .other-login-icon {
             display: inline-flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            width: 52px;
-            height: 52px;
+            width: 48px;
+            height: 48px;
             border-radius: 50%;
-            background: #e53935;
+            background: #e03a2f;
             color: #fff;
             font-size: 11px;
-            font-weight: 500;
-            line-height: 1.15;
+            font-weight: 600;
+            line-height: 1.2;
             text-align: center;
             text-decoration: none;
-            letter-spacing: 0.02em;
+            letter-spacing: 0;
             -webkit-tap-highlight-color: transparent;
             user-select: none;
             box-sizing: border-box;
-            padding: 0 2px;
+            padding: 0;
+            box-shadow: none;
         }
         .other-login-icon:active {
-            opacity: 0.85;
+            opacity: 0.88;
         }
         .other-login-icon b {
             display: block;
-            font-weight: 500;
+            font-weight: 600;
+            font-size: 11px;
+            line-height: 1.2;
         }
 
         #activateSection {
@@ -781,9 +800,17 @@
             font-size: 14px;
         }
         html.app-ios-iphone14promax body.page-login .other-login-icon {
-            width: 56px;
-            height: 56px;
+            width: 52px;
+            height: 52px;
             font-size: 12px;
+        }
+        html.app-ios-iphone14promax body.page-login .other-login-icon b {
+            font-size: 12px;
+        }
+        html.app-ios-iphone14promax body.page-login .other-login-divider::before,
+        html.app-ios-iphone14promax body.page-login .other-login-divider::after {
+            flex-basis: 24px;
+            width: 24px;
         }
     </style>
 </head>
@@ -819,11 +846,29 @@
         <!-- 头像区域 -->
         <div class="avatar-section">
             <div class="avatar" aria-hidden="true">
-                <svg class="avatar-img" viewBox="0 0 88 88" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="44" cy="44" r="44" fill="#cfe6fb"/>
-                    <path d="M16 80 C16 63 28 57 44 57 C60 57 72 63 72 80 Z" fill="#4a90e2"/>
-                    <circle cx="44" cy="39" r="14" fill="#4a90e2"/>
-                    <path d="M37 41 Q44 48 51 41" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+                <svg class="avatar-img" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <radialGradient id="loginAvatarGlow" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stop-color="#9ec8f0" stop-opacity="0.55"/>
+                            <stop offset="55%" stop-color="#b7d6f5" stop-opacity="0.28"/>
+                            <stop offset="100%" stop-color="#dceaf8" stop-opacity="0"/>
+                        </radialGradient>
+                        <linearGradient id="loginAvatarPerson" x1="0" y1="0" x2="1" y2="0">
+                            <stop offset="0%" stop-color="#6eb0ef"/>
+                            <stop offset="46%" stop-color="#5a9ee6"/>
+                            <stop offset="54%" stop-color="#3f82d0"/>
+                            <stop offset="100%" stop-color="#3474c4"/>
+                        </linearGradient>
+                    </defs>
+                    <!-- 官方柔光外晕 -->
+                    <circle cx="60" cy="60" r="58" fill="url(#loginAvatarGlow)"/>
+                    <!-- 浅蓝圆底 -->
+                    <circle cx="60" cy="60" r="38" fill="#c9e2f8"/>
+                    <!-- 双色人像 -->
+                    <circle cx="60" cy="50" r="15.5" fill="url(#loginAvatarPerson)"/>
+                    <path d="M28 98 C28 72.5 41 66 60 66 C79 66 92 72.5 92 98 Z" fill="url(#loginAvatarPerson)"/>
+                    <!-- 白色微笑 -->
+                    <path d="M51.5 52.5 Q60 61 68.5 52.5" fill="none" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
             </div>
         </div>
