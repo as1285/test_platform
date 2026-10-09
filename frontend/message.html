@@ -297,6 +297,49 @@
             vertical-align: top;
         }
         
+        /* 左滑删除：底层删除按钮 + 前景条目 */
+        .message-swipe-row {
+            position: relative;
+            overflow: hidden;
+            background: #fff;
+        }
+
+        .message-swipe-row:last-child .message-item {
+            border-bottom: none;
+        }
+
+        .message-swipe-actions {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            z-index: 0;
+            display: flex;
+            align-items: stretch;
+        }
+
+        .msg-swipe-delete {
+            width: 76px;
+            border: none;
+            margin: 0;
+            padding: 0;
+            background: #f51f0c;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .msg-swipe-delete:active {
+            background: #d91a0a;
+        }
+
+        .msg-swipe-delete:disabled {
+            opacity: 0.7;
+        }
+
         /* APK .messsage-item */
         .message-item {
             display: flex;
@@ -308,10 +351,16 @@
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
             position: relative;
+            z-index: 1;
+            background: #fff;
+            transform: translate3d(0, 0, 0);
+            transition: transform 0.2s ease;
+            touch-action: pan-y;
+            will-change: transform;
         }
 
-        .message-item:last-child {
-            border-bottom: none;
+        .message-item.is-dragging {
+            transition: none;
         }
 
         .message-item:active {
@@ -521,6 +570,10 @@
         
         var allMessages = [];
         var filterUnreadOnly = false;
+        var MSG_SWIPE_OPEN_PX = 76;
+        var MSG_SWIPE_THRESHOLD = 36;
+        var openSwipeRow = null;
+        var swipeState = null;
 
         function escapeHtml(s) {
             return String(s == null ? '' : s)
@@ -538,6 +591,19 @@
             return '—';
         }
 
+        function filteredMessages() {
+            return allMessages.filter(function (msg) {
+                return !filterUnreadOnly || Number(msg.is_read) === 0;
+            });
+        }
+
+        function msgFromRow(row) {
+            if (!row) return null;
+            var idx = parseInt(row.getAttribute('data-msg-idx'), 10);
+            var list = filteredMessages();
+            return list[idx] || null;
+        }
+
         function openMessageDetail(msg) {
             if (!msg || !msg.id) return;
             if (msg._cg_demo) {
@@ -547,21 +613,110 @@
             window.location.href = 'message_detail.html?id=' + encodeURIComponent(String(msg.id));
         }
 
-        function renderMessageList() {
-            var list = allMessages.filter(function (msg) {
-                return !filterUnreadOnly || Number(msg.is_read) === 0;
+        function setSwipeOffset(row, px, animate) {
+            if (!row) return;
+            var front = row.querySelector('.message-item');
+            if (!front) return;
+            var x = Math.max(-MSG_SWIPE_OPEN_PX, Math.min(0, px));
+            if (animate) front.classList.remove('is-dragging');
+            else front.classList.add('is-dragging');
+            front.style.transform = 'translate3d(' + x + 'px,0,0)';
+            if (x <= -MSG_SWIPE_THRESHOLD) {
+                row.classList.add('is-open');
+            } else {
+                row.classList.remove('is-open');
+            }
+        }
+
+        function closeSwipeRow(row, animate) {
+            if (!row) return;
+            setSwipeOffset(row, 0, animate !== false);
+            if (openSwipeRow === row) openSwipeRow = null;
+        }
+
+        function openSwipeRowTo(row) {
+            if (!row) return;
+            if (openSwipeRow && openSwipeRow !== row) closeSwipeRow(openSwipeRow, true);
+            setSwipeOffset(row, -MSG_SWIPE_OPEN_PX, true);
+            openSwipeRow = row;
+        }
+
+        function closeAllSwipeRows() {
+            if (openSwipeRow) closeSwipeRow(openSwipeRow, true);
+            var listEl = document.getElementById('messageList');
+            if (!listEl) return;
+            listEl.querySelectorAll('.message-swipe-row.is-open').forEach(function (row) {
+                closeSwipeRow(row, true);
             });
+        }
+
+        function removeMessageLocally(id) {
+            var sid = String(id || '');
+            allMessages = allMessages.filter(function (m) {
+                return String(m.id) !== sid;
+            });
+            openSwipeRow = null;
+            renderMessageList();
+            if (typeof window.refreshMessageUnreadBadge === 'function') {
+                window.refreshMessageUnreadBadge();
+            }
+        }
+
+        function deleteMessageById(id, isDemo, btn) {
+            if (!id) return;
+            if (btn) btn.disabled = true;
+            if (isDemo) {
+                removeMessageLocally(id);
+                return;
+            }
+            window
+                .authFetch('api/message', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'delete_message', id: String(id) })
+                })
+                .then(function (r) {
+                    return (window.authParseJson || function (r) {
+                        return r.json();
+                    })(r);
+                })
+                .then(function (data) {
+                    if (data && data.code === 200) {
+                        removeMessageLocally(id);
+                        return;
+                    }
+                    throw new Error((data && data.msg) || '删除失败');
+                })
+                .catch(function (err) {
+                    if (btn) btn.disabled = false;
+                    closeAllSwipeRows();
+                    try {
+                        window.alert(err && err.message ? err.message : '删除失败');
+                    } catch (eAlert) {}
+                });
+        }
+
+        function renderMessageList() {
+            var list = filteredMessages();
             var html = '';
             list.forEach(function (msg, idx) {
                 var demoAttr = msg._cg_demo ? ' data-demo="1" data-cg-demo-maint="1"' : '';
                 html +=
-                    '<div class="message-item" role="button" tabindex="0" data-msg-idx="' +
+                    '<div class="message-swipe-row" data-msg-idx="' +
                     idx +
                     '"' +
                     demoAttr +
                     ' data-id="' +
                     escapeHtml(String(msg.id || '')) +
                     '">';
+                html += '<div class="message-swipe-actions">';
+                html +=
+                    '<button type="button" class="msg-swipe-delete" aria-label="删除消息">删除</button>';
+                html += '</div>';
+                html +=
+                    '<div class="message-item" role="button" tabindex="0"' +
+                    demoAttr +
+                    '>';
                 html += '<div class="msg-item-icon">';
                 html += '<img src="message_item_icon.png" width="48" height="48" alt="">';
                 html += '</div>';
@@ -576,6 +731,7 @@
                 }
                 html += '</div>';
                 html += '</div>';
+                html += '</div>';
             });
             var emptyHint = filterUnreadOnly ? '暂无未读消息' : '暂无消息';
             document.getElementById('messageList').innerHTML =
@@ -585,34 +741,133 @@
                 '<p>' +
                 emptyHint +
                 '</p></div>';
+            openSwipeRow = null;
         }
 
         function bindMessageListClicks() {
             var listEl = document.getElementById('messageList');
             if (!listEl || listEl.__msgClickBound) return;
             listEl.__msgClickBound = true;
+
             listEl.addEventListener('click', function (e) {
+                var delBtn = e.target.closest('.msg-swipe-delete');
+                if (delBtn) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var delRow = delBtn.closest('.message-swipe-row');
+                    if (!delRow) return;
+                    deleteMessageById(
+                        delRow.getAttribute('data-id'),
+                        delRow.getAttribute('data-demo') === '1',
+                        delBtn
+                    );
+                    return;
+                }
                 var item = e.target.closest('.message-item');
                 if (!item) return;
-                var idx = parseInt(item.getAttribute('data-msg-idx'), 10);
-                var filtered = allMessages.filter(function (msg) {
-                    return !filterUnreadOnly || Number(msg.is_read) === 0;
-                });
-                var msg = filtered[idx];
+                var row = item.closest('.message-swipe-row');
+                if (item.getAttribute('data-swiped') === '1') {
+                    item.removeAttribute('data-swiped');
+                    return;
+                }
+                if (row && row.classList.contains('is-open')) {
+                    closeSwipeRow(row, true);
+                    return;
+                }
+                if (openSwipeRow && openSwipeRow !== row) {
+                    closeSwipeRow(openSwipeRow, true);
+                    return;
+                }
+                var msg = msgFromRow(row);
                 if (msg) openMessageDetail(msg);
             });
+
             listEl.addEventListener('keydown', function (e) {
                 if (e.key !== 'Enter' && e.key !== ' ') return;
                 var item = e.target.closest('.message-item');
                 if (!item) return;
                 e.preventDefault();
-                var idx = parseInt(item.getAttribute('data-msg-idx'), 10);
-                var filtered = allMessages.filter(function (msg) {
-                    return !filterUnreadOnly || Number(msg.is_read) === 0;
-                });
-                var msg = filtered[idx];
+                var row = item.closest('.message-swipe-row');
+                var msg = msgFromRow(row);
                 if (msg) openMessageDetail(msg);
             });
+
+            listEl.addEventListener(
+                'touchstart',
+                function (e) {
+                    if (e.target.closest('.msg-swipe-delete')) return;
+                    var item = e.target.closest('.message-item');
+                    if (!item) return;
+                    var row = item.closest('.message-swipe-row');
+                    if (!row || !e.touches || !e.touches[0]) return;
+                    var t = e.touches[0];
+                    var startX = t.clientX;
+                    var startY = t.clientY;
+                    var base =
+                        row.classList.contains('is-open') ? -MSG_SWIPE_OPEN_PX : 0;
+                    swipeState = {
+                        row: row,
+                        item: item,
+                        startX: startX,
+                        startY: startY,
+                        base: base,
+                        dx: 0,
+                        axis: null,
+                        moved: false
+                    };
+                    if (openSwipeRow && openSwipeRow !== row) {
+                        closeSwipeRow(openSwipeRow, true);
+                    }
+                },
+                { passive: true }
+            );
+
+            listEl.addEventListener(
+                'touchmove',
+                function (e) {
+                    if (!swipeState || !e.touches || !e.touches[0]) return;
+                    var t = e.touches[0];
+                    var dx = t.clientX - swipeState.startX;
+                    var dy = t.clientY - swipeState.startY;
+                    if (!swipeState.axis) {
+                        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+                        if (Math.abs(dx) > Math.abs(dy)) {
+                            swipeState.axis = 'x';
+                        } else {
+                            swipeState.axis = 'y';
+                            swipeState = null;
+                            return;
+                        }
+                    }
+                    if (swipeState.axis !== 'x') return;
+                    swipeState.dx = dx;
+                    swipeState.moved = true;
+                    if (e.cancelable) e.preventDefault();
+                    setSwipeOffset(swipeState.row, swipeState.base + dx, false);
+                },
+                { passive: false }
+            );
+
+            function endSwipe() {
+                if (!swipeState) return;
+                var st = swipeState;
+                swipeState = null;
+                var finalX = st.base + st.dx;
+                if (st.moved) {
+                    st.item.setAttribute('data-swiped', '1');
+                    setTimeout(function () {
+                        st.item.removeAttribute('data-swiped');
+                    }, 280);
+                }
+                if (finalX <= -MSG_SWIPE_THRESHOLD) {
+                    openSwipeRowTo(st.row);
+                } else {
+                    closeSwipeRow(st.row, true);
+                }
+            }
+
+            listEl.addEventListener('touchend', endSwipe, { passive: true });
+            listEl.addEventListener('touchcancel', endSwipe, { passive: true });
         }
 
         function loadMessages() {
@@ -649,8 +904,17 @@
         document.getElementById('btnMsgFilter').addEventListener('click', function () {
             filterUnreadOnly = !filterUnreadOnly;
             this.classList.toggle('active', filterUnreadOnly);
+            closeAllSwipeRows();
             renderMessageList();
         });
+
+        window.addEventListener(
+            'scroll',
+            function () {
+                if (openSwipeRow) closeAllSwipeRows();
+            },
+            { passive: true }
+        );
 
         document.getElementById('btnMsgClearUnread').addEventListener('click', function () {
             var btn = this;
