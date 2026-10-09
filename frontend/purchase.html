@@ -1390,7 +1390,7 @@
             新用户 24 小时内可享体验价（划线为对照原价）。
         </div>
 
-        <!-- 新站：广告页内容放在支付套餐上方；旧站保持隐藏 -->
+        <!-- 支付页广告暂关（新站/旧站均 hidden）；恢复时改 initPurchaseRefundAd -->
         <aside class="purchase-refund-ad" id="purchaseRefundAd" aria-label="二次退税咨询" hidden>
             <img
                 class="purchase-refund-ad-poster"
@@ -3249,8 +3249,8 @@
             document.body.classList.remove('has-sticky-cta');
         }
         if (faq) faq.hidden = false;
-        /* 旧站开通页不展示二次退税广告；新站放在支付套餐上方 */
-        if (refundAdEntry && (!isGetjob68PurchaseHost() || isCodeOnly)) {
+        /* 开通页二次退税广告暂关（含新站 getjob68） */
+        if (refundAdEntry) {
             refundAdEntry.hidden = true;
         }
         if (faqSub) {
@@ -3323,22 +3323,8 @@
                 otherLabel,
                 otherCard
             ]);
-        } else if (isGetjob68PurchaseHost()) {
-            /* 新站：原广告页插在支付套餐位置（套餐卡上方） */
-            orderAfterHero([
-                benefits,
-                offerBanner,
-                refundAdEntry,
-                skel,
-                retryCard,
-                cardAlipay,
-                foldActivate,
-                foldMore,
-                foldShare,
-                faq
-            ]);
         } else {
-            /* 旧站：首屏只留套餐+付款；激活码 / 增值 / FAQ 下移 */
+            /* 首屏只留套餐+付款；激活码 / 增值 / FAQ 下移（新站广告暂关，不再插在套餐上方） */
             orderAfterHero([
                 benefits,
                 offerBanner,
@@ -4593,7 +4579,10 @@
         var idEl = document.getElementById('purchaseRefundWechatId');
         var moreEl = document.getElementById('purchaseRefundAdMore');
         if (!ad) return;
-        /* 旧站开通页不引流；新站把广告页放到支付套餐上方 */
+        /* 新站/旧站开通页均暂不展示二次退税广告（恢复时去掉本段 early return） */
+        ad.hidden = true;
+        if (moreEl) moreEl.hidden = true;
+        return;
         if (!isGetjob68PurchaseHost()) {
             ad.hidden = true;
             return;
