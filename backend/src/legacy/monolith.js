@@ -1429,6 +1429,8 @@ async function applyAgentChannelPricesToOffer(offer, username, req) {
     }
   }
   var ch = resolveSalesChannelForChannelPrices(userCh, reqCh);
+  /* 新站支付方案按后台流量分流，不再叠渠道专属价 */
+  if (offer.skip_channel_prices) return offer;
   if (!ch) return offer;
   var pol = null;
   try {
@@ -6861,6 +6863,8 @@ async function handleAlipayConfig(req, res) {
         github_entry: !!offer.github_entry,
         channel_prices: !!offer.channel_prices,
         channel_id: offer.channel_id || null,
+        pricing_plan_id: offer.pricing_plan_id || '',
+        pricing_plan_name: offer.pricing_plan_name || '',
         skus: skus
       }
     });
@@ -21397,6 +21401,10 @@ async function handleAdminSettingsGet(req, res) {
           true,
           adminPricingCatalogSite(req)
         ),
+        pricing_plans:
+          adminPricingCatalogSite(req) === 'getjob68'
+            ? await getPricingAb().loadPricingPlans(true)
+            : null,
         tax_edit_fee: await loadTaxEditFeeConfig(true),
         rename_fee: await loadRenameFeeConfig(true),
         lizhi_cert_fee: await loadLizhiCertFeeConfig(true),
@@ -21430,6 +21438,7 @@ async function handleAdminSettingsPost(req, res) {
   var hasSkuCatalogPrices =
     (body.sku_catalog != null && typeof body.sku_catalog === 'object') ||
     (body.sku_catalog_prices != null && typeof body.sku_catalog_prices === 'object');
+  var hasPricingPlans = body.pricing_plans != null && typeof body.pricing_plans === 'object';
   var hasTaxEditFee = body.tax_edit_fee != null && typeof body.tax_edit_fee === 'object';
   var hasRenameFee = body.rename_fee != null && typeof body.rename_fee === 'object';
   var hasLizhiCertFee = body.lizhi_cert_fee != null && typeof body.lizhi_cert_fee === 'object';
@@ -21451,6 +21460,7 @@ async function handleAdminSettingsPost(req, res) {
     !hasSalesAgent &&
     !hasPricingAb &&
     !hasSkuCatalogPrices &&
+    !hasPricingPlans &&
     !hasTaxEditFee &&
     !hasRenameFee &&
     !hasLizhiCertFee &&
@@ -21460,7 +21470,7 @@ async function handleAdminSettingsPost(req, res) {
   ) {
     return res.status(400).json({
       code: 400,
-      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、转化 A/B 配置、落地页 A/B 配置、C 方案销售代理、定价 A/B 配置、支付套餐、个税修改收费、改名费用、离职证明价格、完税二维码价格、招行模拟器价格或激活引导弹窗配置'
+      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、转化 A/B 配置、落地页 A/B 配置、C 方案销售代理、定价 A/B 配置、支付套餐、支付方案、个税修改收费、改名费用、离职证明价格、完税二维码价格、招行模拟器价格或激活引导弹窗配置'
     });
   }
 
@@ -21481,6 +21491,7 @@ async function handleAdminSettingsPost(req, res) {
       hasLandingAb ||
       hasPricingAb ||
       hasSkuCatalogPrices ||
+      hasPricingPlans ||
       hasTaxEditFee ||
       hasRenameFee ||
       hasLizhiCertFee ||
@@ -21807,6 +21818,24 @@ async function handleAdminSettingsPost(req, res) {
       }
     }
 
+    if (hasPricingPlans) {
+      try {
+        if (adminPricingCatalogSite(req) !== 'getjob68') {
+          return res.status(403).json({
+            code: 403,
+            msg: '支付方案只在新站后台配置'
+          });
+        }
+        await getPricingAb().savePricingPlansFromAdmin(body.pricing_plans);
+      } catch (ePlanSave) {
+        var planMsg = ePlanSave && ePlanSave.message ? String(ePlanSave.message) : '保存支付方案失败';
+        return res.status(ePlanSave && ePlanSave.statusCode === 400 ? 400 : 500).json({
+          code: ePlanSave && ePlanSave.statusCode === 400 ? 400 : 500,
+          msg: planMsg
+        });
+      }
+    }
+
     if (hasTaxEditFee) {
       try {
         await saveTaxEditFeeConfigFromAdmin(body.tax_edit_fee);
@@ -21913,9 +21942,13 @@ async function handleAdminSettingsPost(req, res) {
     outData.wechat_pay_qrcode_display_url = resolvePublicAssetUrl(qrAfter);
     outData.conversion_ab = await loadConversionAbParsed();
     outData.landing_ab = await loadLandingAbParsed();
-    outData.pricing_ab = await getPricingAb().loadPricingAbParsed(true);
-    outData.sku_catalog_prices = await getPricingAb().loadCatalogAmounts(true);
-    outData.sku_catalog = await getPricingAb().loadCatalogConfig(true);
+    var settingsSite = adminPricingCatalogSite(req);
+    outData.sku_catalog_site = settingsSite;
+    outData.pricing_ab = await getPricingAb().loadPricingAbParsed(true, settingsSite);
+    outData.sku_catalog_prices = await getPricingAb().loadCatalogAmounts(true, settingsSite);
+    outData.sku_catalog = await getPricingAb().loadCatalogConfig(true, settingsSite);
+    outData.pricing_plans =
+      settingsSite === 'getjob68' ? await getPricingAb().loadPricingPlans(true) : null;
     outData.tax_edit_fee = await loadTaxEditFeeConfig(true);
     outData.rename_fee = await loadRenameFeeConfig(true);
     outData.lizhi_cert_fee = await loadLizhiCertFeeConfig(true);

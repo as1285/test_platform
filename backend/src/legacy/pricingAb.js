@@ -7,6 +7,8 @@
  */
 'use strict';
 
+var pricingPlans = require('./pricingPlans');
+
 var SETTING_KEY_PRICING_AB = 'pricing_ab_json';
 /** 旧站 lkj（及未知 Host）支付套餐 */
 var SETTING_KEY_SKU_PRICES = 'sku_catalog_prices_json';
@@ -304,6 +306,7 @@ function defaultCatalogConfig() {
   for (i = 0; i < CONFIGURABLE_CATALOG_SKUS.length; i++) {
     var s = CONFIGURABLE_CATALOG_SKUS[i];
     map[s.id] = {
+      label: String(s.label || ''),
       amount: String(s.amount),
       psych_amount: '',
       grant_days: parseInt(s.grant_days, 10) || 0,
@@ -355,6 +358,15 @@ function catalogEntryHasGrant(entry) {
   );
 }
 
+function normalizeCatalogLabel(raw, fallback) {
+  var s = String(raw == null ? '' : raw)
+    .replace(/[\r\n\t]/g, ' ')
+    .trim();
+  if (!s) s = String(fallback || '').trim();
+  if (!s) return '';
+  return s.slice(0, 16);
+}
+
 function normalizeCatalogEntry(raw, fallback) {
   var fb = fallback || {};
   var obj = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : null;
@@ -376,7 +388,9 @@ function normalizeCatalogEntry(raw, fallback) {
   } else if (fb.psych_amount != null && String(fb.psych_amount).trim() !== '') {
     psychAmount = normalizeCatalogAmount(fb.psych_amount) || '';
   }
+  var label = normalizeCatalogLabel(obj && obj.label, fb.label || '');
   return {
+    label: label,
     amount: amount,
     psych_amount: psychAmount,
     grant_days: days != null ? days : parseInt(fb.grant_days, 10) || 0,
@@ -435,6 +449,10 @@ function cloneSku(s) {
 function applyCatalogEntryToSku(sku, entry) {
   var c = cloneSku(sku);
   if (!entry) return c;
+  if (entry.label != null && String(entry.label).trim() !== '') {
+    c.label = String(entry.label).trim().slice(0, 16);
+    c.subject = '激活码·' + c.label;
+  }
   if (entry.amount) c.amount = String(entry.amount);
   if (entry.grant_days != null) c.grant_days = parseInt(entry.grant_days, 10) || 0;
   if (entry.grant_hours != null) c.grant_hours = parseInt(entry.grant_hours, 10) || 0;
@@ -1010,6 +1028,8 @@ function createPricingAb(deps) {
   /** @type {Record<string, { at: number, cfg: object, amounts: object }>} */
   var _catalogCacheBySite = Object.create(null);
   var _tableReady = false;
+  var _plansCache = null;
+  var _plansCacheAt = 0;
   var loadSiteCatalogSeed =
     typeof deps.loadSiteCatalogSeed === 'function' ? deps.loadSiteCatalogSeed : null;
 
@@ -1250,7 +1270,165 @@ function createPricingAb(deps) {
   function invalidateCache() {
     _cache = null;
     _cacheAt = 0;
+    _plansCache = null;
+    _plansCacheAt = 0;
     _catalogCacheBySite = Object.create(null);
+  }
+
+  async function loadPricingPlans(force) {
+    var now = Date.now();
+    if (!force && _plansCache && now - _plansCacheAt < 10000) return _plansCache;
+    var out = pricingPlans.defaultGetjob68Plans();
+    if (!pool) {
+      _plansCache = out;
+      _plansCacheAt = now;
+      return out;
+    }
+    const conn = await pool.getConnection();
+    try {
+      const [rows] = await conn.execute(
+        'SELECT setting_value FROM app_settings WHERE setting_key = ? LIMIT 1',
+        [pricingPlans.SETTING_KEY_PRICING_PLANS_GETJOB68]
+      );
+      if (rows.length && rows[0].setting_value) {
+        out = pricingPlans.pricingPlansOrDefault(JSON.parse(String(rows[0].setting_value)));
+      }
+    } catch (e) {
+      out = pricingPlans.defaultGetjob68Plans();
+    } finally {
+      conn.release();
+    }
+    _plansCache = out;
+    _plansCacheAt = Date.now();
+    return out;
+  }
+
+  async function savePricingPlansFromAdmin(body) {
+    var next = pricingPlans.normalizePricingPlans(body);
+    if (!pool || typeof upsertAppSetting !== 'function') {
+      var err = new Error('无法保存支付方案');
+      err.statusCode = 500;
+      throw err;
+    }
+    const conn = await pool.getConnection();
+    try {
+      await upsertAppSetting(
+        conn,
+        pricingPlans.SETTING_KEY_PRICING_PLANS_GETJOB68,
+        JSON.stringify(next)
+      );
+    } finally {
+      conn.release();
+    }
+    _plansCache = next;
+    _plansCacheAt = Date.now();
+    invalidateCache();
+    _plansCache = next;
+    _plansCacheAt = Date.now();
+    return next;
+  }
+
+  async function getStickyPlanRaw(username) {
+    var u = String(username || '').trim();
+    if (!u || u === 'guest' || !pool) return null;
+    const conn = await pool.getConnection();
+    try {
+      await ensureAssignmentsTable(conn);
+      const [rows] = await conn.execute(
+        'SELECT variant, source, assigned_at FROM pricing_ab_assignments WHERE username = ? LIMIT 1',
+        [u]
+      );
+      if (!rows.length) return null;
+      var v = String(rows[0].variant || '')
+        .trim()
+        .toLowerCase();
+      if (!/^[a-f]$/.test(v)) return null;
+      return {
+        variant: v,
+        source: String(rows[0].source || '').substring(0, 32),
+        assigned_at: rows[0].assigned_at || null
+      };
+    } catch (e) {
+      return null;
+    } finally {
+      conn.release();
+    }
+  }
+
+  async function setStickyPlan(username, planId, source) {
+    var u = String(username || '').trim();
+    var v = String(planId || '')
+      .trim()
+      .toLowerCase();
+    if (!u || u === 'guest' || !/^[a-f]$/.test(v) || !pool) return null;
+    const conn = await pool.getConnection();
+    try {
+      await ensureAssignmentsTable(conn);
+      await conn.execute(
+        `INSERT INTO pricing_ab_assignments (username, variant, source, assigned_at)
+         VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+         ON DUPLICATE KEY UPDATE
+           variant = VALUES(variant),
+           source = VALUES(source),
+           assigned_at = CURRENT_TIMESTAMP`,
+        [u, v, String(source || 'allocation').substring(0, 32)]
+      );
+      return v;
+    } catch (e) {
+      console.error('setStickyPlan', e);
+      return null;
+    } finally {
+      conn.release();
+    }
+  }
+
+  async function resolveGetjob68PlanOffer(username) {
+    var doc = await loadPricingPlans(false);
+    var plans = (doc && doc.plans) || [];
+    var seed = String(username || '').trim() || 'guest';
+    var chosen = null;
+    var source = 'allocation';
+    if (seed !== 'guest') {
+      var sticky = await getStickyPlanRaw(seed);
+      if (sticky && sticky.source !== 'single_plan') {
+        var kept = pricingPlans.findPlan(plans, sticky.variant);
+        if (kept && pricingPlans.planHasEnabledSku(kept)) {
+          chosen = kept;
+          source = sticky.source || 'sticky';
+        }
+      }
+    }
+    if (!chosen) {
+      chosen = pricingPlans.pickPlanByWeight(seed, plans);
+      if (!chosen) {
+        chosen = plans[0] || pricingPlans.defaultGetjob68Plans().plans[0];
+      }
+      source = 'allocation';
+      if (seed !== 'guest' && chosen && chosen.id) {
+        await setStickyPlan(seed, chosen.id, 'allocation');
+      }
+    }
+    var activeCount = 0;
+    var i;
+    for (i = 0; i < plans.length; i++) {
+      if ((parseInt(plans[i].weight, 10) || 0) > 0) activeCount += 1;
+    }
+    var planId = chosen && chosen.id ? String(chosen.id) : 'a';
+    return {
+      enabled: true,
+      variant: 'plan_' + planId,
+      abc_variant: 'b',
+      abc_source: source,
+      skus: pricingPlans.planToLiveSkus(chosen),
+      pricing_ab_enabled: activeCount > 1,
+      pricing_plan_id: planId,
+      pricing_plan_name: chosen && chosen.name ? String(chosen.name) : '',
+      skip_channel_prices: true,
+      forced_by_channel: false,
+      force_client_abc: true,
+      github_entry: false,
+      pricing_site: 'getjob68'
+    };
   }
 
   async function savePricingAbFromAdmin(body, site) {
@@ -1386,6 +1564,9 @@ function createPricingAb(deps) {
     } else if (arguments.length >= 5) {
       siteKey = normalizeSiteCatalogKey(arguments[4]);
     }
+    if (siteKey === 'getjob68') {
+      return resolveGetjob68PlanOffer(username);
+    }
     var catalog = await loadCatalogConfig(false, siteKey);
     var seed = String(username || '').trim() || 'guest';
     var skus = cloneLiveCatalog(catalog);
@@ -1439,6 +1620,8 @@ function createPricingAb(deps) {
     loadCatalogAmounts: loadCatalogAmounts,
     loadCatalogConfig: loadCatalogConfig,
     saveCatalogAmountsFromAdmin: saveCatalogAmountsFromAdmin,
+    loadPricingPlans: loadPricingPlans,
+    savePricingPlansFromAdmin: savePricingPlansFromAdmin,
     invalidateCache: invalidateCache,
     resolveOfferForUser: resolveOfferForUser,
     pickSkuFromOffer: pickSkuFromOffer,
@@ -1488,5 +1671,6 @@ module.exports = {
   SKU_98_3DAY: SKU_98_3DAY,
   SKU_CH_T4: SKU_CH_T4,
   SKU_CH_T5: SKU_CH_T5,
-  CHANNEL_EXTRA_SKU_IDS: CHANNEL_EXTRA_SKU_IDS
+  CHANNEL_EXTRA_SKU_IDS: CHANNEL_EXTRA_SKU_IDS,
+  pricingPlans: pricingPlans
 };

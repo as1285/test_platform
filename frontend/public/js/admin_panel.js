@@ -6104,11 +6104,21 @@
                 if (lede) lede.textContent = '仅旧站 lkj · 渠道 abc · 账号查询、状态与风险处置';
                 return;
             }
-            /* 旧域名后台：不展示站点文案，保持原来的「注册用户」 */
+            /* 旧域名后台：不展示站点/不含ABC 文案，保持原来的「注册用户」 */
             if (legacyHost) {
                 if (h2) h2.textContent = '注册用户';
-                if (lede) lede.textContent = '账号查询、状态管理与风险处置（不含 ABC）';
+                if (lede) {
+                    lede.textContent = '';
+                    lede.hidden = true;
+                    var ledeWrap = lede.closest('.page-lede');
+                    if (ledeWrap) ledeWrap.hidden = true;
+                }
                 return;
+            }
+            if (lede) {
+                lede.hidden = false;
+                var ledeWrapShow = lede.closest('.page-lede');
+                if (ledeWrapShow) ledeWrapShow.hidden = false;
             }
             if (site === 'getjob68') {
                 if (h2) h2.textContent = '新站注册用户';
@@ -6233,7 +6243,11 @@
                         statText += ' · 旧站ABC';
                     } else if (showSiteCol) {
                         statText += ' · 新站 getjob68';
-                    } else if (registerSite === 'lkj' && excludeSalesCh === 'abc') {
+                    } else if (
+                        !isLegacyAdminHostClient() &&
+                        registerSite === 'lkj' &&
+                        excludeSalesCh === 'abc'
+                    ) {
                         statText += ' · 旧站 lkj（不含ABC）';
                     }
                     if (data.data.high_income_filter === '1') {
@@ -8708,6 +8722,7 @@
                                 (pricingAb && pricingAb.catalog_amounts) ||
                                 {}
                         );
+                        applyPricingPlansFromSettings(data.data);
                         applyTaxEditFeeToForm(data.data.tax_edit_fee || {});
                         applyRenameFeeToForm(data.data.rename_fee || {});
                         applyLizhiCertFeeToForm(data.data.lizhi_cert_fee || {});
@@ -8795,11 +8810,15 @@
                 var skuId = row.getAttribute('data-sku-id');
                 if (!skuId) return;
                 var enabledEl = row.querySelector('.sku-catalog-enabled');
+                var labelEl = row.querySelector('.sku-catalog-label');
                 var amountEl = row.querySelector('.sku-catalog-amount');
                 var psychEl = row.querySelector('.sku-catalog-psych');
                 var daysEl = row.querySelector('.sku-catalog-days');
                 var hoursEl = row.querySelector('.sku-catalog-hours');
+                var fallbackLabel = row.getAttribute('data-sku-label') || skuId;
+                var label = labelEl ? String(labelEl.value || '').trim() : '';
                 out[skuId] = {
+                    label: label || fallbackLabel,
                     amount: amountEl ? String(amountEl.value || '').trim() : '',
                     psych_amount: psychEl ? String(psychEl.value || '').trim() : '',
                     grant_days: daysEl ? String(daysEl.value || '').trim() : '0',
@@ -8824,10 +8843,15 @@
                           : null;
                 if (!entry) return;
                 var enabledEl = row.querySelector('.sku-catalog-enabled');
+                var labelEl = row.querySelector('.sku-catalog-label');
                 var amountEl = row.querySelector('.sku-catalog-amount');
                 var psychEl = row.querySelector('.sku-catalog-psych');
                 var daysEl = row.querySelector('.sku-catalog-days');
                 var hoursEl = row.querySelector('.sku-catalog-hours');
+                if (labelEl && entry.label != null && String(entry.label).trim() !== '') {
+                    labelEl.value = String(entry.label).trim().slice(0, 16);
+                    row.setAttribute('data-sku-label', labelEl.value);
+                }
                 if (amountEl && entry.amount != null && String(entry.amount).trim() !== '') {
                     amountEl.value = String(entry.amount);
                 }
@@ -8888,8 +8912,13 @@
             skuSel.innerHTML = '';
             skuCatalogRows().forEach(function (row) {
                 var skuId = row.getAttribute('data-sku-id');
-                var label = row.getAttribute('data-sku-label') || skuId;
                 var entry = catalog[skuId] || {};
+                var labelEl = row.querySelector('.sku-catalog-label');
+                var label =
+                    (entry.label != null && String(entry.label).trim()) ||
+                    (labelEl && String(labelEl.value || '').trim()) ||
+                    row.getAttribute('data-sku-label') ||
+                    skuId;
                 if (entry.enabled === false) {
                     label += '（已下架）';
                 }
@@ -8908,17 +8937,33 @@
         }
 
         function renderBidPsychPriceBar() {
-            var specs = [
-                { sku: 'sku_300_7d', valId: 'bidPsychWeekDisplay', subId: 'bidPsychWeekSub' },
-                { sku: 'sku_348_14d', valId: 'bidPsychTwoWeekDisplay', subId: 'bidPsychTwoWeekSub' },
-                { sku: 'sku_398_30d', valId: 'bidPsychMonthDisplay', subId: 'bidPsychMonthSub' }
-            ];
+            var plansOn = pricingPlansSectionVisible();
+            var weekLabel = document.getElementById('bidPsychWeekLabel');
+            var twoLabel = document.getElementById('bidPsychTwoWeekLabel');
+            var monthLabel = document.getElementById('bidPsychMonthLabel');
+            if (weekLabel) weekLabel.textContent = plansOn ? '周卡心理价' : '周卡心理价';
+            if (twoLabel) twoLabel.textContent = plansOn ? '月卡心理价' : '双周卡心理价';
+            if (monthLabel) monthLabel.textContent = plansOn ? '年卡心理价' : '月卡心理价';
+            var specs = plansOn
+                ? (function () {
+                      var rows = defaultPlanSkuEntries();
+                      return [
+                          { entry: rows[0], valId: 'bidPsychWeekDisplay', subId: 'bidPsychWeekSub' },
+                          { entry: rows[1], valId: 'bidPsychTwoWeekDisplay', subId: 'bidPsychTwoWeekSub' },
+                          { entry: rows[2], valId: 'bidPsychMonthDisplay', subId: 'bidPsychMonthSub' }
+                      ];
+                  })()
+                : [
+                      { sku: 'sku_300_7d', valId: 'bidPsychWeekDisplay', subId: 'bidPsychWeekSub' },
+                      { sku: 'sku_348_14d', valId: 'bidPsychTwoWeekDisplay', subId: 'bidPsychTwoWeekSub' },
+                      { sku: 'sku_398_30d', valId: 'bidPsychMonthDisplay', subId: 'bidPsychMonthSub' }
+                  ];
             if (!document.getElementById('bidPsychPriceBar')) return;
             var catalog = collectSkuCatalogFromForm();
             specs.forEach(function (spec) {
                 var valEl = document.getElementById(spec.valId);
                 var subEl = document.getElementById(spec.subId);
-                var entry = catalog[spec.sku] || {};
+                var entry = spec.entry || catalog[spec.sku] || {};
                 var psych = formatSkuYuan(entry.psych_amount);
                 var list = formatSkuYuan(entry.amount);
                 if (valEl) valEl.textContent = psych ? '¥' + psych : '未填';
@@ -9248,6 +9293,10 @@
                 var enabledCount = 0;
                 for (var i = 0; i < ids.length; i++) {
                     var row = catalog[ids[i]];
+                    if (!String(row.label || '').trim()) {
+                        alert('请填写每个套餐的名称');
+                        return;
+                    }
                     var n = Number(String(row.amount || '').replace(/,/g, '').trim());
                     if (!isFinite(n) || n < 0.01 || n > 99999.99) {
                         alert('请为每个套餐填写 0.01～99999.99 的价格');
@@ -9310,6 +9359,415 @@
                     });
             });
         }
+
+        function pricingPlansSectionVisible() {
+            var sec = document.getElementById('pricingPlansSection');
+            return !!(sec && !sec.hidden);
+        }
+
+        function defaultPricingPlans() {
+            return [
+                {
+                    id: 'a',
+                    name: '默认方案',
+                    weight: 100,
+                    is_default: true,
+                    skus: [
+                        { slot: 'week', label: '周卡', amount: '100', psych_amount: '', grant_days: 7, enabled: true },
+                        { slot: 'month', label: '月卡', amount: '150', psych_amount: '', grant_days: 30, enabled: true },
+                        { slot: 'year', label: '年卡', amount: '200', psych_amount: '', grant_days: 365, enabled: true }
+                    ]
+                }
+            ];
+        }
+
+        function applyPricingPlansFromSettings(data) {
+            var sec = document.getElementById('pricingPlansSection');
+            var legacy = document.getElementById('skuCatalogLegacy');
+            var title = document.getElementById('skuCatalogTitle');
+            if (!sec || !legacy) return;
+            var on = !isLegacyAdminHostClient();
+            sec.hidden = !on;
+            legacy.hidden = !!on;
+            var bidCfg = document.getElementById('bidCfgForm');
+            if (bidCfg) bidCfg.hidden = !!on;
+            if (title) title.textContent = on ? '支付方案' : '支付套餐';
+            if (!on) {
+                renderBidPsychPriceBar();
+                return;
+            }
+            var plans = data && data.pricing_plans && data.pricing_plans.plans;
+            renderPricingPlans(plans && plans.length ? plans : defaultPricingPlans());
+        }
+
+        function defaultPlanSkuEntries() {
+            var doc = collectPricingPlansFromForm();
+            var plan = null;
+            var i;
+            for (i = 0; i < doc.plans.length; i++) {
+                if (doc.plans[i].is_default || doc.plans[i].id === 'a') {
+                    plan = doc.plans[i];
+                    break;
+                }
+            }
+            var skus = (plan && plan.skus) || [];
+            return [skus[0] || {}, skus[1] || {}, skus[2] || {}];
+        }
+
+        function collectPricingPlansFromForm() {
+            var root = document.getElementById('pricingPlansList');
+            if (!root) return { plans: [] };
+            var plans = [];
+            Array.prototype.forEach.call(root.querySelectorAll('.pricing-plan-card'), function (card) {
+                var nameEl = card.querySelector('.pricing-plan-name');
+                var weightEl = card.querySelector('.pricing-plan-weight');
+                var skus = [];
+                Array.prototype.forEach.call(card.querySelectorAll('tbody tr[data-slot]'), function (row) {
+                    var labelEl = row.querySelector('.pricing-sku-label');
+                    var amountEl = row.querySelector('.pricing-sku-amount');
+                    var psychEl = row.querySelector('.pricing-sku-psych');
+                    var daysEl = row.querySelector('.pricing-sku-days');
+                    var enabledEl = row.querySelector('.pricing-sku-enabled');
+                    skus.push({
+                        slot: row.getAttribute('data-slot') || '',
+                        label: labelEl ? String(labelEl.value || '').trim() : '',
+                        amount: amountEl ? String(amountEl.value || '').trim() : '',
+                        psych_amount: psychEl ? String(psychEl.value || '').trim() : '',
+                        grant_days: daysEl ? String(daysEl.value || '').trim() : '',
+                        enabled: !!(enabledEl && enabledEl.checked)
+                    });
+                });
+                plans.push({
+                    id: card.getAttribute('data-plan-id') || '',
+                    name: nameEl ? String(nameEl.value || '').trim() : '',
+                    weight: weightEl ? String(weightEl.value || '').trim() : '0',
+                    is_default: card.getAttribute('data-plan-default') === '1',
+                    skus: skus
+                });
+            });
+            return { plans: plans };
+        }
+
+        function nextPricingPlanId(plans) {
+            var used = {};
+            (plans || []).forEach(function (p) {
+                used[String(p.id || '')] = true;
+            });
+            var letters = ['b', 'c', 'd', 'e', 'f'];
+            var i;
+            for (i = 0; i < letters.length; i++) {
+                if (!used[letters[i]]) return letters[i];
+            }
+            return '';
+        }
+
+        function nextPricingSkuSlot(skus) {
+            var used = {};
+            (skus || []).forEach(function (s) {
+                used[String(s.slot || '')] = true;
+            });
+            var i;
+            for (i = 0; i < 5; i++) {
+                if (!used['s' + i]) return 's' + i;
+            }
+            return '';
+        }
+
+        function pricingSkuRowHtml(sku, lockedStructure) {
+            var slot = esc(sku.slot || '');
+            var label = esc(sku.label || '');
+            var amount = esc(sku.amount != null ? sku.amount : '');
+            var psych = esc(sku.psych_amount != null ? sku.psych_amount : '');
+            var days = esc(sku.grant_days != null ? sku.grant_days : '');
+            var checked = sku.enabled === false || sku.enabled === 0 || sku.enabled === '0' ? '' : ' checked';
+            /* 套餐文案均可改；默认方案仍锁定档位结构（不可删行） */
+            var labelCell =
+                '<input class="pricing-sku-label input-block" type="text" maxlength="16" value="' +
+                label +
+                '" placeholder="如 周卡" aria-label="套餐名称">';
+            var removeCell = lockedStructure
+                ? ''
+                : '<button type="button" class="btn-sm btn-page pricing-plan-remove-sku">删除</button>';
+            return (
+                '<tr data-slot="' +
+                slot +
+                '">' +
+                '<td><input type="checkbox" class="pricing-sku-enabled" aria-label="上架"' +
+                checked +
+                '></td>' +
+                '<td>' +
+                labelCell +
+                '</td>' +
+                '<td><input type="number" class="pricing-sku-amount" min="0.01" max="99999.99" step="0.01" value="' +
+                amount +
+                '" aria-label="价格"></td>' +
+                '<td><input type="number" class="pricing-sku-psych" min="0.01" max="99999.99" step="0.01" value="' +
+                psych +
+                '" placeholder="可选" aria-label="心理价"></td>' +
+                '<td><input type="number" class="pricing-sku-days" min="1" max="3650" step="1" value="' +
+                days +
+                '" aria-label="天数"></td>' +
+                '<td>' +
+                removeCell +
+                '</td>' +
+                '</tr>'
+            );
+        }
+
+        function renderPricingPlans(plans) {
+            var root = document.getElementById('pricingPlansList');
+            if (!root) return;
+            var list = plans && plans.length ? plans : defaultPricingPlans();
+            root.innerHTML = list
+                .map(function (plan) {
+                    var isDefault = !!(plan.is_default || plan.id === 'a');
+                    var skus = plan.skus && plan.skus.length ? plan.skus : [];
+                    var rows = skus
+                        .map(function (sku) {
+                            return pricingSkuRowHtml(sku, isDefault);
+                        })
+                        .join('');
+                    var addSku =
+                        !isDefault && skus.length < 5
+                            ? '<button type="button" class="btn-sm btn-page pricing-plan-add-sku">添加套餐</button>'
+                            : '';
+                    var removePlan = isDefault
+                        ? '<span class="hint">默认方案 · 套餐名称可改</span>'
+                        : '<button type="button" class="btn-sm btn-page pricing-plan-remove">删除方案</button>';
+                    return (
+                        '<div class="pricing-plan-card" data-plan-id="' +
+                        esc(plan.id || '') +
+                        '" data-plan-default="' +
+                        (isDefault ? '1' : '0') +
+                        '" style="margin:0 0 16px;padding:12px 12px 8px;border:1px solid rgba(15,23,42,.08);border-radius:12px;">' +
+                        '<div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:8px;">' +
+                        '<div class="form-field form-field-narrow" style="margin:0;">' +
+                        '<label>方案名称</label>' +
+                        '<input class="input-block pricing-plan-name" type="text" maxlength="16" value="' +
+                        esc(plan.name || '') +
+                        '">' +
+                        '</div>' +
+                        '<div class="form-field" style="margin:0;max-width:120px;">' +
+                        '<label>流量 %</label>' +
+                        '<input class="input-block pricing-plan-weight" type="number" min="0" max="100" step="1" value="' +
+                        esc(plan.weight != null ? plan.weight : 0) +
+                        '">' +
+                        '</div>' +
+                        removePlan +
+                        '</div>' +
+                        '<div class="scroll-x"><table class="sku-catalog-table"><thead><tr>' +
+                        '<th>上架</th><th>套餐</th><th>价格（元）</th><th>心理价（元）</th><th>天数</th><th></th>' +
+                        '</tr></thead><tbody>' +
+                        rows +
+                        '</tbody></table></div>' +
+                        '<div class="form-actions">' +
+                        addSku +
+                        '</div></div>'
+                    );
+                })
+                .join('');
+            updatePricingPlansWeightSum();
+            renderBidPsychPriceBar();
+        }
+
+        function updatePricingPlansWeightSum() {
+            var el = document.getElementById('pricingPlansWeightSum');
+            if (!el) return;
+            var doc = collectPricingPlansFromForm();
+            var sum = 0;
+            doc.plans.forEach(function (p) {
+                var n = parseInt(p.weight, 10);
+                if (isFinite(n)) sum += n;
+            });
+            el.textContent = sum === 100 ? '流量合计 100%' : '流量合计 ' + sum + '%（须为 100%）';
+        }
+
+        function validatePricingPlansClient(doc) {
+            var plans = (doc && doc.plans) || [];
+            if (!plans.length) return '请至少保留默认方案';
+            var sum = 0;
+            var i;
+            var j;
+            for (i = 0; i < plans.length; i++) {
+                var plan = plans[i];
+                var name = plan.name || (plan.is_default ? '默认方案' : '方案');
+                var weight = parseInt(plan.weight, 10);
+                if (!/^\d+$/.test(String(plan.weight || '')) || !isFinite(weight) || weight < 0 || weight > 100) {
+                    return '「' + name + '」流量须为 0～100 的整数';
+                }
+                sum += weight;
+                var enabled = 0;
+                var skus = plan.skus || [];
+                if (!skus.length) return '「' + name + '」至少保留一个套餐';
+                for (j = 0; j < skus.length; j++) {
+                    var sku = skus[j];
+                    var label = String(sku.label || '').trim();
+                    if (!label) return '「' + name + '」请填写套餐名称';
+                    var amount = Number(String(sku.amount || '').replace(/,/g, ''));
+                    if (!isFinite(amount) || amount < 0.01 || amount > 99999.99) {
+                        return '「' + name + ' · ' + label + '」价格须为 0.01～99999.99';
+                    }
+                    var days = parseInt(sku.grant_days, 10);
+                    if (!isFinite(days) || days < 1 || days > 3650) {
+                        return '「' + name + ' · ' + label + '」天数须为 1～3650';
+                    }
+                    var psychRaw = String(sku.psych_amount || '').trim();
+                    if (psychRaw) {
+                        var psych = Number(psychRaw.replace(/,/g, ''));
+                        if (!isFinite(psych) || psych < 0.01 || psych >= amount) {
+                            return '「' + name + ' · ' + label + '」心理价须小于价格';
+                        }
+                    }
+                    if (sku.enabled) enabled += 1;
+                }
+                if (weight > 0 && !enabled) return '「' + name + '」有流量时请至少上架一个套餐';
+            }
+            if (sum !== 100) return '流量分配合计须为 100%，当前 ' + sum + '%';
+            return '';
+        }
+
+        (function bindPricingPlansEditor() {
+            var root = document.getElementById('pricingPlansList');
+            if (!root || root.getAttribute('data-bound') === '1') return;
+            root.setAttribute('data-bound', '1');
+            root.addEventListener('input', function () {
+                updatePricingPlansWeightSum();
+                renderBidPsychPriceBar();
+            });
+            root.addEventListener('click', function (e) {
+                var removePlan = e.target.closest('.pricing-plan-remove');
+                var addSku = e.target.closest('.pricing-plan-add-sku');
+                var removeSku = e.target.closest('.pricing-plan-remove-sku');
+                if (!removePlan && !addSku && !removeSku) return;
+                var doc = collectPricingPlansFromForm();
+                if (removePlan) {
+                    var card = removePlan.closest('.pricing-plan-card');
+                    var id = card ? card.getAttribute('data-plan-id') : '';
+                    doc.plans = doc.plans.filter(function (p) {
+                        return String(p.id) !== String(id);
+                    });
+                    renderPricingPlans(doc.plans);
+                    return;
+                }
+                var card2 = (addSku || removeSku).closest('.pricing-plan-card');
+                var planId = card2 ? card2.getAttribute('data-plan-id') : '';
+                var plan = null;
+                var i;
+                for (i = 0; i < doc.plans.length; i++) {
+                    if (String(doc.plans[i].id) === String(planId)) plan = doc.plans[i];
+                }
+                if (!plan || plan.is_default) return;
+                if (addSku) {
+                    if ((plan.skus || []).length >= 5) {
+                        alert('每个方案最多 5 个套餐');
+                        return;
+                    }
+                    plan.skus.push({
+                        slot: nextPricingSkuSlot(plan.skus),
+                        label: '',
+                        amount: '',
+                        psych_amount: '',
+                        grant_days: '',
+                        enabled: true
+                    });
+                    renderPricingPlans(doc.plans);
+                    return;
+                }
+                if ((plan.skus || []).length <= 1) {
+                    alert('每个方案至少保留一个套餐');
+                    return;
+                }
+                var row = removeSku.closest('tr[data-slot]');
+                var slot = row ? row.getAttribute('data-slot') : '';
+                plan.skus = plan.skus.filter(function (s) {
+                    return String(s.slot) !== String(slot);
+                });
+                renderPricingPlans(doc.plans);
+            });
+            var btnAdd = document.getElementById('btnAddPricingPlan');
+            if (btnAdd) {
+                btnAdd.addEventListener('click', function () {
+                    var doc = collectPricingPlansFromForm();
+                    var id = nextPricingPlanId(doc.plans);
+                    if (!id) {
+                        alert('最多 6 个支付方案');
+                        return;
+                    }
+                    doc.plans.push({
+                        id: id,
+                        name: '方案 ' + id.toUpperCase(),
+                        weight: 0,
+                        is_default: false,
+                        skus: [
+                            {
+                                slot: 's0',
+                                label: '周卡',
+                                amount: '80',
+                                psych_amount: '',
+                                grant_days: 7,
+                                enabled: true
+                            },
+                            {
+                                slot: 's1',
+                                label: '月卡',
+                                amount: '120',
+                                psych_amount: '',
+                                grant_days: 30,
+                                enabled: true
+                            }
+                        ]
+                    });
+                    renderPricingPlans(doc.plans);
+                });
+            }
+            var btnSave = document.getElementById('btnSavePricingPlans');
+            if (btnSave) {
+                btnSave.addEventListener('click', function () {
+                    var doc = collectPricingPlansFromForm();
+                    var err = validatePricingPlansClient(doc);
+                    if (err) {
+                        alert(err);
+                        return;
+                    }
+                    btnSave.disabled = true;
+                    var hint = document.getElementById('pricingPlansHint');
+                    if (hint) hint.textContent = '保存中…';
+                    adminFetch('api/admin/settings', {
+                        method: 'POST',
+                        body: JSON.stringify({ pricing_plans: doc })
+                    })
+                        .then(function (r) {
+                            return (window.adminParseJson || function (res) {
+                                return res.json();
+                            })(r);
+                        })
+                        .then(function (data) {
+                            if (data.code === 200) {
+                                if (hint) hint.textContent = '已保存';
+                                var saved = data.data && data.data.pricing_plans && data.data.pricing_plans.plans;
+                                renderPricingPlans(saved && saved.length ? saved : doc.plans);
+                                alert('支付方案已保存。新用户按流量进入对应方案，已分配的账号保持原方案。');
+                            } else {
+                                if (hint) hint.textContent = '';
+                                alert(data.msg || '保存失败');
+                            }
+                        })
+                        .catch(function () {
+                            if (hint) hint.textContent = '';
+                            alert('网络错误');
+                        })
+                        .finally(function () {
+                            btnSave.disabled = false;
+                        });
+                });
+            }
+            if (!isLegacyAdminHostClient()) {
+                applyPricingPlansFromSettings({
+                    sku_catalog_site: 'getjob68',
+                    pricing_plans: null
+                });
+            }
+        })();
 
         /* 心理价出价：配置 + 待处理审核 */
         (function bindPriceBids() {

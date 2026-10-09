@@ -978,13 +978,25 @@
             color: var(--ink-soft);
         }
         .purchase-refund-ad {
-            margin-top: 12px;
+            margin: 12px 0 14px;
             overflow: hidden;
             border-radius: 14px;
             color: #1a1208;
             background: #ffb020;
             box-shadow: 0 8px 18px rgba(232, 112, 0, 0.22);
         }
+        .purchase-refund-ad-more {
+            display: block;
+            padding: 10px 14px 14px;
+            background: rgba(255, 255, 255, 0.96);
+            color: #c2410c;
+            font-size: 13px;
+            font-weight: 700;
+            text-align: center;
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .purchase-refund-ad-more:active { opacity: 0.85; }
         .purchase-refund-ad-poster {
             display: block;
             width: 100%;
@@ -1378,6 +1390,25 @@
             新用户 24 小时内可享体验价（划线为对照原价）。
         </div>
 
+        <!-- 新站：广告页内容放在支付套餐上方；旧站保持隐藏 -->
+        <aside class="purchase-refund-ad" id="purchaseRefundAd" aria-label="二次退税咨询" hidden>
+            <img
+                class="purchase-refund-ad-poster"
+                src="/img/refund-ad.jpg?v=20260831-poster"
+                width="768"
+                height="1024"
+                alt="哪些人可以做二次退税：月薪≥5000元，过去三年正常缴纳过个人所得税，覆盖全行业"
+            >
+            <div class="purchase-refund-ad-wx">
+                <div class="purchase-refund-ad-wx-meta">
+                    <span class="purchase-refund-ad-wx-label">符合二次退税？一键复制顾问微信</span>
+                    <strong class="purchase-refund-ad-wx-id" id="purchaseRefundWechatId">Tangdong6832</strong>
+                </div>
+                <button type="button" class="purchase-refund-ad-copy" id="btnCopyRefundWechat">一键复制微信号 · 备注二次退税</button>
+            </div>
+            <a class="purchase-refund-ad-more" id="purchaseRefundAdMore" href="refund_ad.html?from=purchase" hidden>打开完整广告页 · 测算可退税额</a>
+        </aside>
+
         <div class="card card-alipay-skel" id="cardAlipaySkel" hidden aria-hidden="true">
             <div class="skel-bar"></div>
             <div class="skel-bar"></div>
@@ -1535,23 +1566,6 @@
             </div>
             <span class="purchase-yuefu-arrow" aria-hidden="true">›</span>
         </a>
-
-        <aside class="purchase-refund-ad" id="purchaseRefundAd" aria-label="二次退税咨询" hidden>
-            <img
-                class="purchase-refund-ad-poster"
-                src="/img/refund-ad.jpg?v=20260831-poster"
-                width="768"
-                height="1024"
-                alt="哪些人可以做二次退税：月薪≥5000元，过去三年正常缴纳过个人所得税，覆盖全行业"
-            >
-            <div class="purchase-refund-ad-wx">
-                <div class="purchase-refund-ad-wx-meta">
-                    <span class="purchase-refund-ad-wx-label">符合二次退税？一键复制顾问微信</span>
-                    <strong class="purchase-refund-ad-wx-id" id="purchaseRefundWechatId">Tangdong6832</strong>
-                </div>
-                <button type="button" class="purchase-refund-ad-copy" id="btnCopyRefundWechat">一键复制微信号 · 备注二次退税</button>
-            </div>
-        </aside>
 
         <aside class="purchase-gjj-ad" id="purchaseGjjEntry" aria-label="公积金提取" hidden>
             <img
@@ -3098,7 +3112,7 @@
         }
     }
 
-    var FALLBACK_ALIPAY_SKUS = [
+    var LEGACY_FALLBACK_ALIPAY_SKUS = [
         {
             id: 'sku_300_7d',
             amount: '300.00',
@@ -3130,10 +3144,55 @@
             grant_minutes: 0
         }
     ];
+    var GETJOB68_FALLBACK_ALIPAY_SKUS = [
+        {
+            id: 'gj_a_week',
+            amount: '100.00',
+            label: '周卡',
+            subject: '激活码·周卡',
+            grant_kind: 'trial',
+            grant_days: 7,
+            grant_hours: 0,
+            grant_minutes: 0
+        },
+        {
+            id: 'gj_a_month',
+            amount: '150.00',
+            label: '月卡',
+            subject: '激活码·月卡',
+            grant_kind: 'trial',
+            grant_days: 30,
+            grant_hours: 0,
+            grant_minutes: 0
+        },
+        {
+            id: 'gj_a_year',
+            amount: '200.00',
+            label: '年卡',
+            subject: '激活码·年卡',
+            grant_kind: 'trial',
+            grant_days: 365,
+            grant_hours: 0,
+            grant_minutes: 0
+        }
+    ];
+    function purchaseHostIsGetjob68() {
+        var h = String((location && location.hostname) || '')
+            .trim()
+            .toLowerCase();
+        return (
+            h === 'getjob68.club' ||
+            h === 'www.getjob68.club' ||
+            /(^|\.)getjob68\.club$/.test(h)
+        );
+    }
+    var FALLBACK_ALIPAY_SKUS = purchaseHostIsGetjob68()
+        ? GETJOB68_FALLBACK_ALIPAY_SKUS
+        : LEGACY_FALLBACK_ALIPAY_SKUS;
     var alipayPricing = {
         variant: 'treatment',
         skus: FALLBACK_ALIPAY_SKUS.slice(),
-        selectedSkuId: 'sku_300_7d'
+        selectedSkuId: purchaseHostIsGetjob68() ? 'gj_a_week' : 'sku_300_7d'
     };
     /** legacy=支付宝+激活码；treatment=多档支付宝+激活码 */
     var purchaseUiMode = 'legacy';
@@ -3190,7 +3249,10 @@
             document.body.classList.remove('has-sticky-cta');
         }
         if (faq) faq.hidden = false;
-        if (refundAdEntry) refundAdEntry.hidden = true;
+        /* 旧站开通页不展示二次退税广告；新站放在支付套餐上方 */
+        if (refundAdEntry && (!isGetjob68PurchaseHost() || isCodeOnly)) {
+            refundAdEntry.hidden = true;
+        }
         if (faqSub) {
             faqSub.textContent = isCodeOnly
                 ? '用激活码开通前可先看这几条。'
@@ -3258,12 +3320,25 @@
                 foldActivate,
                 foldMore,
                 faq,
-                refundAdEntry,
                 otherLabel,
                 otherCard
             ]);
+        } else if (isGetjob68PurchaseHost()) {
+            /* 新站：原广告页插在支付套餐位置（套餐卡上方） */
+            orderAfterHero([
+                benefits,
+                offerBanner,
+                refundAdEntry,
+                skel,
+                retryCard,
+                cardAlipay,
+                foldActivate,
+                foldMore,
+                foldShare,
+                faq
+            ]);
         } else {
-            /* 首屏只留套餐+付款；激活码 / 增值 / FAQ 下移 */
+            /* 旧站：首屏只留套餐+付款；激活码 / 增值 / FAQ 下移 */
             orderAfterHero([
                 benefits,
                 offerBanner,
@@ -3273,8 +3348,7 @@
                 foldActivate,
                 foldMore,
                 foldShare,
-                faq,
-                refundAdEntry
+                faq
             ]);
         }
         if (typeof syncPurchaseStickyCta === 'function') syncPurchaseStickyCta();
@@ -3412,7 +3486,7 @@
         hideAlipaySkeleton();
         if (!alipayPricing.skus || !alipayPricing.skus.length) {
             alipayPricing.skus = FALLBACK_ALIPAY_SKUS.slice();
-            alipayPricing.selectedSkuId = 'sku_300_7d';
+            alipayPricing.selectedSkuId = purchaseHostIsGetjob68() ? 'gj_a_week' : 'sku_300_7d';
         }
         try {
             renderAlipaySkus(alipayPricing.skus, alipayPricing.variant || 'treatment');
@@ -4499,6 +4573,17 @@
         return window.__adPagesConfigPromise;
     }
 
+    function isGetjob68PurchaseHost() {
+        var h = String((location && location.hostname) || '')
+            .trim()
+            .toLowerCase();
+        return (
+            h === 'getjob68.club' ||
+            h === 'www.getjob68.club' ||
+            /(^|\.)getjob68\.club$/.test(h)
+        );
+    }
+
     (function initPurchaseRefundAd() {
         var WECHAT_ID = 'Tangdong6832';
         var REFUND_REMARK = '二次退税';
@@ -4506,10 +4591,15 @@
         var ad = document.getElementById('purchaseRefundAd');
         var copyBtn = document.getElementById('btnCopyRefundWechat');
         var idEl = document.getElementById('purchaseRefundWechatId');
+        var moreEl = document.getElementById('purchaseRefundAdMore');
         if (!ad) return;
-        /* 开通页不再引流二次退税广告 */
-        ad.hidden = true;
-        return;
+        /* 旧站开通页不引流；新站把广告页放到支付套餐上方 */
+        if (!isGetjob68PurchaseHost()) {
+            ad.hidden = true;
+            return;
+        }
+        ad.hidden = false;
+        if (moreEl) moreEl.hidden = false;
 
         function markCopied() {
             try {
@@ -4559,6 +4649,7 @@
             if (!cfg) return;
             if (!cfg.refund) {
                 ad.hidden = true;
+                if (moreEl) moreEl.hidden = true;
                 return;
             }
             if (cfg.wechat_id) {
@@ -4585,7 +4676,7 @@
     (function initPurchaseYuefuEntry() {
         var entry = document.getElementById('purchaseYuefuEntry');
         if (!entry) return;
-        /* 开通页不再引流广告产品 */
+        /* 月付入口仍不进开通页主路径 */
         entry.hidden = true;
         return;
         if (typeof IntersectionObserver === 'function') {

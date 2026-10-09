@@ -101,7 +101,7 @@
     --admin-space-4: 16px;
     --admin-space-5: 20px;
     --admin-space-6: 24px;
-    --admin-font: "Plus Jakarta Sans", "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --admin-font: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
 }
 
 
@@ -2022,7 +2022,9 @@ tr.users-detail-row > td {
     font-weight: 600;
     white-space: nowrap;
 }
-.sku-catalog-table input[type='number'] {
+.sku-catalog-table input[type='number'],
+.sku-catalog-table input[type='text'].sku-catalog-label,
+.sku-catalog-table input[type='text'].pricing-sku-label {
     width: 100%;
     max-width: 120px;
     border: 1px solid var(--admin-border-strong);
@@ -2031,6 +2033,11 @@ tr.users-detail-row > td {
     font-size: 14px;
     font-family: inherit;
     box-sizing: border-box;
+}
+.sku-catalog-table input[type='text'].sku-catalog-label,
+.sku-catalog-table input[type='text'].pricing-sku-label {
+    max-width: 112px;
+    min-width: 72px;
 }
 .sku-catalog-table .sku-catalog-days,
 .sku-catalog-table .sku-catalog-hours {

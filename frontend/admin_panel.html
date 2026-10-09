@@ -6,10 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="Cache-Control" content="no-store">
     <title>运营台</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20261008-legacy-plain">
+    <!-- 不走 Google Fonts：CSP 仅允许同域，且国内常拦 fonts.googleapis.com -->
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20261009-sku-label">
     <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260905-ch-psych-col">
 </head>
 <body>
@@ -57,21 +55,22 @@
                         <p class="stat mt-0" style="margin-bottom:8px;">当前心理价位（支付页「心理价特惠」实付价）</p>
                         <div id="bidPsychPriceBar" class="user-data-stats" style="margin:0 0 12px;">
                             <div class="user-data-stat-card">
-                                <div class="ud-label">周卡心理价</div>
+                                <div class="ud-label" id="bidPsychWeekLabel">周卡心理价</div>
                                 <div class="ud-val" id="bidPsychWeekDisplay">—</div>
                                 <div class="hint" id="bidPsychWeekSub"></div>
                             </div>
                             <div class="user-data-stat-card">
-                                <div class="ud-label">双周卡心理价</div>
+                                <div class="ud-label" id="bidPsychTwoWeekLabel">双周卡心理价</div>
                                 <div class="ud-val" id="bidPsychTwoWeekDisplay">—</div>
                                 <div class="hint" id="bidPsychTwoWeekSub"></div>
                             </div>
                             <div class="user-data-stat-card">
-                                <div class="ud-label">月卡心理价</div>
+                                <div class="ud-label" id="bidPsychMonthLabel">月卡心理价</div>
                                 <div class="ud-val" id="bidPsychMonthDisplay">—</div>
                                 <div class="hint" id="bidPsychMonthSub"></div>
                             </div>
                         </div>
+                        <div id="bidCfgForm">
                         <p class="hint mt-0">用户在购买页可提交理想价：出价 ≥ 该套餐自动通过线时立即生效为专属价并站内信通知（有邮箱则同步邮件）；低于线的进入下方待处理。上方卡片为支付页默认「心理价特惠」；要改请到下方「支付套餐 → 心理价」<button type="button" class="btn-sm btn-page" id="btnJumpSkuPsych" style="margin-left:6px;">去修改</button>。此处为议价自动通过线。无套餐金额时回退为「目录价 × 百分比」。</p>
                         <div class="form-row form-stack">
                             <div class="form-field form-field-narrow">
@@ -105,6 +104,7 @@
                                 <button type="button" class="btn-primary" id="btnSaveBidCfg">保存出价配置</button>
                                 <span class="hint" id="bidCfgHint" style="margin-left:8px;"></span>
                             </div>
+                        </div>
                         </div>
                         <div class="form-row" style="align-items:center;gap:12px;">
                             <label><input type="radio" name="bidStatusFilter" value="pending" checked> 待处理</label>
@@ -169,8 +169,18 @@
                         </div>
                     </section>
                     <section id="skuCatalogSection">
-                        <h2>支付套餐</h2>
-                        <div class="form-row form-stack">
+                        <h2 id="skuCatalogTitle">支付套餐</h2>
+                        <div id="pricingPlansSection" hidden>
+                            <p class="hint mt-0">新站按方案分流。默认方案一开始是周卡 ¥100 / 7 天、月卡 ¥150 / 30 天、年卡 ¥200 / 365 天，套餐名称、价格和天数都可以改。其他方案可自定名称、价格和天数（最多 5 档）。流量是进支付页的用户占比，合计须为 100%。同一账号会固定在第一次分到的方案上，改流量只影响还没分配过的用户；方案删掉或流量改为 0 后，这些用户下次打开支付页会重新分配。</p>
+                            <div id="pricingPlansList"></div>
+                            <div class="form-actions">
+                                <button type="button" class="btn-page" id="btnAddPricingPlan">添加方案</button>
+                                <button type="button" class="btn-primary" id="btnSavePricingPlans">保存方案</button>
+                                <span class="hint" id="pricingPlansWeightSum"></span>
+                                <span class="hint" id="pricingPlansHint"></span>
+                            </div>
+                        </div>
+                        <div class="form-row form-stack" id="skuCatalogLegacy">
                             <p class="hint mt-0">「价格」为对照原价；「心理价」有填且低于原价时，支付页按心理价收款并显示「·心理价特惠」（划线为原价）。留空则仍按「价格」收款。改完立即对未下单用户生效；已生成的待支付订单仍按原金额和原时长。小时卡、天卡、3天卡已下架，不再出现在购买页。</p>
                             <div class="scroll-x">
                                 <table class="sku-catalog-table" id="skuCatalogTable">
@@ -187,7 +197,7 @@
                                     <tbody>
                                         <tr data-sku-id="sku_300_7d" data-sku-label="周卡">
                                             <td><input type="checkbox" class="sku-catalog-enabled" id="skuEnabledWeek" aria-label="上架周卡" checked></td>
-                                            <td>周卡</td>
+                                            <td><input type="text" class="sku-catalog-label input-block" id="skuLabelWeek" maxlength="16" value="周卡" aria-label="周卡名称"></td>
                                             <td><input type="number" class="sku-catalog-amount" id="skuPriceWeek" min="0.01" max="99999.99" step="0.01" value="300"></td>
                                             <td><input type="number" class="sku-catalog-psych" id="skuPsychWeek" min="0.01" max="99999.99" step="0.01" placeholder="如 120"></td>
                                             <td><input type="number" class="sku-catalog-days" id="skuDaysWeek" min="0" max="365" step="1" value="7"></td>
@@ -195,7 +205,7 @@
                                         </tr>
                                         <tr data-sku-id="sku_348_14d" data-sku-label="双周卡">
                                             <td><input type="checkbox" class="sku-catalog-enabled" id="skuEnabledTwoWeek" aria-label="上架双周卡" checked></td>
-                                            <td>双周卡</td>
+                                            <td><input type="text" class="sku-catalog-label input-block" id="skuLabelTwoWeek" maxlength="16" value="双周卡" aria-label="双周卡名称"></td>
                                             <td><input type="number" class="sku-catalog-amount" id="skuPriceTwoWeek" min="0.01" max="99999.99" step="0.01" value="348"></td>
                                             <td><input type="number" class="sku-catalog-psych" id="skuPsychTwoWeek" min="0.01" max="99999.99" step="0.01" placeholder="如 199"></td>
                                             <td><input type="number" class="sku-catalog-days" id="skuDaysTwoWeek" min="0" max="365" step="1" value="14"></td>
@@ -203,7 +213,7 @@
                                         </tr>
                                         <tr data-sku-id="sku_398_30d" data-sku-label="月卡">
                                             <td><input type="checkbox" class="sku-catalog-enabled" id="skuEnabledMonth" aria-label="上架月卡" checked></td>
-                                            <td>月卡</td>
+                                            <td><input type="text" class="sku-catalog-label input-block" id="skuLabelMonth" maxlength="16" value="月卡" aria-label="月卡名称"></td>
                                             <td><input type="number" class="sku-catalog-amount" id="skuPriceMonth" min="0.01" max="99999.99" step="0.01" value="398"></td>
                                             <td><input type="number" class="sku-catalog-psych" id="skuPsychMonth" min="0.01" max="99999.99" step="0.01" placeholder="如 298"></td>
                                             <td><input type="number" class="sku-catalog-days" id="skuDaysMonth" min="0" max="365" step="1" value="30"></td>
@@ -4419,6 +4429,6 @@
     <script src="/js/admin/loader.js?v=20261008-legacy-plain"></script>
     <script src="/js/admin/nav.js?v=20260908-hub-tab-perm"></script>
     <script src="/js/admin-analytics-period.js?v=20260905-ch-psych-col"></script>
-    <script src="/js/admin_panel.js?v=20261009-lkj-abc"></script>
+    <script src="/js/admin_panel.js?v=20261009-sku-label"></script>
 </body>
 </html>

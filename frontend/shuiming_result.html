@@ -744,6 +744,16 @@
                         !/iPhone\s*17\s*Pro\s*Max|iPhone18,2\b|iPhone19,2\b/i.test(blob16);
                     if (is16pmUa || is16pmVp) {
                         document.documentElement.classList.add('app-ios-iphone16promax');
+                        document.documentElement.classList.add('app-top-safe-shell');
+                        if (!document.querySelector('style[data-iphone16pm-result-grey-seam]')) {
+                            var p16pmGrey = document.createElement('style');
+                            p16pmGrey.setAttribute('data-iphone16pm-result-grey-seam', '1');
+                            p16pmGrey.textContent =
+                                'html.app-ios-iphone16promax body.page-shuiming-result .top-fixed .header{box-shadow:none !important;}' +
+                                'html.app-ios-iphone16promax body.page-shuiming-result .top-fixed .summary{background:#f5f6fa !important;padding:12px 0 10px !important;box-sizing:border-box !important;}' +
+                                'html.app-ios-iphone16promax body.page-shuiming-result .list{background:#f5f6fa !important;}';
+                            (document.head || document.documentElement).appendChild(p16pmGrey);
+                        }
                     }
                     var is17pmLike =
                         /iPhone\s*17\s*Pro\s*Max|iPhone18,2\b|iPhone19,2\b/i.test(blob16) ||
@@ -1202,7 +1212,7 @@
             else document.addEventListener('DOMContentLoaded', hoistIos27ResultChrome);
         })();
     </script>
-    <script src="/js/auth.js?v=20261006-android-july20-mi14" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20261009-16pm-title-seam-2" defer fetchpriority="low"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>
@@ -2577,6 +2587,26 @@
             /* 须灰底：白底会把汇总与首条糊成一片，首条标题像钻进合计行 */
             background: #f5f6fa;
             z-index: 121;
+        }
+
+        /*
+         * iPhone 16 Pro Max（440×956）：标题下官方灰缝再接「收入合计」。
+         * 勿白底 / 白阴影贴死顶栏（反馈 #58）。
+         */
+        html.app-ios-iphone16promax body.page-shuiming-result .top-fixed .header,
+        html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header {
+            box-shadow: none !important;
+        }
+        html.app-ios-iphone16promax body.page-shuiming-result .top-fixed .summary,
+        html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
+        html.app-ios-iphone16promax.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .summary {
+            background: #f5f6fa !important;
+            padding: 12px 0 10px !important;
+            box-sizing: border-box !important;
+        }
+        html.app-ios-iphone16promax body.page-shuiming-result .list,
+        html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .list {
+            background: #f5f6fa !important;
         }
 
         /*
