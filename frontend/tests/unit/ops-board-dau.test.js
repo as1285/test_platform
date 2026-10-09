@@ -71,7 +71,7 @@ const boardPayload = {
 describe('运营看板同时点日活', () => {
   it('页面、接口字段与缓存戳齐全', () => {
     expect(html).toContain('id="opsBoardDau"');
-    expect(html).toContain('admin_panel.css?v=20261009-sku-label');
+    expect(html).toContain('admin_panel.css?v=20261009-hide-legacy-sku');
     expect(html).toContain('loader.js?v=20261008-legacy-plain');
     expect(ops).toContain('function renderDau(');
     expect(ops).toContain('function sparkLineSvg(');

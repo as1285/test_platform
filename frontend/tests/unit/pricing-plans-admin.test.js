@@ -4,6 +4,7 @@ import { resolve } from 'path';
 
 const html = readFileSync(resolve(__dirname, '../../admin_panel.html'), 'utf8');
 const adminJs = readFileSync(resolve(__dirname, '../../public/js/admin_panel.js'), 'utf8');
+const adminCss = readFileSync(resolve(__dirname, '../../css/admin_panel.css'), 'utf8');
 const purchase = readFileSync(resolve(__dirname, '../../purchase.html'), 'utf8');
 
 describe('新站支付方案 A/B', () => {
@@ -12,6 +13,7 @@ describe('新站支付方案 A/B', () => {
     expect(html).toContain('id="btnAddPricingPlan"');
     expect(html).toContain('id="btnSavePricingPlans"');
     expect(html).toContain('id="skuCatalogLegacy"');
+    expect(html).toContain('class="pricing-plans-toolbar"');
     expect(html).toContain('周卡 ¥100 / 7 天、月卡 ¥150 / 30 天、年卡 ¥200 / 365 天');
     expect(html).toContain('套餐名称、价格和天数都可以改');
     expect(adminJs).toContain('function renderPricingPlans');
@@ -21,6 +23,10 @@ describe('新站支付方案 A/B', () => {
     expect(adminJs).toContain('流量分配合计须为 100%');
     expect(adminJs).toContain('placeholder="如 周卡"');
     expect(adminJs).toContain('请填写套餐名称');
+    expect(adminJs).toContain('class="pricing-plan-table"');
+    expect(adminJs).toContain("el.classList.toggle('is-ok', ok)");
+    expect(adminCss).toContain('.pricing-plan-card');
+    expect(adminCss).toContain('.pricing-plans-toolbar');
     expect(html).toContain('id="bidCfgForm"');
     expect(adminJs).toContain('bidCfg.hidden = !!on');
   });

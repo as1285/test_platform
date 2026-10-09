@@ -2004,6 +2004,226 @@ tr.users-detail-row > td {
 .form-field-narrow {
     max-width: 320px;
 }
+/* form-row 写了 display:flex，会盖掉原生 [hidden] */
+#skuCatalogLegacy[hidden],
+#pricingPlansSection[hidden],
+#bidCfgForm[hidden] {
+    display: none !important;
+}
+.pricing-plans-hint {
+    margin: 0 0 14px;
+}
+.pricing-plans-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+.pricing-plan-card {
+    margin: 0;
+    padding: 14px 16px 12px;
+    border: 1px solid var(--admin-border-light);
+    border-radius: 12px;
+    background: var(--admin-surface);
+    box-shadow: 0 1px 0 rgba(15, 23, 42, 0.02);
+}
+.pricing-plan-card[data-plan-default='1'] {
+    background: linear-gradient(180deg, var(--admin-primary-soft-2) 0%, var(--admin-surface) 48px);
+}
+.pricing-plan-head {
+    display: grid;
+    grid-template-columns: auto minmax(180px, 1.6fr) 110px auto;
+    gap: 12px 14px;
+    align-items: end;
+    margin-bottom: 12px;
+}
+.pricing-plan-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: var(--admin-primary-soft);
+    color: var(--admin-primary-press);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    align-self: end;
+    margin-bottom: 2px;
+}
+.pricing-plan-badge.is-alt {
+    background: var(--admin-surface-soft);
+    color: var(--admin-slate);
+}
+.pricing-plan-field label {
+    font-size: 12px;
+    color: var(--admin-text-secondary);
+    display: block;
+    margin-bottom: 4px;
+}
+.pricing-plan-field .pricing-plan-name,
+.pricing-plan-field .pricing-plan-weight {
+    width: 100%;
+    margin-top: 0;
+    border: 1px solid var(--admin-border-strong);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 14px;
+    font-family: inherit;
+    box-sizing: border-box;
+    background: #fff;
+}
+.pricing-plan-field-name {
+    min-width: 0;
+}
+.pricing-plan-weight-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.pricing-plan-field-weight .pricing-plan-weight {
+    width: 72px;
+    text-align: right;
+}
+.pricing-plan-weight-unit {
+    color: var(--admin-text-muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+.pricing-plan-head-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    min-height: 38px;
+    padding-bottom: 1px;
+}
+.pricing-plan-head-actions .hint {
+    margin: 0;
+    white-space: nowrap;
+}
+.pricing-plan-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--admin-border-light);
+    border-radius: 10px;
+    background: #fff;
+}
+.pricing-plan-table {
+    width: 100%;
+    min-width: 640px;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+.pricing-plan-table th,
+.pricing-plan-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--admin-border-light);
+    text-align: left;
+    vertical-align: middle;
+}
+.pricing-plan-table thead th {
+    background: var(--admin-surface-muted);
+    color: var(--admin-text-secondary);
+    font-weight: 600;
+    white-space: nowrap;
+}
+.pricing-plan-table tbody tr:last-child td {
+    border-bottom: none;
+}
+.pricing-plan-table .col-on {
+    width: 56px;
+    text-align: center;
+}
+.pricing-plan-table .col-label {
+    width: 22%;
+    min-width: 120px;
+}
+.pricing-plan-table .col-amount,
+.pricing-plan-table .col-psych {
+    width: 120px;
+}
+.pricing-plan-table .col-days {
+    width: 96px;
+}
+.pricing-plan-table .col-ops {
+    width: 72px;
+    text-align: right;
+}
+.pricing-plan-table input[type='number'],
+.pricing-plan-table input[type='text'].pricing-sku-label {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    border: 1px solid var(--admin-border-strong);
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 14px;
+    font-family: inherit;
+    box-sizing: border-box;
+    background: #fff;
+}
+.pricing-plan-table .pricing-sku-enabled {
+    width: 16px;
+    height: 16px;
+}
+.pricing-plan-table .pricing-plan-sku-locked {
+    color: var(--admin-text-muted);
+}
+.pricing-plan-foot {
+    display: flex;
+    justify-content: flex-start;
+    margin-top: 10px;
+    min-height: 28px;
+}
+.pricing-plans-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 12px 14px;
+    border: 1px solid var(--admin-border-light);
+    border-radius: 12px;
+    background: var(--admin-surface-muted);
+}
+.pricing-plans-toolbar-left,
+.pricing-plans-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.pricing-plans-weight-sum {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    background: #fff7ed;
+    color: #c2410c;
+    border: 1px solid #fed7aa;
+}
+.pricing-plans-weight-sum.is-ok {
+    background: var(--admin-primary-soft);
+    color: var(--admin-primary-press);
+    border-color: rgba(13, 148, 136, 0.28);
+}
+@media (max-width: 820px) {
+    .pricing-plan-head {
+        grid-template-columns: auto 1fr;
+    }
+    .pricing-plan-field-weight,
+    .pricing-plan-head-actions {
+        grid-column: 1 / -1;
+    }
+    .pricing-plan-head-actions {
+        justify-content: flex-start;
+    }
+}
 .sku-catalog-table {
     width: 100%;
     min-width: 560px;

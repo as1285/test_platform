@@ -7,7 +7,7 @@
     <meta http-equiv="Cache-Control" content="no-store">
     <title>运营台</title>
     <!-- 不走 Google Fonts：CSP 仅允许同域，且国内常拦 fonts.googleapis.com -->
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20261009-sku-label">
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20261009-hide-legacy-sku">
     <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260905-ch-psych-col">
 </head>
 <body>
@@ -171,13 +171,20 @@
                     <section id="skuCatalogSection">
                         <h2 id="skuCatalogTitle">支付套餐</h2>
                         <div id="pricingPlansSection" hidden>
-                            <p class="hint mt-0">新站按方案分流。默认方案一开始是周卡 ¥100 / 7 天、月卡 ¥150 / 30 天、年卡 ¥200 / 365 天，套餐名称、价格和天数都可以改。其他方案可自定名称、价格和天数（最多 5 档）。流量是进支付页的用户占比，合计须为 100%。同一账号会固定在第一次分到的方案上，改流量只影响还没分配过的用户；方案删掉或流量改为 0 后，这些用户下次打开支付页会重新分配。</p>
-                            <div id="pricingPlansList"></div>
-                            <div class="form-actions">
-                                <button type="button" class="btn-page" id="btnAddPricingPlan">添加方案</button>
-                                <button type="button" class="btn-primary" id="btnSavePricingPlans">保存方案</button>
-                                <span class="hint" id="pricingPlansWeightSum"></span>
-                                <span class="hint" id="pricingPlansHint"></span>
+                            <details class="page-hint-details pricing-plans-hint">
+                                <summary>说明</summary>
+                                <p class="hint">新站按方案分流。默认方案一开始是周卡 ¥100 / 7 天、月卡 ¥150 / 30 天、年卡 ¥200 / 365 天，套餐名称、价格和天数都可以改。其他方案可自定名称、价格和天数（最多 5 档）。流量是进支付页的用户占比，合计须为 100%。同一账号会固定在第一次分到的方案上，改流量只影响还没分配过的用户；方案删掉或流量改为 0 后，这些用户下次打开支付页会重新分配。</p>
+                            </details>
+                            <div id="pricingPlansList" class="pricing-plans-list"></div>
+                            <div class="pricing-plans-toolbar">
+                                <div class="pricing-plans-toolbar-left">
+                                    <button type="button" class="btn-page" id="btnAddPricingPlan">添加方案</button>
+                                    <span class="pricing-plans-weight-sum" id="pricingPlansWeightSum"></span>
+                                </div>
+                                <div class="pricing-plans-toolbar-right">
+                                    <span class="hint" id="pricingPlansHint"></span>
+                                    <button type="button" class="btn-primary" id="btnSavePricingPlans">保存方案</button>
+                                </div>
                             </div>
                         </div>
                         <div class="form-row form-stack" id="skuCatalogLegacy">
@@ -4429,6 +4436,6 @@
     <script src="/js/admin/loader.js?v=20261008-legacy-plain"></script>
     <script src="/js/admin/nav.js?v=20260908-hub-tab-perm"></script>
     <script src="/js/admin-analytics-period.js?v=20260905-ch-psych-col"></script>
-    <script src="/js/admin_panel.js?v=20261009-sku-label"></script>
+    <script src="/js/admin_panel.js?v=20261009-hide-legacy-sku"></script>
 </body>
 </html>

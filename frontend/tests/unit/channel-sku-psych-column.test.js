@@ -5,7 +5,7 @@ import { resolve } from 'path';
 const frontend = resolve(__dirname, '../..');
 const adminHtml = readFileSync(resolve(frontend, 'admin_panel.html'), 'utf8');
 const adminCss = readFileSync(resolve(frontend, 'css/admin_panel.css'), 'utf8');
-const CACHE = '20261009-sku-label';
+const CACHE = '20261009-hide-legacy-sku';
 
 function extractChannelSkuTable(html) {
   const start = html.indexOf('class="data-table agent-ch-sku-table"');
@@ -41,7 +41,7 @@ describe('channel 专属套餐 心理价位 column', () => {
 
   it('busts admin_panel asset cache for the column', () => {
     expect(adminHtml).toContain(`admin_panel.js?v=${CACHE}`);
-    expect(adminHtml).toContain('admin_panel.css?v=20261009-sku-label');
+    expect(adminHtml).toContain('admin_panel.css?v=20261009-hide-legacy-sku');
     expect(adminCss).toContain('.agent-ch-sku-table');
     expect(adminCss).toContain('.max-w-920');
   });

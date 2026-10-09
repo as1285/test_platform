@@ -9482,32 +9482,32 @@
             var checked = sku.enabled === false || sku.enabled === 0 || sku.enabled === '0' ? '' : ' checked';
             /* 套餐文案均可改；默认方案仍锁定档位结构（不可删行） */
             var labelCell =
-                '<input class="pricing-sku-label input-block" type="text" maxlength="16" value="' +
+                '<input class="pricing-sku-label" type="text" maxlength="16" value="' +
                 label +
                 '" placeholder="如 周卡" aria-label="套餐名称">';
             var removeCell = lockedStructure
-                ? ''
+                ? '<span class="pricing-plan-sku-locked" aria-hidden="true">—</span>'
                 : '<button type="button" class="btn-sm btn-page pricing-plan-remove-sku">删除</button>';
             return (
                 '<tr data-slot="' +
                 slot +
                 '">' +
-                '<td><input type="checkbox" class="pricing-sku-enabled" aria-label="上架"' +
+                '<td class="col-on"><input type="checkbox" class="pricing-sku-enabled" aria-label="上架"' +
                 checked +
                 '></td>' +
-                '<td>' +
+                '<td class="col-label">' +
                 labelCell +
                 '</td>' +
-                '<td><input type="number" class="pricing-sku-amount" min="0.01" max="99999.99" step="0.01" value="' +
+                '<td class="col-amount"><input type="number" class="pricing-sku-amount" min="0.01" max="99999.99" step="0.01" value="' +
                 amount +
                 '" aria-label="价格"></td>' +
-                '<td><input type="number" class="pricing-sku-psych" min="0.01" max="99999.99" step="0.01" value="' +
+                '<td class="col-psych"><input type="number" class="pricing-sku-psych" min="0.01" max="99999.99" step="0.01" value="' +
                 psych +
                 '" placeholder="可选" aria-label="心理价"></td>' +
-                '<td><input type="number" class="pricing-sku-days" min="1" max="3650" step="1" value="' +
+                '<td class="col-days"><input type="number" class="pricing-sku-days" min="1" max="3650" step="1" value="' +
                 days +
                 '" aria-label="天数"></td>' +
-                '<td>' +
+                '<td class="col-ops">' +
                 removeCell +
                 '</td>' +
                 '</tr>'
@@ -9521,6 +9521,7 @@
             root.innerHTML = list
                 .map(function (plan) {
                     var isDefault = !!(plan.is_default || plan.id === 'a');
+                    var planId = String(plan.id || '');
                     var skus = plan.skus && plan.skus.length ? plan.skus : [];
                     var rows = skus
                         .map(function (sku) {
@@ -9531,36 +9532,50 @@
                         !isDefault && skus.length < 5
                             ? '<button type="button" class="btn-sm btn-page pricing-plan-add-sku">添加套餐</button>'
                             : '';
+                    var badge = isDefault
+                        ? '<span class="pricing-plan-badge">默认</span>'
+                        : '<span class="pricing-plan-badge is-alt">' +
+                          esc(planId ? planId.toUpperCase() : '方案') +
+                          '</span>';
                     var removePlan = isDefault
-                        ? '<span class="hint">默认方案 · 套餐名称可改</span>'
+                        ? '<span class="hint">档位固定 · 名称可改</span>'
                         : '<button type="button" class="btn-sm btn-page pricing-plan-remove">删除方案</button>';
                     return (
                         '<div class="pricing-plan-card" data-plan-id="' +
-                        esc(plan.id || '') +
+                        esc(planId) +
                         '" data-plan-default="' +
                         (isDefault ? '1' : '0') +
-                        '" style="margin:0 0 16px;padding:12px 12px 8px;border:1px solid rgba(15,23,42,.08);border-radius:12px;">' +
-                        '<div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:8px;">' +
-                        '<div class="form-field form-field-narrow" style="margin:0;">' +
+                        '">' +
+                        '<div class="pricing-plan-head">' +
+                        badge +
+                        '<div class="pricing-plan-field pricing-plan-field-name">' +
                         '<label>方案名称</label>' +
-                        '<input class="input-block pricing-plan-name" type="text" maxlength="16" value="' +
+                        '<input class="pricing-plan-name" type="text" maxlength="16" value="' +
                         esc(plan.name || '') +
-                        '">' +
+                        '" placeholder="如 便宜方案">' +
                         '</div>' +
-                        '<div class="form-field" style="margin:0;max-width:120px;">' +
-                        '<label>流量 %</label>' +
-                        '<input class="input-block pricing-plan-weight" type="number" min="0" max="100" step="1" value="' +
+                        '<div class="pricing-plan-field pricing-plan-field-weight">' +
+                        '<label>流量</label>' +
+                        '<div class="pricing-plan-weight-wrap">' +
+                        '<input class="pricing-plan-weight" type="number" min="0" max="100" step="1" value="' +
                         esc(plan.weight != null ? plan.weight : 0) +
-                        '">' +
-                        '</div>' +
+                        '" aria-label="流量百分比">' +
+                        '<span class="pricing-plan-weight-unit">%</span>' +
+                        '</div></div>' +
+                        '<div class="pricing-plan-head-actions">' +
                         removePlan +
-                        '</div>' +
-                        '<div class="scroll-x"><table class="sku-catalog-table"><thead><tr>' +
-                        '<th>上架</th><th>套餐</th><th>价格（元）</th><th>心理价（元）</th><th>天数</th><th></th>' +
+                        '</div></div>' +
+                        '<div class="pricing-plan-table-wrap"><table class="pricing-plan-table"><thead><tr>' +
+                        '<th class="col-on">上架</th>' +
+                        '<th class="col-label">套餐</th>' +
+                        '<th class="col-amount">价格（元）</th>' +
+                        '<th class="col-psych">心理价（元）</th>' +
+                        '<th class="col-days">天数</th>' +
+                        '<th class="col-ops">操作</th>' +
                         '</tr></thead><tbody>' +
                         rows +
                         '</tbody></table></div>' +
-                        '<div class="form-actions">' +
+                        '<div class="pricing-plan-foot">' +
                         addSku +
                         '</div></div>'
                     );
@@ -9579,7 +9594,9 @@
                 var n = parseInt(p.weight, 10);
                 if (isFinite(n)) sum += n;
             });
-            el.textContent = sum === 100 ? '流量合计 100%' : '流量合计 ' + sum + '%（须为 100%）';
+            var ok = sum === 100;
+            el.textContent = ok ? '流量合计 100%' : '流量合计 ' + sum + '% · 须为 100%';
+            el.classList.toggle('is-ok', ok);
         }
 
         function validatePricingPlansClient(doc) {
