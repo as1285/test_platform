@@ -49,7 +49,7 @@
             </div>
             <div class="wrap">
                 <div id="page-settings" class="page-panel" role="tabpanel">
-                    <div class="page-lede"><p class="page-lede-text">套餐价格与心理价、离职证明价格、招行模拟器价格、改名费用、个税修改收费与激活引导弹窗</p></div>
+                    <div class="page-lede"><p class="page-lede-text">套餐价格与心理价、离职证明价格、招行模拟器价格、改名费用与个税修改收费</p></div>
                     <section id="sectionPriceBids">
                         <h2>心理价出价</h2>
                         <p class="stat mt-0" style="margin-bottom:8px;">当前心理价位（支付页「心理价特惠」实付价）</p>
@@ -290,42 +290,6 @@
                             <div class="form-actions">
                                 <button type="button" class="btn-primary" id="btnSaveTaxEditFee">保存个税修改收费</button>
                                 <span class="hint" id="taxEditFeeHint" style="margin-left:8px;"></span>
-                            </div>
-                        </div>
-                    </section>
-                    <section>
-                        <h2>未激活引导弹窗</h2>
-                        <p class="hint">对未激活用户在 App 内弹出引导（默认每日最多 1 次）。关闭后当日不再弹出；可配置注册满多少小时后才提示。</p>
-                        <div class="form-row form-stack">
-                            <div class="form-field">
-                                <label><input type="checkbox" id="actNudgeEnabled" checked> 启用激活引导弹窗</label>
-                            </div>
-                            <div class="form-field">
-                                <label for="actNudgeTitle">标题</label>
-                                <input type="text" id="actNudgeTitle" maxlength="80" value="开通完整功能">
-                            </div>
-                            <div class="form-field">
-                                <label for="actNudgeBody">正文</label>
-                                <textarea id="actNudgeBody" class="textarea-block" rows="3" maxlength="400">您的账号尚未激活。激活后可去除水印，完整使用收入明细与纳税记录等功能。</textarea>
-                            </div>
-                            <div class="form-field form-field-narrow">
-                                <label for="actNudgeCta">主按钮文案</label>
-                                <input type="text" id="actNudgeCta" maxlength="40" value="去激活">
-                            </div>
-                            <div class="form-field form-field-narrow">
-                                <label for="actNudgeDismiss">关闭文案</label>
-                                <input type="text" id="actNudgeDismiss" maxlength="40" value="今日不再提示">
-                            </div>
-                            <div class="form-field form-field-narrow">
-                                <label for="actNudgeLink">跳转页面</label>
-                                <input type="text" id="actNudgeLink" maxlength="200" value="purchase.html">
-                            </div>
-                            <div class="form-field form-field-narrow">
-                                <label for="actNudgeMinHours">注册满多少小时后提示</label>
-                                <input type="number" id="actNudgeMinHours" min="0" max="720" step="1" value="24">
-                            </div>
-                            <div class="form-actions">
-                                <button type="button" class="btn-primary" id="btnSaveActNudge">保存弹窗配置</button>
                             </div>
                         </div>
                     </section>
@@ -4203,7 +4167,7 @@
                 <div id="page-server-monitor" class="page-panel" role="tabpanel">
                     <section>
                         <h2>服务状态</h2>
-                        <p class="hint">每 60 秒自动探活 API、MySQL、前端 Nginx，并自测登录/公开/用户/管理等关键接口。任一接口 404/5xx 或超时将向 <strong id="monitorAlertEmail">—</strong> 发送邮件（需配置 SMTP）。开启自动修复后，健康检查失败或多数接口连续两轮异常会重启后端进程（冷却 10 分钟，每小时最多 3 次）。每晚 0 点（北京时间）自动发送昨日日活/注册/激活/支付日报（收入拆分对齐「支付分析」：开通套餐、离职证明、同行费、管理员激活折算与合计 GMV），周一附周报，每月 1 日附月报。</p>
+                        <p class="hint">每 60 秒自动探活 API、MySQL、前端 Nginx，并自测登录/公开/用户/管理等关键接口。任一接口 404/5xx 或超时将向 <strong id="monitorAlertEmail">—</strong> 发送邮件（需配置 SMTP）。开启自动修复后，健康检查失败或多数接口连续两轮异常会重启后端进程（冷却 10 分钟，每小时最多 3 次）。每晚 0 点（北京时间）自动发送昨日日活/注册/激活/支付日报（收入拆分对齐「支付分析」：开通套餐、离职证明、同行费、管理员激活折算与合计 GMV），并附<strong>当日新增兼容 BUG 反馈</strong>（含待回复/已回复与积压待回复数），周一附周报，每月 1 日附月报。</p>
                         <div class="form-row flex-align-center mt-8 flex-wrap gap-10">
                             <button type="button" class="btn-primary" id="btnRefreshServerMonitor">刷新</button>
                             <button type="button" class="btn-page" id="btnMonitorRunSelftest">立即自测接口</button>

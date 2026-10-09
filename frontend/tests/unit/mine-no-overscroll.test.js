@@ -11,11 +11,14 @@ describe('个人中心禁止下拉回弹', () => {
     expect(mine).toContain('勿在 body 上 overflow-x:hidden');
   });
 
-  it('用非被动 touchmove 钉死整页，弹层滚动仍可用', () => {
+  it('仅 Cordova 用非被动 touchmove 钉死整页；网页端可滚动', () => {
     expect(mine).toContain('function mineInInnerScroller');
-    expect(mine).toContain("addEventListener(\n                'touchmove'");
-    expect(mine).toContain('passive: false');
+    expect(mine).toContain('function mineIsCordovaShell');
+    expect(mine).toContain('if (mineIsCordovaShell())');
     expect(mine).toContain('pinMinePageScroll');
+    expect(mine).toContain('passive: false');
     expect(mine).toContain('overscroll-behavior: contain');
+    expect(mine).toContain('普通网页 / 桌面调试：内容超出视口时必须能 document 滚动');
   });
 });
+

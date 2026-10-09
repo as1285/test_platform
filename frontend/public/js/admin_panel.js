@@ -8728,25 +8728,6 @@
                         applyLizhiCertFeeToForm(data.data.lizhi_cert_fee || {});
                         applyNajiluQrFeeToForm(data.data.najilu_qr_fee || {});
                         applyCmbActivateFeeToForm(data.data.cmb_activate_fee || {});
-                        var nudge = data.data.activation_nudge;
-                        if (nudge) {
-                            var nEn = document.getElementById('actNudgeEnabled');
-                            if (nEn) nEn.checked = nudge.enabled !== false;
-                            var nTitle = document.getElementById('actNudgeTitle');
-                            if (nTitle && nudge.title != null) nTitle.value = String(nudge.title);
-                            var nBody = document.getElementById('actNudgeBody');
-                            if (nBody && nudge.body != null) nBody.value = String(nudge.body);
-                            var nCta = document.getElementById('actNudgeCta');
-                            if (nCta && nudge.cta_text != null) nCta.value = String(nudge.cta_text);
-                            var nDis = document.getElementById('actNudgeDismiss');
-                            if (nDis && nudge.dismiss_text != null) nDis.value = String(nudge.dismiss_text);
-                            var nLink = document.getElementById('actNudgeLink');
-                            if (nLink && nudge.link_url != null) nLink.value = String(nudge.link_url);
-                            var nHours = document.getElementById('actNudgeMinHours');
-                            if (nHours && nudge.min_hours_since_register != null) {
-                                nHours.value = String(nudge.min_hours_since_register);
-                            }
-                        }
                     }
                     if (data.code === 200 && data.data) {
                         var apkEl = document.getElementById('androidApkDownloadUrl');
@@ -10385,60 +10366,6 @@
             loadBids();
         })();
 
-        var btnSaveActNudge = document.getElementById('btnSaveActNudge');
-        if (btnSaveActNudge) {
-            btnSaveActNudge.addEventListener('click', function () {
-                var minH = parseInt(document.getElementById('actNudgeMinHours').value, 10);
-                if (!isFinite(minH) || minH < 0 || minH > 720) {
-                    alert('注册满小时数请输入 0–720');
-                    return;
-                }
-                var title = String(document.getElementById('actNudgeTitle').value || '').trim();
-                var body = String(document.getElementById('actNudgeBody').value || '').trim();
-                if (!title || !body) {
-                    alert('请填写标题和正文');
-                    return;
-                }
-                btnSaveActNudge.disabled = true;
-                adminFetch('api/admin/settings', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        activation_nudge: {
-                            enabled: !!document.getElementById('actNudgeEnabled').checked,
-                            title: title,
-                            body: body,
-                            cta_text: String(document.getElementById('actNudgeCta').value || '').trim() || '去激活',
-                            dismiss_text:
-                                String(document.getElementById('actNudgeDismiss').value || '').trim() ||
-                                '今日不再提示',
-                            link_url:
-                                String(document.getElementById('actNudgeLink').value || '').trim() ||
-                                'purchase.html',
-                            min_hours_since_register: minH,
-                            max_per_day: 1
-                        }
-                    })
-                })
-                    .then(function (r) {
-                        return (window.adminParseJson||function(r){return r.json();})(r);
-                    })
-                    .then(function (data) {
-                        if (data.code === 200) {
-                            alert('激活引导弹窗配置已保存');
-                            loadAdminSettings();
-                        } else {
-                            alert(data.msg || '保存失败');
-                        }
-                    })
-                    .catch(function () {
-                        alert('网络错误');
-                    })
-                    .finally(function () {
-                        btnSaveActNudge.disabled = false;
-                    });
-            });
-        }
-
         document.getElementById('btnSaveInstallPackages').addEventListener('click', function () {
             var btn = document.getElementById('btnSaveInstallPackages');
             btn.disabled = true;
@@ -10995,7 +10922,7 @@
         var btnOpsStatsSendEmail = document.getElementById('btnOpsStatsSendEmail');
         if (btnOpsStatsSendEmail) {
             btnOpsStatsSendEmail.addEventListener('click', function () {
-                if (!confirm('向运营日报邮箱补发昨日日活/注册/激活/支付日报（含支付分析收入拆分）？')) return;
+                if (!confirm('向运营日报邮箱补发昨日日活/注册/激活/支付日报（含支付分析收入拆分与兼容 BUG 反馈）？')) return;
                 var btn = this;
                 btn.disabled = true;
                 adminFetch('api/admin/ops-stats/send-email', { method: 'POST' })

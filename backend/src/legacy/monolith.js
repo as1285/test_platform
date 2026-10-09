@@ -581,9 +581,9 @@ const DEFAULT_SALES_AGENT = {
   xianyu_text: ''
 };
 
-/** 未激活用户每日激活引导弹窗（C 端） */
+/** 未激活用户每日激活引导弹窗（C 端已下线，始终 enabled:false） */
 const DEFAULT_ACTIVATION_NUDGE = {
-  enabled: true,
+  enabled: false,
   title: '开通完整功能',
   body: '您的账号尚未激活。激活后可去除水印，完整使用收入明细与纳税记录等功能。',
   cta_text: '去激活',
@@ -15756,7 +15756,7 @@ async function handlePublicConversionConfig(req, res) {
         batch_example_prominent: cfg.batch_example_prominent === true,
         paused_by_pricing_ab: !!(pricingCfg && pricingCfg.enabled),
         activation_nudge: {
-          enabled: nudge.enabled !== false,
+          enabled: false,
           title: String(nudge.title || ''),
           body: String(nudge.body || ''),
           cta_text: String(nudge.cta_text || ''),
@@ -17296,7 +17296,8 @@ async function loadActivationNudgeParsed() {
     }
     var parsed = JSON.parse(String(rows[0].setting_value));
     var merged = Object.assign({}, DEFAULT_ACTIVATION_NUDGE, parsed && typeof parsed === 'object' ? parsed : {});
-    merged.enabled = merged.enabled !== false;
+    /* C 端弹窗已下线：无论库内配置如何，一律关闭 */
+    merged.enabled = false;
     merged.title = String(merged.title || DEFAULT_ACTIVATION_NUDGE.title).substring(0, 80);
     merged.body = String(merged.body || DEFAULT_ACTIVATION_NUDGE.body).substring(0, 400);
     merged.cta_text = String(merged.cta_text || DEFAULT_ACTIVATION_NUDGE.cta_text).substring(0, 40);

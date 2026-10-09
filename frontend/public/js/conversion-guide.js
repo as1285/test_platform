@@ -33,8 +33,6 @@
   var DETAIL_EMPTY_VISIT_KEY = 'cg_detail_empty_visits';
   var DETAIL_RECOVERY_DISMISS_KEY = 'cg_detail_recovery_dismissed';
   var ABOUT_NUDGE_DISMISS_KEY = 'cg_about_nudge_dismissed';
-  var ACT_NUDGE_DAY_KEY = 'cg_act_nudge_day_v1';
-  var ACT_NUDGE_COUNT_KEY = 'cg_act_nudge_count_v1';
   var EMAIL_NUDGE_DAY_KEY = 'cg_email_nudge_day_v1';
   var EMAIL_NUDGE_DISMISS_KEY = 'cg_email_nudge_dismiss_v1';
   /** session：注册成功后优先弹邮箱收集 */
@@ -802,11 +800,13 @@
       '.cg-consult-tax-banner{margin:0 0 12px;padding:12px 14px;background:linear-gradient(135deg,#fff4e5,#fffaf2);border:2px solid #ff9500;border-radius:10px}' +
       '.cg-consult-tax-banner strong{display:block;font-size:15px;color:#c2410c;margin:0 0 4px}' +
       '.cg-consult-tax-banner span{font-size:13px;color:#9a3412;line-height:1.45}' +
+      '#cg-post-activate-edit-banner,.cg-post-activate-edit-banner{display:none!important}' +
       '.cg-post-activate-edit-banner{margin:0 0 10px;padding:14px 14px 12px;background:linear-gradient(135deg,#ecfdf5,#f0fdf4);border:2px solid #34d399;border-radius:12px;box-shadow:0 4px 16px rgba(52,211,153,.14);position:relative;z-index:30}' +
       '.cg-post-activate-edit-banner h4{margin:0 0 6px;font-size:16px;font-weight:700;color:#047857}' +
       '.cg-post-activate-edit-banner p{margin:0 0 12px;font-size:13px;color:#065f46;line-height:1.5}' +
       '.cg-post-activate-edit-banner .cg-btn-primary{display:block;width:100%;padding:12px 14px;border:none;border-radius:10px;background:#059669;color:#fff;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer}' +
       '.cg-post-activate-edit-banner .cg-dismiss{position:absolute;top:8px;right:10px;border:none;background:transparent;color:#047857;font-size:12px;padding:4px 6px;cursor:pointer;font-family:inherit;opacity:.75}' +
+
       '.cg-consult-edit-banner{margin:0 0 12px;padding:12px 14px;background:linear-gradient(135deg,#ecfdf5,#f0fdf4);border:2px solid #6ee7b7;border-radius:10px;position:relative}' +
       '.cg-consult-edit-banner strong{display:block;font-size:15px;color:#047857;margin:0 0 4px}' +
       '.cg-consult-edit-banner span{font-size:13px;color:#065f46;line-height:1.45}' +
@@ -1801,51 +1801,12 @@
     if (el && el.parentNode) el.parentNode.removeChild(el);
   }
 
+  /**
+   * 开通后「已开通 · 现在可以编辑个税了」绿色顶栏：反馈易顶进状态栏，已下线。
+   * 编辑引导改走咨询页教练条 / toast，不再插 body 顶层横幅。
+   */
   function renderPostActivateMineEditBanner() {
     removePostActivateMineEditBanner();
-    if (currentPage() !== 'mine.html') return;
-    if (!isAccountActive() || !hasTaxRecords()) return;
-    if (!isPostActivatePending()) return;
-    ensureGateStyles();
-    var banner = document.createElement('div');
-    banner.id = 'cg-post-activate-edit-banner';
-    banner.className = 'cg-post-activate-edit-banner cg-demo-only';
-    banner.innerHTML =
-      '<button type="button" class="cg-dismiss" id="cgPostActivateEditDismiss" aria-label="知道了">知道了</button>' +
-      '<h4>已开通 · 现在可以编辑个税了</h4>' +
-      '<p>入口在下方「我要咨询」。进入后切换到「税务记录」，点记录卡片即可修改。</p>' +
-      '<button type="button" class="cg-btn-primary" id="cgPostActivateEditGo">去编辑个税记录</button>';
-    var stack = document.querySelector('.mine-stack');
-    var canvas = document.getElementById('mineE1Canvas');
-    if (stack && canvas && canvas.parentNode === stack) {
-      stack.insertBefore(banner, canvas);
-    } else if (stack) {
-      stack.insertBefore(banner, stack.firstChild);
-    } else {
-      document.body.insertBefore(banner, document.body.firstChild);
-    }
-    track('track_post_activate_edit_guide_show', {
-      page: 'mine',
-      source: 'mine_banner',
-      tax_count: taxRecordCount()
-    });
-    var goBtn = document.getElementById('cgPostActivateEditGo');
-    if (goBtn) {
-      goBtn.onclick = function () {
-        track('track_post_activate_edit_guide_ok', { page: 'mine', source: 'mine_banner' });
-        clearPostActivatePending();
-        goEditTaxRecords();
-      };
-    }
-    var dismiss = document.getElementById('cgPostActivateEditDismiss');
-    if (dismiss) {
-      dismiss.onclick = function () {
-        markTaxEditGuideDismissedToday();
-        clearPostActivatePending();
-        track('track_post_activate_edit_guide_dismiss', { page: 'mine', source: 'mine_banner' });
-        removePostActivateMineEditBanner();
-      };
-    }
   }
 
   function renderConsultPostActivateEditBanner(force) {
@@ -3465,14 +3426,6 @@
       if (!skipConversionPromo()) {
         renderAboutUpdateNudge();
         renderCareVersionHint();
-        setTimeout(function () {
-          if (
-            !document.getElementById('cg-tax-fill-nudge-root') &&
-            !document.getElementById('cg-email-nudge-root')
-          ) {
-            maybeShowActivationNudge();
-          }
-        }, 900);
         if (!preferEmailAfterReg) {
           maybeScheduleEmailNudge();
         }
@@ -3572,109 +3525,8 @@
     }
   }
 
-  function sanitizeNudgeLink(raw) {
-    var s = raw != null ? String(raw).trim() : '';
-    if (!s) return 'purchase.html';
-    if (/^[a-zA-Z0-9_./?-]+$/.test(s) && s.indexOf('..') < 0 && !/^[a-zA-Z]+:/.test(s)) {
-      return s;
-    }
-    if (/^https:\/\/(www\.)?geshui\.vip(\/|$)/i.test(s)) return s;
-    return 'purchase.html';
-  }
-
-  function markActNudgeShownToday() {
-    var day = beijingDayKey();
-    try {
-      localStorage.setItem(ACT_NUDGE_DAY_KEY, day);
-      localStorage.setItem(ACT_NUDGE_COUNT_KEY, '1');
-    } catch (e) {}
-  }
-
-  function canShowActNudgeToday(maxPerDay) {
-    var day = beijingDayKey();
-    var maxN = Math.max(1, Number(maxPerDay) || 1);
-    try {
-      var savedDay = localStorage.getItem(ACT_NUDGE_DAY_KEY) || '';
-      var count = parseInt(localStorage.getItem(ACT_NUDGE_COUNT_KEY) || '0', 10) || 0;
-      if (savedDay !== day) return true;
-      return count < maxN;
-    } catch (e) {
-      return true;
-    }
-  }
-
-  /**
-   * 后台配置的激活留存弹层：按注册时长与日频限制展示。
-   * skipConversionPromo / 游客 / 未激活 / 支付页 / 测算页不展示（未激活主 CTA 走测算页）。
-   */
-  function maybeShowActivationNudge() {
-    if (!isLoggedIn() || skipConversionPromo() || isLandingGuest()) return;
-    if (!isAccountActive()) return;
-    if (isLightShellPage()) return;
-    if (currentPage() === 'purchase.html' || currentPage() === 'refund_ad.html') return;
-    var nudge = conversionCfg && conversionCfg.activation_nudge;
-    if (!nudge || nudge.enabled === false) return;
-    if (!canShowActNudgeToday(nudge.max_per_day)) return;
-    var minH = Number(nudge.min_hours_since_register);
-    if (!isFinite(minH)) minH = 24;
-    if (hoursSinceRegisterCached < minH) return;
-    if (document.getElementById('cg-act-nudge-root')) return;
-    if (document.querySelector('.activate-modal-root.is-open')) return;
-
-    ensureGateStyles();
-    markActNudgeShownToday();
-
-    var title = String(nudge.title || '开通完整功能');
-    var body = String(nudge.body || '');
-    var cta = String(nudge.cta_text || '去激活');
-    var dismiss = String(nudge.dismiss_text || '今日不再提示');
-    var link = sanitizeNudgeLink(nudge.link_url);
-
-    var root = document.createElement('div');
-    root.id = 'cg-act-nudge-root';
-    root.className = 'cg-act-nudge-root';
-    root.setAttribute('role', 'dialog');
-    root.setAttribute('aria-modal', 'true');
-    root.innerHTML =
-      '<div class="cg-act-nudge-mask" data-act="dismiss"></div>' +
-      '<div class="cg-act-nudge-panel">' +
-      '<p class="cg-act-nudge-title"></p>' +
-      '<p class="cg-act-nudge-body"></p>' +
-      '<div class="cg-act-nudge-actions">' +
-      '<button type="button" class="cg-act-nudge-btn primary" data-act="cta"></button>' +
-      '<button type="button" class="cg-act-nudge-btn secondary" data-act="dismiss"></button>' +
-      '</div></div>';
-    root.querySelector('.cg-act-nudge-title').textContent = title;
-    root.querySelector('.cg-act-nudge-body').textContent = body;
-    root.querySelector('[data-act="cta"]').textContent = cta;
-    root.querySelectorAll('[data-act="dismiss"]').forEach(function (el) {
-      if (el.tagName === 'BUTTON') el.textContent = dismiss;
-    });
-
-    function close() {
-      if (root.parentNode) root.parentNode.removeChild(root);
-    }
-
-    root.addEventListener('click', function (e) {
-      var t = e.target;
-      if (!t || !t.getAttribute) return;
-      var act = t.getAttribute('data-act');
-      if (act === 'dismiss') {
-        track('track_activation_nudge_dismiss', { page: currentPage() });
-        close();
-      } else if (act === 'cta') {
-        track('track_activation_nudge_cta', { page: currentPage(), link: link });
-        close();
-        window.location.href = link;
-      }
-    });
-
-    document.body.appendChild(root);
-    track('track_activation_nudge_show', {
-      page: currentPage(),
-      hours: hoursSinceRegisterCached
-    });
-  }
+  /** 未激活引导弹窗已下线 */
+  function maybeShowActivationNudge() {}
 
   /** @type {Object} 对外 API：业务页 / consult 脚本调用 */
   window.ConversionGuide = {

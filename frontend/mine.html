@@ -3502,7 +3502,24 @@
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script>
         (function () {
-            /** 正版个人中心整页钉死：拦截文档级下拉回弹，弹层内部滚动除外。 */
+            /**
+             * App Cordova：整页钉死防下拉回弹（对齐正版个税）。
+             * 普通网页 / 桌面调试：内容超出视口时必须能 document 滚动，不能钉死。
+             */
+            function mineIsCordovaShell() {
+                try {
+                    if (window.cordova) return true;
+                } catch (e0) {}
+                try {
+                    var root = document.documentElement;
+                    if (root.classList.contains('app-cordova-shell')) return true;
+                    if (root.getAttribute('data-app-runtime') === 'cordova') return true;
+                } catch (e1) {}
+                try {
+                    if (/Cordova|TaxAppCordova/i.test(String(navigator.userAgent || ''))) return true;
+                } catch (e2) {}
+                return false;
+            }
             function mineInInnerScroller(target) {
                 var el = target;
                 if (el && el.nodeType === 3) el = el.parentElement;
@@ -3518,21 +3535,23 @@
                 }
                 return false;
             }
-            document.addEventListener(
-                'touchmove',
-                function (ev) {
-                    if (ev.defaultPrevented) return;
-                    if (mineInInnerScroller(ev.target)) return;
-                    ev.preventDefault();
-                },
-                { passive: false, capture: true }
-            );
-            function pinMinePageScroll() {
-                if (window.scrollY || document.documentElement.scrollTop || document.body.scrollTop) {
-                    window.scrollTo(0, 0);
+            if (mineIsCordovaShell()) {
+                document.addEventListener(
+                    'touchmove',
+                    function (ev) {
+                        if (ev.defaultPrevented) return;
+                        if (mineInInnerScroller(ev.target)) return;
+                        ev.preventDefault();
+                    },
+                    { passive: false, capture: true }
+                );
+                function pinMinePageScroll() {
+                    if (window.scrollY || document.documentElement.scrollTop || document.body.scrollTop) {
+                        window.scrollTo(0, 0);
+                    }
                 }
+                window.addEventListener('scroll', pinMinePageScroll, { passive: true });
             }
-            window.addEventListener('scroll', pinMinePageScroll, { passive: true });
 
             /** 原版 updateEImage：gender × company_name_tow(0/1/2) × FamilyMember → e1_*.png */
             var mineE1State = { family: 0, employer: 0 };

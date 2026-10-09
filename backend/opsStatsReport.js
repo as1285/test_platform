@@ -796,9 +796,134 @@ function h3(t) {
   return '<h3 style="margin:18px 0 8px;font-size:15px;">' + htmlEscape(t) + '</h3>';
 }
 
-function buildDailyEmail(dayStats, wtd, mtd) {
+function clipText(s, max) {
+  var t = String(s == null ? '' : s)
+    .replace(/\s+/g, ' ')
+    .trim();
+  var n = Number(max) || 120;
+  if (t.length <= n) return t;
+  return t.slice(0, Math.max(0, n - 1)) + '…';
+}
+
+function emptyCompatBugs() {
+  return { day_n: 0, day_pending: 0, day_replied: 0, backlog_pending: 0, items: [] };
+}
+
+/**
+ * 日报用：北京日区间内新增的兼容 BUG（feedback_type=compat_bug），
+ * 以及截至区间末日仍未回复的积压数。
+ */
+async function collectCompatBugFeedback(conn, startYmd, endYmd) {
+  var out = emptyCompatBugs();
+  if (!conn || !startYmd || !endYmd) return out;
+  var cnCreated = cnDateExpr('created_at');
+  try {
+    const [[sum]] = await conn.execute(
+      'SELECT COUNT(*) AS n,' +
+        " SUM(CASE WHEN admin_reply IS NULL OR TRIM(IFNULL(admin_reply,'')) = '' THEN 1 ELSE 0 END) AS pending," +
+        " SUM(CASE WHEN admin_reply IS NOT NULL AND TRIM(IFNULL(admin_reply,'')) <> '' THEN 1 ELSE 0 END) AS replied" +
+        ' FROM user_feedback' +
+        " WHERE feedback_type = 'compat_bug'" +
+        ' AND ' +
+        cnCreated +
+        ' BETWEEN ? AND ?',
+      [startYmd, endYmd]
+    );
+    out.day_n = Number((sum && sum.n) || 0) || 0;
+    out.day_pending = Number((sum && sum.pending) || 0) || 0;
+    out.day_replied = Number((sum && sum.replied) || 0) || 0;
+  } catch (eSum) {
+    console.warn('[ops-stats] compat bug day summary skipped', eSum && eSum.message);
+  }
+  try {
+    const [[back]] = await conn.execute(
+      'SELECT COUNT(*) AS n FROM user_feedback' +
+        " WHERE feedback_type = 'compat_bug'" +
+        " AND (admin_reply IS NULL OR TRIM(IFNULL(admin_reply,'')) = '')" +
+        ' AND ' +
+        cnCreated +
+        ' <= ?',
+      [endYmd]
+    );
+    out.backlog_pending = Number((back && back.n) || 0) || 0;
+  } catch (eBack) {
+    console.warn('[ops-stats] compat bug backlog skipped', eBack && eBack.message);
+  }
+  try {
+    const [rows] = await conn.execute(
+      'SELECT id, user_id, real_name_snapshot, content, device_info, contact, admin_reply, created_at' +
+        ' FROM user_feedback' +
+        " WHERE feedback_type = 'compat_bug'" +
+        ' AND ' +
+        cnCreated +
+        ' BETWEEN ? AND ?' +
+        ' ORDER BY id DESC LIMIT 40',
+      [startYmd, endYmd]
+    );
+    out.items = (rows || []).map(function (r) {
+      var pending =
+        r.admin_reply == null || String(r.admin_reply || '').trim() === '';
+      return {
+        id: Number(r.id) || 0,
+        user_id: r.user_id != null ? String(r.user_id) : '',
+        real_name: r.real_name_snapshot != null ? String(r.real_name_snapshot) : '',
+        content: clipText(r.content, 160),
+        device_info: clipText(r.device_info, 64),
+        contact: r.contact != null ? String(r.contact).trim() : '',
+        status: pending ? '待回复' : '已回复',
+        created_at: r.created_at
+      };
+    });
+  } catch (eList) {
+    console.warn('[ops-stats] compat bug list skipped', eList && eList.message);
+  }
+  return out;
+}
+
+function compatBugTable(bugs) {
+  bugs = bugs || emptyCompatBugs();
+  var summary =
+    '<p style="margin:0 0 8px;">当日新增 <strong>' +
+    num(bugs.day_n) +
+    '</strong> 条（待回复 ' +
+    num(bugs.day_pending) +
+    ' / 已回复 ' +
+    num(bugs.day_replied) +
+    '）；截至当日仍未回复积压 <strong>' +
+    num(bugs.backlog_pending) +
+    '</strong> 条。</p>';
+  if (!bugs.items || !bugs.items.length) {
+    return summary + '<p style="color:#666;">当日无新的兼容 BUG 反馈。</p>';
+  }
+  var head = tr(['#', '账号', '设备', '状态', '内容摘要']);
+  var body = bugs.items
+    .map(function (it) {
+      var who = it.user_id || '—';
+      if (it.real_name && it.real_name !== it.user_id) {
+        who = it.user_id + '（' + it.real_name + '）';
+      }
+      return tr([
+        String(it.id || ''),
+        who,
+        it.device_info || '—',
+        it.status || '—',
+        it.content || '—'
+      ]);
+    })
+    .join('');
+  return (
+    summary +
+    '<table cellpadding="6" cellspacing="0" border="1" style="border-collapse:collapse;font-size:13px;">' +
+    head +
+    body +
+    '</table>'
+  );
+}
+
+function buildDailyEmail(dayStats, wtd, mtd, compatBugs) {
   var d = dayStats.end;
   var tot = dayStats.tot;
+  var bugs = compatBugs || dayStats.compat_bugs || emptyCompatBugs();
   var title = siteLabel() + ' 运营日报 ' + d;
   var subject =
     '[' +
@@ -812,11 +937,15 @@ function buildDailyEmail(dayStats, wtd, mtd) {
     ' / 激活 ' +
     num(tot.act) +
     ' / 合计GMV ' +
-    yuan(tot.combined_amt);
+    yuan(tot.combined_amt) +
+    ' / 兼容BUG ' +
+    num(bugs.day_n);
   var html = wrapHtml(
     title,
     h3('当日') +
       kpiTable(tot, {}) +
+      h3('当日兼容 BUG 反馈') +
+      compatBugTable(bugs) +
       h3('当日收入拆分（对齐支付分析）') +
       paymentProductTable(tot) +
       h3('当日已付 SKU') +
@@ -848,6 +977,14 @@ function buildDailyEmail(dayStats, wtd, mtd) {
     yuan(tot.paid_amt) +
     '  合计GMV ' +
     yuan(tot.combined_amt) +
+    '\n兼容BUG 当日新增 ' +
+    bugs.day_n +
+    '（待回复 ' +
+    bugs.day_pending +
+    ' / 已回复 ' +
+    bugs.day_replied +
+    '）  积压待回复 ' +
+    bugs.backlog_pending +
     '\n开通套餐 ' +
     tot.activation_n +
     '/' +
@@ -881,6 +1018,23 @@ function buildDailyEmail(dayStats, wtd, mtd) {
     ' 合计GMV' +
     yuan(mtd.tot.combined_amt) +
     '\n';
+  if (bugs.items && bugs.items.length) {
+    text += '兼容BUG明细：\n';
+    bugs.items.forEach(function (it) {
+      text +=
+        '#' +
+        it.id +
+        ' ' +
+        (it.user_id || '') +
+        ' [' +
+        (it.status || '') +
+        '] ' +
+        (it.device_info || '') +
+        ' ' +
+        (it.content || '') +
+        '\n';
+    });
+  }
   return { subject: subject, html: html, text: text };
 }
 
@@ -963,7 +1117,15 @@ async function gatherDailyBundle(conn, dayYmd) {
   var dayStats = await collectRangeStats(conn, dayYmd, dayYmd);
   var wtd = await collectRangeStats(conn, weekStart, dayYmd);
   var mtd = await collectRangeStats(conn, monthStart, dayYmd);
-  return { dayStats: dayStats, wtd: wtd, mtd: mtd, mail: buildDailyEmail(dayStats, wtd, mtd) };
+  var compatBugs = await collectCompatBugFeedback(conn, dayYmd, dayYmd);
+  dayStats.compat_bugs = compatBugs;
+  return {
+    dayStats: dayStats,
+    wtd: wtd,
+    mtd: mtd,
+    compatBugs: compatBugs,
+    mail: buildDailyEmail(dayStats, wtd, mtd, compatBugs)
+  };
 }
 
 /**
@@ -1128,9 +1290,14 @@ module.exports = {
   lastCompletedMonth,
   htmlEscape,
   yuan,
+  clipText,
+  emptyCompatBugs,
+  collectCompatBugFeedback,
+  compatBugTable,
   buildDailyEmail,
   buildPeriodEmail,
   collectRangeStats,
+  gatherDailyBundle,
   runOpsStatsReport,
   scheduleOpsStatsReport,
   tickOpsStatsReport,

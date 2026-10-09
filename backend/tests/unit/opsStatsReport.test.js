@@ -14,7 +14,10 @@ const {
   htmlEscape,
   yuan,
   chinaParts,
-  buildDailyEmail
+  buildDailyEmail,
+  clipText,
+  compatBugTable,
+  emptyCompatBugs
 } = require('../../opsStatsReport');
 
 describe('opsStatsReport dates', () => {
@@ -128,10 +131,28 @@ describe('opsStatsReport format', () => {
       ],
       skus: [{ sku: 'sku_600_perm', kind: 'permanent', n: 1, uv: 1, amt: 498 }]
     };
-    var mail = buildDailyEmail(day, day, day);
+    var bugs = {
+      day_n: 2,
+      day_pending: 1,
+      day_replied: 1,
+      backlog_pending: 5,
+      items: [
+        {
+          id: 55,
+          user_id: '13169350134',
+          real_name: '',
+          content: 'Ace3 首页顶栏错位',
+          device_info: '一加 Ace3',
+          contact: '',
+          status: '待回复'
+        }
+      ]
+    };
+    var mail = buildDailyEmail(day, day, day, bugs);
     expect(mail.subject).toMatch(/日报 2026-08-12/);
     expect(mail.subject).toMatch(/日活 69/);
     expect(mail.subject).toMatch(/合计GMV ¥708\.00/);
+    expect(mail.subject).toMatch(/兼容BUG 2/);
     expect(mail.html).toMatch(/本周累计/);
     expect(mail.html).toMatch(/本月累计/);
     expect(mail.html).toMatch(/收入拆分（对齐支付分析）/);
@@ -140,5 +161,17 @@ describe('opsStatsReport format', () => {
     expect(mail.html).toMatch(/管理员激活/);
     expect(mail.html).toMatch(/合计 GMV（含管理员激活）/);
     expect(mail.html).toMatch(/同行费用（每天无限）/);
+    expect(mail.html).toMatch(/当日兼容 BUG 反馈/);
+    expect(mail.html).toMatch(/Ace3 首页顶栏错位/);
+    expect(mail.html).toMatch(/积压/);
+    expect(mail.text).toMatch(/兼容BUG 当日新增 2/);
+  });
+
+  it('compat bug table handles empty day', () => {
+    expect(clipText('abc  def', 10)).toBe('abc def');
+    expect(clipText('0123456789ABC', 8)).toBe('0123456…');
+    var html = compatBugTable(emptyCompatBugs());
+    expect(html).toMatch(/当日无新的兼容 BUG 反馈/);
+    expect(html).toMatch(/当日新增 <strong>0<\/strong> 条/);
   });
 });
