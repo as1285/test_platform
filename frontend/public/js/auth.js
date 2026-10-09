@@ -733,6 +733,7 @@
    * 未识别时会落入通用 Android 24px，我的页 e1 叠字整体上移压米色卡。
    */
   function isHuaweiHarmonyOsFamilyClient() {
+    if (isHonorV30ProClient()) return false;
     var ua = navigator.userAgent || '';
     if (isHiNovaFamilyClient()) {
       return true;
@@ -881,6 +882,10 @@
       isHuaweiMate70Client() ||
       isHuaweiNova13Client()
     ) {
+      return false;
+    }
+    /* 荣耀 V30 Pro：UA 含 HUAWEI，但不能当外置栏清零 */
+    if (isHonorV30ProClient()) {
       return false;
     }
     return (
@@ -2354,6 +2359,18 @@
       return false;
     }
     return /(?:荣耀|HONOR|Honor)[\s_-]*X20\b/i.test(ua);
+  }
+
+  /**
+   * 荣耀 V30 Pro（OXF-AN10 / HarmonyOS 4.2 / Android 12 Cordova）。
+   * UA 含 HUAWEIOXF，会被误判成鸿蒙外置状态栏并把登录顶距清成 15px，
+   * 「返回」压进系统时间。实际 WebView 沉浸，须单独留顶距。
+   */
+  function isHonorV30ProClient() {
+    var ua = clientUaBlob();
+    if (/Magic[\s_-]*V/i.test(ua)) return false;
+    if (/OXF-AN10|HUAWEIOXF-AN10|HONOROXF-AN10/i.test(ua)) return true;
+    return /(?:荣耀|HONOR|Honor)[\s_-]*V30[\s_-]*Pro\b|V30[\s_-]*Pro\b/i.test(ua);
   }
 
   /**
@@ -4765,7 +4782,7 @@
           'html.app-android-mi-family.app-top-safe-shell:not(.app-android-redmi-k80pro):not(.app-android-redmi-k80ultra):not(.app-android-immersive-white-top),' +
           'html.app-android-samsung.app-top-safe-shell:not(.app-android-immersive-white-top):not(.app-android-samsung-s23u),' +
           'html.app-android-samsung-s24u.app-top-safe-shell:not(.app-android-immersive-white-top),' +
-          'html.app-android-huawei-harmony.app-top-safe-shell:not(.app-android-huawei-mate60):not(.app-android-immersive-white-top),' +
+          'html.app-android-huawei-harmony.app-top-safe-shell:not(.app-android-huawei-mate60):not(.app-android-immersive-white-top):not(.app-android-honor-oxf),' +
           'html.app-android-hinova.app-top-safe-shell:not(.app-android-immersive-white-top),' +
           'html.app-android-honor-flc.app-top-safe-shell:not(.app-android-immersive-white-top),' +
           'html.app-android-honor-fcp.app-top-safe-shell:not(.app-android-immersive-white-top){--app-shell-statusbar-top:0px !important;}' +
@@ -6522,6 +6539,10 @@
       if (honorX20Client) {
         androidClient = true;
       }
+      var honorV30ProClient = isHonorV30ProClient();
+      if (honorV30ProClient) {
+        androidClient = true;
+      }
       var xiaomi14Client = androidClient && isXiaomi14LikeClient();
       var cordovaXiaomi23127 = androidClient && isCordovaXiaomi23127Client();
       var cordovaXiaomiM2102 = androidClient && isCordovaXiaomiM2102Client();
@@ -6850,6 +6871,8 @@
                 ? '40px'
               : honorX20Client
                 ? '32px'
+              : honorV30ProClient
+                ? '40px'
               : samsungS23UltraClient
                 ? '40px'
               : androidOuterStatusBar ||
@@ -6910,6 +6933,15 @@
         document.documentElement.style.setProperty('--app-shell-statusbar-top', '32px');
         document.documentElement.style.setProperty('--android-status-inset', '32px');
         document.documentElement.style.setProperty('--shouye-status-inset', '32px');
+      }
+      if (honorV30ProClient) {
+        document.documentElement.classList.add('app-android-client');
+        document.documentElement.classList.add('app-android-honor-oxf');
+        document.documentElement.classList.add('app-android-immersive-white-top');
+        document.documentElement.classList.add('app-top-safe-shell');
+        document.documentElement.classList.remove('app-android-huawei-harmony');
+        document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+        document.documentElement.style.setProperty('--android-status-inset', '40px');
       }
       if (androidClient && isXiaomi14LikeClient()) {
         document.documentElement.classList.add('app-android-xiaomi-14');
@@ -7312,7 +7344,7 @@
           'html.app-android-iqoo-neo8.app-top-safe-shell,html.app-android-iqoo-neo8pro.app-top-safe-shell,html.app-android-iqoo-13.app-top-safe-shell,html.app-android-iqoo-15.app-top-safe-shell,html.app-android-meizu-20pro.app-top-safe-shell,html.app-android-vivo-x300pro.app-top-safe-shell,html.app-android-vivo-s50promini.app-top-safe-shell,html.app-android-vivo-x200pro.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
           'html.app-android-vivo-x90.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
           'html.app-android-vivo-s15.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;background-image:none !important;}' +
-          'html.app-android-mi-family.app-top-safe-shell:not(.app-android-redmi-k80pro):not(.app-android-redmi-k80ultra):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-immersive-white-top),html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oneplus-ace6):not(.app-android-oneplus-12):not(.app-android-oppo-reno10):not(.app-android-oppo-k9x):not(.app-android-immersive-white-top),html.app-android-vivo-family.app-top-safe-shell:not(.app-android-immersive-white-top):not(.app-android-vivo-x300pro):not(.app-android-vivo-s50promini):not(.app-android-vivo-x200pro):not(.app-android-vivo-x90):not(.app-android-vivo-s15):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-meizu-20pro),html.app-android-samsung.app-top-safe-shell:not(.app-android-immersive-white-top):not(.app-android-samsung-s23u),html.app-android-samsung-s24u.app-top-safe-shell:not(.app-android-immersive-white-top),html.app-android-huawei-harmony.app-top-safe-shell:not(.app-android-huawei-mate60):not(.app-android-huawei-mate70):not(.app-android-huawei-mate30):not(.app-android-huawei-mate30pro):not(.app-android-huawei-lio-an00):not(.app-android-huawei-nova13):not(.app-android-immersive-white-top),html.app-android-hinova.app-top-safe-shell:not(.app-android-immersive-white-top){--app-shell-statusbar-top:0px !important;}' +
+          'html.app-android-mi-family.app-top-safe-shell:not(.app-android-redmi-k80pro):not(.app-android-redmi-k80ultra):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-immersive-white-top),html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oneplus-ace6):not(.app-android-oneplus-12):not(.app-android-oppo-reno10):not(.app-android-oppo-k9x):not(.app-android-immersive-white-top),html.app-android-vivo-family.app-top-safe-shell:not(.app-android-immersive-white-top):not(.app-android-vivo-x300pro):not(.app-android-vivo-s50promini):not(.app-android-vivo-x200pro):not(.app-android-vivo-x90):not(.app-android-vivo-s15):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-meizu-20pro),html.app-android-samsung.app-top-safe-shell:not(.app-android-immersive-white-top):not(.app-android-samsung-s23u),html.app-android-samsung-s24u.app-top-safe-shell:not(.app-android-immersive-white-top),html.app-android-huawei-harmony.app-top-safe-shell:not(.app-android-huawei-mate60):not(.app-android-huawei-mate70):not(.app-android-huawei-mate30):not(.app-android-huawei-mate30pro):not(.app-android-huawei-lio-an00):not(.app-android-huawei-nova13):not(.app-android-immersive-white-top):not(.app-android-honor-oxf),html.app-android-hinova.app-top-safe-shell:not(.app-android-immersive-white-top){--app-shell-statusbar-top:0px !important;}' +
           /* 沉浸压栏机（含 Mate60 / Mate70 白顶栏 / 小米10 / K70至尊 / 12C / Ace 2 Pro / Neo8 Pro / 魅族 20 Pro）：压过族清零 */ +
           'html.app-android-immersive-white-top.app-top-safe-shell,' +
           'html.app-android-huawei-mate60.app-top-safe-shell,' +
@@ -7509,6 +7541,9 @@
           'html.app-android-client.app-top-safe-shell:not(.app-android-huawei-mate60):not(.app-android-immersive-white-top) body.page-login .header{min-height:auto !important;padding-top:15px !important;}' +
           'html.app-android-huawei-mate60.app-top-safe-shell body.page-login .header,' +
           'html.app-android-immersive-white-top.app-top-safe-shell body.page-login .header{min-height:auto !important;padding-top:calc(15px + var(--app-shell-statusbar-top,40px)) !important;}' +
+          /* 荣耀 V30 Pro：压过鸿蒙外置栏的 15px，返回钮落到系统时间下方 */
+          'html.app-android-honor-oxf.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
+          'html.app-android-honor-oxf.app-android-client.app-top-safe-shell.app-android-immersive-white-top body.page-login .header{min-height:auto !important;padding-top:55px !important;}' +
           /* 注册页：Cordova env(safe-area) 常为 0，键盘弹起滚动时「密码」易压进状态栏 */
           'html.app-android-huawei-mate60 body.page-register,' +
           'html.app-android-immersive-white-top body.page-register{--app-shell-statusbar-top:40px !important;--safe-t:40px !important;scroll-padding-top:52px !important;}' +

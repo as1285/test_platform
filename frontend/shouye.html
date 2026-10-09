@@ -295,6 +295,17 @@
                 root.style.setProperty('--shouye-status-inset', '32px');
                 var meta = document.querySelector('meta[name="theme-color"]');
                 if (meta) meta.setAttribute('content', '#f5f6fa');
+                var oxf = /OXF-AN10|HUAWEIOXF-AN10|HONOROXF-AN10|(?:荣耀|HONOR|Honor)[\s_-]*V30[\s_-]*Pro\b/i.test(u) && !/Magic[\s_-]*V/i.test(u);
+                if (oxf) {
+                    root.classList.add('app-android-client');
+                    root.classList.add('app-android-honor-oxf');
+                    root.classList.add('app-android-immersive-white-top');
+                    root.classList.add('app-top-safe-shell');
+                    root.style.setProperty('--app-shell-statusbar-top', '40px');
+                    root.style.setProperty('--android-status-inset', '40px');
+                    root.style.setProperty('--shouye-status-inset', '40px');
+                }
+                if (!x20) return;
                 if (!document.getElementById('honorX20BlackBarFirstPaint')) {
                     var st = document.createElement('style');
                     st.id = 'honorX20BlackBarFirstPaint';
