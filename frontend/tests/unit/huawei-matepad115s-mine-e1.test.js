@@ -57,7 +57,7 @@ describe('Huawei MatePad 11.5S mine e1 pills', () => {
     expect(boot).toContain('app-android-huawei-matepad115s');
     expect(boot).toMatch(/if \(matepad115s\) \{[\s\S]*?\n        return;/);
     expect(mine).toMatch(/auth-boot\.js\?v=2026091/);
-    expect(mine).toContain('auth.js?v=20261006-android-july20-mi14');
+    expect(mine).toContain('auth.js?v=20261009-honor-oxf-an10');
   });
 
   it('overrides the 16px .user-name so tablet name follows canvas rpx', () => {

@@ -50,8 +50,8 @@ describe('Xiaomi 14 系统栏回退 7/20', () => {
     expect(shuiming).toContain("classList.add('app-android-xiaomi-14')");
     expect(shuiming).toContain('data-xiaomi14-shuiming-white-firstpaint');
     expect(shuiming).toContain('background:#f5f6fa !important');
-    expect(shuiming).toContain('auth.js?v=20261006-android-july20-mi14');
-    expect(shuimingResult).toContain('auth.js?v=20261006-android-july20-mi14');
-    expect(xiangqing).toContain('auth.js?v=20261006-android-july20-mi14');
+    expect(shuiming).toContain('auth.js?v=20261009-honor-oxf-an10');
+    expect(shuimingResult).toContain('auth.js?v=20261009-16pm-title-seam-2');
+    expect(xiangqing).toContain('auth.js?v=20261009-honor-oxf-an10');
   });
 });

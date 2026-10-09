@@ -269,7 +269,7 @@
         })();
     </script>
     <script src="/js/auth-boot.js?v=20260923-bs4s-restore"></script>
-    <script src="/js/auth.js?v=20261006-android-july20-mi14" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20261009-honor-oxf-an10" defer fetchpriority="low"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js" defer></script>
@@ -285,17 +285,9 @@
                 try { u += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (e0) {}
                 try { u += ' ' + String(localStorage.getItem('tax_device_ua_v1') || ''); } catch (e1) {}
                 var x20 = /NTN-AN20/i.test(u) || (/(?:荣耀|HONOR|Honor)[\s_-]*X20\b/i.test(u) && !/X20[\s_-]*(?:SE|Plus|Pro)/i.test(u));
-                if (!x20) return;
-                var root = document.documentElement;
-                root.classList.add('app-android-client');
-                root.classList.add('app-android-honor-x20');
-                root.classList.add('app-top-safe-shell');
-                root.style.setProperty('--app-shell-statusbar-top', '32px');
-                root.style.setProperty('--android-status-inset', '32px');
-                root.style.setProperty('--shouye-status-inset', '32px');
-                var meta = document.querySelector('meta[name="theme-color"]');
-                if (meta) meta.setAttribute('content', '#f5f6fa');
                 var oxf = /OXF-AN10|HUAWEIOXF-AN10|HONOROXF-AN10|(?:荣耀|HONOR|Honor)[\s_-]*V30[\s_-]*Pro\b/i.test(u) && !/Magic[\s_-]*V/i.test(u);
+                if (!x20 && !oxf) return;
+                var root = document.documentElement;
                 if (oxf) {
                     root.classList.add('app-android-client');
                     root.classList.add('app-android-honor-oxf');
@@ -306,6 +298,14 @@
                     root.style.setProperty('--shouye-status-inset', '40px');
                 }
                 if (!x20) return;
+                root.classList.add('app-android-client');
+                root.classList.add('app-android-honor-x20');
+                root.classList.add('app-top-safe-shell');
+                root.style.setProperty('--app-shell-statusbar-top', '32px');
+                root.style.setProperty('--android-status-inset', '32px');
+                root.style.setProperty('--shouye-status-inset', '32px');
+                var meta = document.querySelector('meta[name="theme-color"]');
+                if (meta) meta.setAttribute('content', '#f5f6fa');
                 if (!document.getElementById('honorX20BlackBarFirstPaint')) {
                     var st = document.createElement('style');
                     st.id = 'honorX20BlackBarFirstPaint';
