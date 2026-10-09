@@ -4,9 +4,9 @@
 # - 日备：data/db-backups-daily（每天 1 份，默认留 14 天）
 # - 周备：data/db-backups-weekly（每周 1 份，默认留 8 周）
 # - 异地：配置 COS_* 后上传（整次失败再重试 COS_SYNC_RETRIES 次，默认 3）
-#   - --hot-only：仅上传热备（建议每 15 分钟，抗打挂）
-#   - 默认 full：日备/周备/uploads + 热备（建议每天 03:15）
-# cron 见 scripts/dr-install.sh
+#   - --hot-only：仅上传热备（由 backup-mysql.sh --if-activity 在有活动时调用）
+#   - 默认 full：日备/周备/uploads + 热备（建议每天 03:20）
+# cron 见 scripts/dr-install.sh / backup-mysql.sh --install-cron
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

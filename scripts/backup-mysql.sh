@@ -3,13 +3,20 @@
 # 用法：
 #   ./scripts/backup-mysql.sh                 # 写入 data/db-backups/
 #   ./scripts/backup-mysql.sh --stdout        # 输出到 stdout（供管道使用）
-#   ./scripts/backup-mysql.sh --install-cron  # 幂等安装：每 5 分钟备份并上传 COS
+#   ./scripts/backup-mysql.sh --if-activity   # 仅当有新注册/个税变更时备份，成功后上传 COS 热备
+#   ./scripts/backup-mysql.sh --install-cron  # 幂等安装：每 5 分钟按活动门控备份并上传 COS
 #
-# 默认：每 5 分钟一份；本机保留 24 小时，最多 300 份（≈ 1 天热备）。
+# 默认热备：本机保留 24 小时，最多 300 份；cron 默认走 --if-activity（无活动则本机也不打）。
 # 更长保留见 scripts/sync-backup-offsite.sh（日备 14 天 / 周备 8 周）。
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck disable=SC1091
+source "$ROOT/scripts/lib/dr-common.sh"
+dr_load_env
+# shellcheck disable=SC1091
+source "$ROOT/scripts/lib/backup-activity-check.sh"
+
 SCRIPT_PATH="$ROOT/scripts/backup-mysql.sh"
 DB_CONTAINER="${DB_CONTAINER:-test_platform_db}"
 DB_NAME="${DB_NAME:-personal_tax}"
@@ -19,8 +26,12 @@ MAX_BACKUPS="${MAX_BACKUPS:-300}"
 LOG_FILE="${MYSQL_BACKUP_LOG:-/var/log/test_platform-mysql-backup.log}"
 LOCK_FILE="${MYSQL_BACKUP_LOCK:-/var/lock/test_platform-mysql-backup.lock}"
 OFFSITE_SCRIPT="$ROOT/scripts/sync-backup-offsite.sh"
+# cron：每 5 分钟检查；无新注册/个税变更则跳过本机与 COS
 CRON_EXPR="*/5 * * * *"
-CRON_LINE="${CRON_EXPR} /usr/bin/flock -xn ${LOCK_FILE} -c '/bin/bash ${SCRIPT_PATH} && /bin/bash ${OFFSITE_SCRIPT} --hot-only' >> ${LOG_FILE} 2>&1"
+CRON_LINE="${CRON_EXPR} /usr/bin/flock -xn ${LOCK_FILE} -c '/bin/bash ${SCRIPT_PATH} --if-activity' >> ${LOG_FILE} 2>&1"
+
+IF_ACTIVITY=0
+CHAIN_OFFSITE=0
 
 resolve_db_password() {
   if [[ -n "${DB_ROOT_PASSWORD:-}" ]]; then
@@ -51,6 +62,23 @@ fi
 STDOUT=0
 if [[ "${1:-}" == "--stdout" ]]; then
   STDOUT=1
+elif [[ "${1:-}" == "--if-activity" ]]; then
+  IF_ACTIVITY=1
+  CHAIN_OFFSITE=1
+fi
+
+# 门控默认开（可用 BACKUP_REQUIRE_ACTIVITY=0 关闭，恢复「每 5 分钟必备」）
+if [[ "$IF_ACTIVITY" -eq 1 && "${BACKUP_REQUIRE_ACTIVITY:-1}" != "0" ]]; then
+  set +e
+  backup_activity_should_run
+  gate_rc=$?
+  set -e
+  if [[ "$gate_rc" -eq 10 ]]; then
+    exit 0
+  fi
+  if [[ "$gate_rc" -ne 0 ]]; then
+    exit "$gate_rc"
+  fi
 fi
 
 if ! docker ps --format '{{.Names}}' | grep -qx "$DB_CONTAINER"; then
@@ -114,3 +142,12 @@ fi
 COUNT="$(ls -1 "$BACKUP_DIR"/${DB_NAME}-[0-9]*.sql.gz 2>/dev/null | wc -l | tr -d ' ')"
 DISK="$(du -sh "$BACKUP_DIR" | awk '{print $1}')"
 echo "[backup] 当前 ${COUNT} 份 / ${DISK}；保留 ${RETAIN_HOURS} 小时且最多 ${MAX_BACKUPS} 份；目录: $BACKUP_DIR"
+
+if [[ "$IF_ACTIVITY" -eq 1 ]]; then
+  backup_activity_mark_done
+fi
+
+if [[ "$CHAIN_OFFSITE" -eq 1 && -x "$OFFSITE_SCRIPT" ]]; then
+  echo "[backup] 上传 COS 热备…"
+  /bin/bash "$OFFSITE_SCRIPT" --hot-only
+fi

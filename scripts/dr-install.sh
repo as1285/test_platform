@@ -38,8 +38,8 @@ crontab -l 2>/dev/null | grep -v 'scripts/health-guard.sh' | grep -v 'scripts/sy
 
 {
   echo "*/2 * * * * /bin/bash ${HEALTH} >/dev/null 2>&1"
-  # 每 5 分钟：本机热备完成后立刻把数据库热备上传 COS（抗打挂）
-  echo "*/5 * * * * /usr/bin/flock -xn /var/lock/test_platform-mysql-backup.lock -c '/bin/bash ${MYSQL_BACKUP} && /bin/bash ${OFFSITE} --hot-only' >> /var/log/test_platform-mysql-backup.log 2>&1"
+  # 每 5 分钟：有新注册或个税变更才本机热备并上传 COS；无活动则跳过
+  echo "*/5 * * * * /usr/bin/flock -xn /var/lock/test_platform-mysql-backup.lock -c '/bin/bash ${MYSQL_BACKUP} --if-activity' >> /var/log/test_platform-mysql-backup.log 2>&1"
   # 每 15 分钟：.env 有变更则覆盖 COS env.lkj；满心跳再寄加密副本
   echo "*/15 * * * * /usr/bin/flock -xn /var/lock/test_platform-env-backup.lock -c '/bin/bash ${ENV_BACKUP}' >/dev/null 2>&1"
   # 每天 03:20：日备/周备/uploads 完整异地同步（避开整点 :00/:15 热备锁冲突）
