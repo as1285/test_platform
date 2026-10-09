@@ -30,8 +30,8 @@ describe('保存出价配置成功弹出 Toast', () => {
   it('接线与缓存戳齐全', () => {
     expect(panel).toContain("adminToast(data.msg || '出价配置已保存')");
     expect(panel).toContain("adminToast(data.msg || '保存失败', { type: 'error' })");
-    expect(html).toContain('admin_panel.js?v=20261008-legacy-plain');
-    expect(html).toContain('admin_panel.css?v=20261008-legacy-plain');
+    expect(html).toContain('admin_panel.js?v=20261009-sku-label');
+    expect(html).toContain('admin_panel.css?v=20261009-sku-label');
     expect(css).toContain('.admin-toast-host');
     expect(css).toContain('.admin-toast.is-ok');
   });

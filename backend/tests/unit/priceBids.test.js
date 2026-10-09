@@ -1,9 +1,7 @@
 const {
   createPriceBids,
   normalizeBidConfig,
-  DEFAULT_BID_CONFIG,
-  resolveBidMinFloor,
-  formatBidYuan
+  DEFAULT_BID_CONFIG
 } = require('../../src/payments/priceBids');
 
 function normalizeAmount(v) {
@@ -106,16 +104,6 @@ function makeApi(state, offerCalls, notifications, onBidRecorded, listPurchaseSk
   });
 }
 
-describe('resolveBidMinFloor', () => {
-  it('takes the higher of global min and channel bid_min', () => {
-    expect(resolveBidMinFloor(null, 30)).toBe(30);
-    expect(resolveBidMinFloor({ bid_min: '100.00' }, 30)).toBe(100);
-    expect(resolveBidMinFloor({ bid_min: '20' }, 30)).toBe(30);
-    expect(formatBidYuan(100.0)).toBe('100');
-    expect(formatBidYuan(99.5)).toBe('99.50');
-  });
-});
-
 describe('normalizeBidConfig', () => {
   it('falls back to defaults and clamps ranges', () => {
     expect(normalizeBidConfig(null)).toEqual(DEFAULT_BID_CONFIG);
@@ -206,17 +194,15 @@ describe('submitBid auto accept vs pending', () => {
     );
   });
 
-  it('rejects bids below channel psych bid_min and allows exactly the floor', async () => {
+  it('ignores sku.bid_min; channel psych is not a bid floor anymore', async () => {
     const shelf = async function () {
       return [
         { id: 'sku_300_7d', amount: '200.00', label: '周卡', bid_min: '100.00', channel_price: true }
       ];
     };
     const api = makeApi({ queries: [] }, [], [], null, shelf);
-    await expect(api.submitBid('u1', { sku_id: 'sku_300_7d', amount: '80' })).rejects.toThrow(
-      /不能低于 100/
-    );
-    const out = await api.submitBid('u1', { sku_id: 'sku_300_7d', amount: '100' });
+    /* 全局下限默认 30；带 bid_min 的货架字段不再抬高地板 */
+    const out = await api.submitBid('u1', { sku_id: 'sku_300_7d', amount: '80' });
     expect(out.status).toBe('pending');
     expect(out.sku_label).toBe('周卡');
   });

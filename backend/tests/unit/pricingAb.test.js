@@ -416,10 +416,11 @@ describe('GitHub legacy helpers (no longer applied in resolveOfferForUser)', () 
     expect(out[0].amount).toBe('199.00');
     expect(out[0].list_amount).toBeUndefined();
     expect(out[0].psych_offer).toBeUndefined();
-    expect(out[0].bid_min).toBe('150.00');
+    /* 低于实付的心理价不再写成 bid_min，直接忽略 */
+    expect(out[0].bid_min).toBeUndefined();
   });
 
-  it('applyChannelCatalogPrices uses below-pay psych as C-end bid floor', () => {
+  it('applyChannelCatalogPrices drops below-pay psych (no bid_min / no strike)', () => {
     const out = applyChannelCatalogPrices(
       [
         { id: 'sku_300_7d', amount: '300.00', label: '周卡', grant_days: 7, grant_hours: 0 },
@@ -438,10 +439,11 @@ describe('GitHub legacy helpers (no longer applied in resolveOfferForUser)', () 
     const month = out.find((s) => s.id === 'sku_398_30d');
     const year = out.find((s) => s.id === 'sku_ch_t4');
     expect(hour.bid_min).toBeUndefined();
-    expect(week.bid_min).toBe('100.00');
+    expect(week.bid_min).toBeUndefined();
     expect(week.list_amount).toBeUndefined();
-    expect(month.bid_min).toBe('200.00');
-    expect(year.bid_min).toBe('300.00');
+    expect(month.bid_min).toBeUndefined();
+    expect(year.bid_min).toBeUndefined();
+    expect(year.list_amount).toBeUndefined();
     expect(year.amount).toBe('498.00');
   });
 

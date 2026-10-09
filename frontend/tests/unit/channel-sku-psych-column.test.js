@@ -5,7 +5,7 @@ import { resolve } from 'path';
 const frontend = resolve(__dirname, '../..');
 const adminHtml = readFileSync(resolve(frontend, 'admin_panel.html'), 'utf8');
 const adminCss = readFileSync(resolve(frontend, 'css/admin_panel.css'), 'utf8');
-const CACHE = '20261008-legacy-plain';
+const CACHE = '20261009-sku-label';
 
 function extractChannelSkuTable(html) {
   const start = html.indexOf('class="data-table agent-ch-sku-table"');
@@ -33,14 +33,15 @@ describe('channel 专属套餐 心理价位 column', () => {
     });
   });
 
-  it('hint says below-pay psych is C-end bid floor', () => {
-    expect(adminHtml).toMatch(/C 端出价下限/);
-    expect(adminHtml).toMatch(/低于该价会提示/);
+  it('hint says channel psych is strike above pay price', () => {
+    expect(adminHtml).toMatch(/心理价位/);
+    expect(adminHtml).toMatch(/须高于实付价/);
+    expect(adminHtml).toMatch(/留空则不显示渠道划线/);
   });
 
   it('busts admin_panel asset cache for the column', () => {
     expect(adminHtml).toContain(`admin_panel.js?v=${CACHE}`);
-    expect(adminHtml).toContain('admin_panel.css?v=20261008-legacy-plain');
+    expect(adminHtml).toContain('admin_panel.css?v=20261009-sku-label');
     expect(adminCss).toContain('.agent-ch-sku-table');
     expect(adminCss).toContain('.max-w-920');
   });

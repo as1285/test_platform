@@ -38,7 +38,7 @@ describe('系统与安全 hub TAB 按精确权限显示', () => {
   });
 
   it('admin_panel 缓存戳已更新', () => {
-    expect(html).toContain('admin_panel.js?v=20261008-legacy-plain');
+    expect(html).toContain('admin_panel.js?v=20261009-sku-label');
     expect(adminPanel).toContain("id: 'orders', label: '订单检索', page: 'payment-orders', super_only: true");
     expect(html).toContain('data-super-only="1"');
     expect(html).toContain('id="page-admin-operation-log"');

@@ -47,7 +47,7 @@ describe('管理后台注册站点分頁', () => {
     expect(adminJs).toContain("url += '&site='");
     expect(ops).toContain('function appendSiteQuery');
     expect(loader).toContain('ops-conversion.js?v=20261008-legacy-plain');
-    expect(html).toContain('admin_panel.js?v=20261009-hide-bid-cfg');
+    expect(html).toContain('admin_panel.js?v=20261009-sku-label');
   });
   it('注册列表不再用站点下拉切换，由页面固定站点', () => {
     expect(adminJs).toContain('注册站点由「新站注册 / 旧站注册」页面决定');
