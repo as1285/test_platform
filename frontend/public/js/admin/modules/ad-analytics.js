@@ -105,7 +105,19 @@
       kpi('平均停留', formatDwell(s.avg_dwell_seconds), '中位 ' + formatDwell(s.median_dwell_seconds)) +
       kpi('复制微信', s.copy_visitors, '复制率 ' + (s.copy_rate != null ? s.copy_rate + '%' : '—')) +
       kpi('填完进入', s.after_tax_views, '跳过回记录 ' + (s.after_tax_continues || 0) + ' · 填完跳转 ' + (s.after_tax_go || 0)) +
-      kpi('开通页看到', s.purchase_views, '开通页复制 ' + (s.purchase_copies || 0)) +
+      kpi(
+        '开通页曝光',
+        s.purchase_view_visitors != null ? s.purchase_view_visitors : s.purchase_views,
+        '次数 ' + (s.purchase_views || 0)
+      ) +
+      kpi(
+        '开通页复制微信',
+        s.purchase_copy_visitors != null ? s.purchase_copy_visitors : s.purchase_copies,
+        '点击 ' +
+          (s.purchase_copies || 0) +
+          ' · 点击率 ' +
+          (s.purchase_copy_rate != null ? s.purchase_copy_rate + '%' : '—')
+      ) +
       kpi(
         '退税合格',
         s.refund_eligible,
@@ -114,6 +126,56 @@
           ' · 复制率 ' +
           (s.refund_eligible_copy_rate != null ? s.refund_eligible_copy_rate + '%' : '—')
       );
+  }
+
+  function renderPurchaseCopyDaily(data) {
+    var sumEl = document.getElementById('opsAdPurchaseCopySummary');
+    var tbody = document.getElementById('opsAdPurchaseCopyDailyTbody');
+    var s = (data && data.summary) || {};
+    var period = (data && data.period && data.period.label) || '';
+    if (sumEl) {
+      sumEl.innerHTML =
+        kpi('区间点击人数', s.purchase_copy_visitors, period) +
+        kpi('区间点击次数', s.purchase_copies, '绿色复制微信按钮') +
+        kpi('区间曝光人数', s.purchase_view_visitors, '次数 ' + (s.purchase_views || 0)) +
+        kpi(
+          '区间点击率',
+          s.purchase_copy_rate != null ? s.purchase_copy_rate + '%' : '—',
+          '点击人数 / 曝光人数'
+        );
+    }
+    if (!tbody) return;
+    var list = (data && data.daily) || [];
+    var rows = list.slice().reverse();
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="6">这段时间还没有开通页复制微信点击</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows
+      .map(function (r) {
+        var rate =
+          r.purchase_copy_rate != null
+            ? r.purchase_copy_rate + '%'
+            : r.purchase_view_visitors > 0
+              ? Math.round((r.purchase_copy_visitors / r.purchase_view_visitors) * 1000) / 10 + '%'
+              : '—';
+        return (
+          '<tr><td>' +
+          esc(r.date || '—') +
+          '</td><td>' +
+          esc(String(r.purchase_views || 0)) +
+          '</td><td>' +
+          esc(String(r.purchase_view_visitors || 0)) +
+          '</td><td>' +
+          esc(String(r.purchase_copies || 0)) +
+          '</td><td>' +
+          esc(String(r.purchase_copy_visitors || 0)) +
+          '</td><td>' +
+          esc(rate) +
+          '</td></tr>'
+        );
+      })
+      .join('');
   }
 
   function renderActions(list) {
@@ -420,6 +482,7 @@
           return;
         }
         renderSummary(j.data);
+        renderPurchaseCopyDaily(j.data);
         renderActions(j.data.actions);
         renderDaily(j.data.daily);
         renderUsers(j.data);

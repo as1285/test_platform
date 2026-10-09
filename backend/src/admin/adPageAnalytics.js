@@ -225,7 +225,9 @@ async function handleAdminAdPageStats(req, res) {
             SUM(CASE WHEN e.event_key = 'track_refund_ad_after_tax_continue' THEN 1 ELSE 0 END) AS after_tax_continues,
             SUM(CASE WHEN e.event_key = 'track_refund_ad_after_tax_go' THEN 1 ELSE 0 END) AS after_tax_go,
             SUM(CASE WHEN e.event_key = 'track_purchase_refund_ad_view' THEN 1 ELSE 0 END) AS purchase_views,
-            SUM(CASE WHEN e.event_key = 'track_purchase_refund_ad_copy' THEN 1 ELSE 0 END) AS purchase_copies
+            COUNT(DISTINCT CASE WHEN e.event_key = 'track_purchase_refund_ad_view' THEN ${vis} END) AS purchase_view_visitors,
+            SUM(CASE WHEN e.event_key = 'track_purchase_refund_ad_copy' THEN 1 ELSE 0 END) AS purchase_copies,
+            COUNT(DISTINCT CASE WHEN e.event_key = 'track_purchase_refund_ad_copy' THEN ${vis} END) AS purchase_copy_visitors
          FROM ad_page_track_events e
          WHERE ${whereSql}`,
         [].concat(VIEW_KEYS, VIEW_KEYS, COPY_KEYS, COPY_KEYS, LEAVE_KEYS, LEAVE_KEYS, params)
@@ -255,6 +257,10 @@ async function handleAdminAdPageStats(req, res) {
                 SUM(CASE WHEN e.event_key IN (${inListSql(VIEW_KEYS)}) THEN 1 ELSE 0 END) AS views,
                 COUNT(DISTINCT CASE WHEN e.event_key IN (${inListSql(VIEW_KEYS)}) THEN ${vis} END) AS visitors,
                 SUM(CASE WHEN e.event_key IN (${inListSql(COPY_KEYS)}) THEN 1 ELSE 0 END) AS copies,
+                SUM(CASE WHEN e.event_key = 'track_purchase_refund_ad_view' THEN 1 ELSE 0 END) AS purchase_views,
+                COUNT(DISTINCT CASE WHEN e.event_key = 'track_purchase_refund_ad_view' THEN ${vis} END) AS purchase_view_visitors,
+                SUM(CASE WHEN e.event_key = 'track_purchase_refund_ad_copy' THEN 1 ELSE 0 END) AS purchase_copies,
+                COUNT(DISTINCT CASE WHEN e.event_key = 'track_purchase_refund_ad_copy' THEN ${vis} END) AS purchase_copy_visitors,
                 AVG(CASE WHEN e.event_key IN (${inListSql(LEAVE_KEYS)}) THEN e.dwell_seconds END) AS avg_dwell
          FROM ad_page_track_events e
          WHERE ${whereSql}
@@ -396,7 +402,14 @@ async function handleAdminAdPageStats(req, res) {
             after_tax_continues: n(sum, 'after_tax_continues'),
             after_tax_go: n(sum, 'after_tax_go'),
             purchase_views: n(sum, 'purchase_views'),
+            purchase_view_visitors: n(sum, 'purchase_view_visitors'),
             purchase_copies: n(sum, 'purchase_copies'),
+            purchase_copy_visitors: n(sum, 'purchase_copy_visitors'),
+            purchase_copy_rate: (function () {
+              var pv = n(sum, 'purchase_view_visitors');
+              var pc = n(sum, 'purchase_copy_visitors');
+              return pv > 0 ? Math.round((pc / pv) * 1000) / 10 : 0;
+            })(),
             refund_eligible: refundEligible,
             refund_eligible_copied: refundEligibleCopied,
             refund_eligible_copy_rate:
@@ -414,11 +427,18 @@ async function handleAdminAdPageStats(req, res) {
           }),
           daily: (dailyRows || []).map(function (r) {
             var avg = r.avg_dwell != null ? Math.round(Number(r.avg_dwell)) : null;
+            var pvv = n(r, 'purchase_view_visitors');
+            var pcv = n(r, 'purchase_copy_visitors');
             return {
               date: r.d ? String(r.d).slice(0, 10) : '',
               views: n(r, 'views'),
               visitors: n(r, 'visitors'),
               copies: n(r, 'copies'),
+              purchase_views: n(r, 'purchase_views'),
+              purchase_view_visitors: pvv,
+              purchase_copies: n(r, 'purchase_copies'),
+              purchase_copy_visitors: pcv,
+              purchase_copy_rate: pvv > 0 ? Math.round((pcv / pvv) * 1000) / 10 : 0,
               avg_dwell_seconds: isFinite(avg) ? avg : null
             };
           }),
