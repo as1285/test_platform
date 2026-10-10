@@ -14,7 +14,7 @@ describe('新站支付方案 A/B', () => {
     expect(html).toContain('id="btnSavePricingPlans"');
     expect(html).toContain('id="skuCatalogLegacy"');
     expect(html).toContain('class="pricing-plans-toolbar"');
-    expect(html).toContain('周卡 ¥100 / 7 天、月卡 ¥150 / 30 天、年卡 ¥200 / 365 天');
+    expect(html).toContain('默认方案现售仅周卡 ¥50 / 7 天（月卡/年卡默认下架，不含永久）');
     expect(html).toContain('套餐名称、价格和天数都可以改');
     expect(adminJs).toContain('function renderPricingPlans');
     expect(adminJs).toContain('function validatePricingPlansClient');
@@ -31,12 +31,18 @@ describe('新站支付方案 A/B', () => {
     expect(adminJs).toContain('bidCfg.hidden = !!on');
   });
 
-  it('新站支付页兜底是周卡月卡年卡', () => {
+  it('新站支付页兜底仅周卡 ¥50，不含永久', () => {
     expect(purchase).toContain('GETJOB68_FALLBACK_ALIPAY_SKUS');
-    expect(purchase).toContain("id: 'gj_a_week'");
-    expect(purchase).toContain("amount: '100.00'");
-    expect(purchase).toContain("id: 'gj_a_year'");
-    expect(purchase).toContain("amount: '200.00'");
     expect(purchase).toContain('function purchaseHostIsGetjob68');
+    const start = purchase.indexOf('GETJOB68_FALLBACK_ALIPAY_SKUS');
+    const end = purchase.indexOf('function purchaseHostIsGetjob68', start);
+    const block = purchase.slice(start, end);
+    expect(block).toContain("id: 'gj_a_week'");
+    expect(block).toContain("amount: '50.00'");
+    expect(block).toContain("label: '周卡'");
+    expect(block).not.toContain("id: 'gj_a_month'");
+    expect(block).not.toContain("id: 'gj_a_year'");
+    expect(block).not.toContain('永久');
+    expect(block).not.toContain('3650');
   });
 });

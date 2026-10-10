@@ -1,6 +1,6 @@
 /**
  * 新站 getjob68 支付方案 A/B：多方案、自定义价格/天数、按流量分流。
- * 默认方案：周卡 ¥100 / 7天、月卡 ¥150 / 30天、年卡 ¥200 / 365天。
+ * 默认方案现售仅周卡 ¥50 / 7天；月卡/年卡档位保留但默认下架（不含永久）。
  * 旧站目录价不走这里。
  */
 'use strict';
@@ -9,9 +9,9 @@ var SETTING_KEY_PRICING_PLANS_GETJOB68 = 'pricing_plans_getjob68_json';
 var PLAN_LETTERS = ['a', 'b', 'c', 'd', 'e', 'f'];
 var MAX_CUSTOM_SKUS = 5;
 var DEFAULT_PLAN_SLOTS = [
-  { slot: 'week', label: '周卡', amount: '100.00', grant_days: 7 },
-  { slot: 'month', label: '月卡', amount: '150.00', grant_days: 30 },
-  { slot: 'year', label: '年卡', amount: '200.00', grant_days: 365 }
+  { slot: 'week', label: '周卡', amount: '50.00', grant_days: 7, enabled: true },
+  { slot: 'month', label: '月卡', amount: '150.00', grant_days: 30, enabled: false },
+  { slot: 'year', label: '年卡', amount: '200.00', grant_days: 365, enabled: false }
 ];
 
 function fail(msg) {
@@ -83,7 +83,9 @@ function defaultGetjob68Plans() {
         weight: 100,
         is_default: true,
         skus: DEFAULT_PLAN_SLOTS.map(function (s) {
-          return blankSku(s.slot, s.label, s.amount, s.grant_days);
+          var row = blankSku(s.slot, s.label, s.amount, s.grant_days);
+          row.enabled = s.enabled !== false;
+          return row;
         })
       }
     ]
@@ -134,7 +136,7 @@ function normalizeDefaultSkus(rawSkus) {
       amount: amount,
       psych_amount: psych,
       grant_days: days,
-      enabled: normalizeEnabled(src.enabled, true)
+      enabled: normalizeEnabled(src.enabled, def.enabled !== false)
     };
   });
 }
@@ -364,6 +366,10 @@ function planToLiveSkus(plan) {
   for (i = 0; i < plan.skus.length; i++) {
     var row = plan.skus[i];
     if (!row || row.enabled === false) continue;
+    /* 现售货架不含永久：名称含永久或天数≥3650 跳过 */
+    var labelProbe = String(row.label || '').trim();
+    var daysProbe = parseInt(row.grant_days, 10) || 0;
+    if (labelProbe === '永久' || labelProbe.indexOf('永久') === 0 || daysProbe >= 3650) continue;
     var label = String(row.label || '套餐');
     var sku = {
       id: 'gj_' + planId + '_' + String(row.slot || 's' + i),

@@ -28,9 +28,9 @@ describe('purchase 新站隐藏心理价', () => {
     expect(purchase).toContain('/api/payments/price-bid');
   });
 
-  it('getjob68 社交证明 ticker 用当前实价，不含旧站 398 月卡', () => {
-    expect(purchase).toContain("amount: '49', sku: '一次性卡'");
-    expect(purchase).toContain("amount: '139', sku: '永久'");
+  it('getjob68 社交证明 ticker 用当前实价，仅周卡 ¥50，不含永久/旧站 398', () => {
+    expect(purchase).toContain("amount: '50', sku: '周卡'");
+    expect(purchase).not.toContain("amount: '139', sku: '永久'");
     expect(purchase).toContain('新站用当前实价 SKU，勿写旧站 398');
     const tickerBlock = purchase.slice(
       purchase.indexOf('initPurchasePayTicker'),
@@ -43,8 +43,10 @@ describe('purchase 新站隐藏心理价', () => {
     );
     expect(m).toBeTruthy();
     const getjobPays = m[1];
-    expect(getjobPays).toContain("amount: '49'");
-    expect(getjobPays).toContain("amount: '139'");
+    expect(getjobPays).toContain("amount: '50'");
+    expect(getjobPays).toContain("sku: '周卡'");
+    expect(getjobPays).not.toContain("amount: '139'");
+    expect(getjobPays).not.toContain("sku: '永久'");
     expect(getjobPays).not.toContain("amount: '398'");
     expect(getjobPays).not.toContain("sku: '月卡'");
   });

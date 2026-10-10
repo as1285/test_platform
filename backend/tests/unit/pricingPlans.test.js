@@ -10,19 +10,31 @@ const {
 } = require('../../src/legacy/pricingPlans');
 
 describe('getjob68 pricing plans', () => {
-  it('defaults to week 100 / month 150 / year 200', () => {
+  it('defaults to live week 50 only; month/year shelves disabled, no permanent', () => {
     const doc = defaultPlans();
     expect(doc.plans).toHaveLength(1);
     expect(doc.plans[0].id).toBe('a');
     expect(doc.plans[0].weight).toBe(100);
-    expect(doc.plans[0].skus.map((s) => [s.label, s.amount, s.grant_days])).toEqual([
-      ['周卡', '100.00', 7],
-      ['月卡', '150.00', 30],
-      ['年卡', '200.00', 365]
+    expect(doc.plans[0].skus.map((s) => [s.label, s.amount, s.grant_days, s.enabled])).toEqual([
+      ['周卡', '50.00', 7, true],
+      ['月卡', '150.00', 30, false],
+      ['年卡', '200.00', 365, false]
     ]);
     const live = toSkus(doc.plans[0]);
-    expect(live.map((s) => s.id)).toEqual(['gj_a_week', 'gj_a_month', 'gj_a_year']);
-    expect(live.map((s) => s.amount)).toEqual(['100.00', '150.00', '200.00']);
+    expect(live.map((s) => s.id)).toEqual(['gj_a_week']);
+    expect(live.map((s) => s.amount)).toEqual(['50.00']);
+    expect(live.every((s) => s.grant_kind === 'trial')).toBe(true);
+  });
+
+  it('planToLiveSkus skips permanent-looking rows even if enabled', () => {
+    const live = toSkus({
+      id: 'a',
+      skus: [
+        { slot: 'week', label: '周卡', amount: '50.00', grant_days: 7, enabled: true },
+        { slot: 'month', label: '永久', amount: '199.00', grant_days: 3650, enabled: true }
+      ]
+    });
+    expect(live.map((s) => s.id)).toEqual(['gj_a_week']);
   });
 
   it('accepts custom labels on default plan and a custom plan with its own price and days', () => {
@@ -161,7 +173,7 @@ describe('getjob68 offer assignment', () => {
     const api = apiWith(store);
     const offer = await api.resolveOfferForUser('bob', { site: 'getjob68' });
     expect(offer.pricing_plan_id).toBe('a');
-    expect(offer.skus.map((s) => s.amount)).toEqual(['100.00', '150.00', '200.00']);
+    expect(offer.skus.map((s) => s.amount)).toEqual(['50.00']);
     expect(store.sticky.bob.source).toBe('allocation');
     expect(store.sticky.bob.variant).toBe('a');
   });

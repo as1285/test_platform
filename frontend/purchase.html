@@ -3158,23 +3158,11 @@
     var GETJOB68_FALLBACK_ALIPAY_SKUS = [
         {
             id: 'gj_a_week',
-            amount: '49.00',
-            list_amount: '99.00',
-            label: '一次性卡（一天）',
-            subject: '激活码·一次性卡（一天）',
+            amount: '50.00',
+            label: '周卡',
+            subject: '激活码·周卡',
             grant_kind: 'trial',
-            grant_days: 1,
-            grant_hours: 0,
-            grant_minutes: 0
-        },
-        {
-            id: 'gj_a_month',
-            amount: '139.00',
-            list_amount: '199.00',
-            label: '永久',
-            subject: '激活码·永久',
-            grant_kind: 'trial',
-            grant_days: 3650,
+            grant_days: 7,
             grant_hours: 0,
             grant_minutes: 0
         }
@@ -4922,12 +4910,12 @@
         /* 条目少：顶部轮播「谁支付了多少买了什么套餐」；新站用当前实价 SKU，勿写旧站 398 */
         var PAYS = purchaseHostIsGetjob68()
             ? [
-                  { name: '张女士', amount: '49', sku: '一次性卡' },
-                  { name: '陈先生', amount: '139', sku: '永久' },
-                  { name: '刘女士', amount: '49', sku: '一次性卡' },
-                  { name: '王先生', amount: '139', sku: '永久' },
-                  { name: '赵女士', amount: '49', sku: '一次性卡' },
-                  { name: '李先生', amount: '139', sku: '永久' }
+                  { name: '张女士', amount: '50', sku: '周卡' },
+                  { name: '陈先生', amount: '50', sku: '周卡' },
+                  { name: '刘女士', amount: '50', sku: '周卡' },
+                  { name: '王先生', amount: '50', sku: '周卡' },
+                  { name: '赵女士', amount: '50', sku: '周卡' },
+                  { name: '李先生', amount: '50', sku: '周卡' }
               ]
             : [
                   { name: '张女士', amount: '300', sku: '周卡' },

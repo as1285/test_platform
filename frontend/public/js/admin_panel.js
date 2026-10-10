@@ -9535,9 +9535,9 @@
                     weight: 100,
                     is_default: true,
                     skus: [
-                        { slot: 'week', label: '周卡', amount: '100', psych_amount: '', grant_days: 7, enabled: true },
-                        { slot: 'month', label: '月卡', amount: '150', psych_amount: '', grant_days: 30, enabled: true },
-                        { slot: 'year', label: '年卡', amount: '200', psych_amount: '', grant_days: 365, enabled: true }
+                        { slot: 'week', label: '周卡', amount: '50', psych_amount: '', grant_days: 7, enabled: true },
+                        { slot: 'month', label: '月卡', amount: '150', psych_amount: '', grant_days: 30, enabled: false },
+                        { slot: 'year', label: '年卡', amount: '200', psych_amount: '', grant_days: 365, enabled: false }
                     ]
                 }
             ];
