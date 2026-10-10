@@ -5009,7 +5009,7 @@
           'html.app-mine-black-status body.page-mine::before{content:none !important;display:none !important;}' +
           'html.app-android-redmi-k70.app-android-client.app-top-safe-shell:not(.app-android-redmi-k70-ultra) body.page-mine::before{display:none !important;content:none !important;}' +
           'html.app-mine-black-status body.page-mine .mine-activate-btn,' +
-          'html.app-android-redmi-k70.app-android-client.app-top-safe-shell:not(.app-android-redmi-k70-ultra) body.page-mine .mine-activate-btn{top:calc(10px + 40px) !important;right:16px !important;z-index:500 !important;}' +
+          'html.app-android-redmi-k70.app-android-client.app-top-safe-shell:not(.app-android-redmi-k70-ultra) body.page-mine .mine-activate-btn{top:calc(10px + 40px) !important;right:16px !important;z-index:10060 !important;}' +
           'html.app-mine-black-status body.page-mine .mine-e1-canvas,' +
           'html.app-android-redmi-k70.app-android-client.app-top-safe-shell:not(.app-android-redmi-k70-ultra) body.page-mine .mine-e1-canvas,' +
           'html.app-android-redmi-k70.app-android-client.app-cordova-shell:not(.app-android-redmi-k70-ultra) body.page-mine .mine-e1-canvas{padding-top:40px !important;background-color:transparent !important;background-image:none !important;}' +
@@ -7915,7 +7915,7 @@
           'html.app-cordova-xiaomi-m2102 body.page-mine .user-id{font-size:10px !important;line-height:1.25 !important;word-break:normal !important;white-space:nowrap !important;flex-wrap:nowrap !important;gap:4px !important;}' +
           'html.app-cordova-xiaomi-m2102 body.page-mine #userTaxIdText{white-space:nowrap !important;letter-spacing:-0.02em !important;}' +
           'html.app-cordova-xiaomi-m2102 body.page-mine .personal-info-btn{font-size:10.5px !important;padding:4px 8px 4px 10px !important;}' +
-          'html.app-cordova-xiaomi-m2102.app-top-safe-shell body.page-mine .mine-activate-btn{position:fixed !important;top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-shell-statusbar-top,48px)) !important;right:18px !important;z-index:500 !important;}' +
+          'html.app-cordova-xiaomi-m2102.app-top-safe-shell body.page-mine .mine-activate-btn{position:fixed !important;top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-shell-statusbar-top,48px)) !important;right:18px !important;z-index:10060 !important;}' +
           'html.app-cordova-xiaomi-m2102.app-top-safe-shell body.page-mine .mine-fill-data-btn{position:fixed !important;top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-shell-statusbar-top,48px) + var(--mine-fill-data-gap,44px)) !important;left:18px !important;right:auto !important;z-index:10060 !important;}' +
           /* 红米 Note 13 Pro：缩小个人信息按钮与税号字号，右侧留白避免挡住眼睛 */
           'html.app-android-redmi-note13-pro body.page-mine .user-card{padding:12px 88px 14px 14px !important;}' +
@@ -7930,9 +7930,9 @@
           'html.app-android-redmi-note13-pro body.page-mine .mine-ov-tax{top:calc(430 * var(--mine-rpx)) !important;}' +
           'html.app-android-redmi-note13-pro body.page-mine .mine-e1-canvas,html.app-android-redmi-note13-pro.app-android-mine-e1-sm body.page-mine .mine-e1-canvas{background-size:100% auto !important;background-position:top center !important;height:auto !important;max-height:none !important;aspect-ratio:750 / 1242 !important;overflow:hidden !important;}' +
           'html.app-android-redmi-note13-pro body.page-mine .mine-e1-layer,html.app-android-redmi-note13-pro.app-android-mine-e1-sm body.page-mine .mine-e1-layer{top:0 !important;padding-bottom:calc(1242 / 750 * 100%) !important;}' +
-          'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .mine-activate-btn{position:fixed !important;top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-cordova-statusbar-chrome,40px)) !important;right:18px !important;z-index:500 !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .mine-activate-btn{position:fixed !important;top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-cordova-statusbar-chrome,40px)) !important;right:18px !important;z-index:10060 !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .mine-fill-data-btn{position:fixed !important;top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-cordova-statusbar-chrome,40px) + var(--mine-fill-data-gap,44px)) !important;left:18px !important;right:auto !important;z-index:10060 !important;}' +
-          'html.app-cordova-xiaomi-23127.app-top-safe-shell .header-activate-btn{position:fixed !important;top:calc(10px + var(--app-cordova-statusbar-chrome,40px)) !important;right:12px !important;z-index:500 !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell .header-activate-btn{position:fixed !important;top:calc(10px + var(--app-cordova-statusbar-chrome,40px)) !important;right:12px !important;z-index:10060 !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell .back-link{top:calc(10px + var(--app-cordova-statusbar-chrome,40px)) !important;}' +
           /* 收入纳税明细：小米 14 页内黑条 + 顶距，标题避开时间/灵动岛 */
           'html.app-android-xiaomi-14.app-top-safe-shell:not(.app-android-xiaomi-14pro) body.page-shuiming-result .page-root,html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-shuiming-result .page-root{--safe-top:var(--app-shell-statusbar-top,48px) !important;--android-status-inset:48px !important;}' +
@@ -11395,6 +11395,11 @@
       localStorage.removeItem('gender');
       localStorage.removeItem('account_active');
       localStorage.removeItem('is_test_account');
+      try {
+        sessionStorage.removeItem('cg_profile_summary_v2');
+        sessionStorage.removeItem('mine_summary_cache_v2');
+      } catch (eSs) {}
+      invalidateAuthGetShortCache();
       localStorage.removeItem('landing_guest_v1');
       localStorage.removeItem('wm_cache');
       localStorage.removeItem('wm_cache_time');
@@ -12163,7 +12168,7 @@
     function appendCg() {
       if (document.querySelector('script[data-conversion-guide]')) return;
       var s = document.createElement('script');
-      s.src = '/js/conversion-guide.js?v=20261010-smoke-hoist-k70';
+      s.src = '/js/conversion-guide.js?v=20261010-mine-activate';
       s.setAttribute('data-conversion-guide', '1');
       s.async = true;
       s.defer = true;

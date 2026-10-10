@@ -20,6 +20,12 @@
                     document.documentElement.classList.add('cg-screenshot-mode');
                 }
             } catch (eShot) {}
+            /* 只有明确已开通才藏右上角「激活」。未写入或未开通时首屏就要看见 */
+            try {
+                if (localStorage.getItem('account_active') === '1') {
+                    document.documentElement.classList.add('mine-known-active');
+                }
+            } catch (eAct) {}
             try {
                 var tok = String(localStorage.getItem('token') || '').trim();
                 if (!tok) {
@@ -697,7 +703,7 @@
         })();
     </script>
     <script src="/js/auth-boot.js?v=20261010-k90promax-layout"></script>
-    <script src="/js/auth.js?v=20261010-k90promax-layout" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20261010-mine-activate" defer fetchpriority="low"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -841,12 +847,13 @@
                 var(--mine-activate-btn-top-offset, 10px) + var(--mine-top-bleed, 0px)
             );
             min-width: 72px;
-            display: none;
+            display: inline-flex;
         }
         .mine-activate-btn:active {
             opacity: 0.9;
             transform: scale(0.98);
         }
+        html.mine-known-active .mine-activate-btn,
         body.page-mine.mine-account-active .mine-activate-btn {
             display: none !important;
         }
@@ -4520,6 +4527,9 @@
                         btn.setAttribute('aria-hidden', 'false');
                     }
                 }
+                try {
+                    document.documentElement.classList.toggle('mine-known-active', active);
+                } catch (eCls) {}
                 if (document.body) {
                     document.body.classList.toggle('mine-account-active', active);
                 }
@@ -5247,6 +5257,7 @@
                 loadUserInfo();
             } else {
                 updateCountsFromStorage();
+                updateMineActivateButton(null);
             }
             syncMineProfileEditGate();
             installLegacyActivatePromptShim();

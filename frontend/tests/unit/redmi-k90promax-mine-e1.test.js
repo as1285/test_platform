@@ -64,7 +64,7 @@ describe('Redmi K90 Pro Max mine e1 layout lock', () => {
       /mine-e1-pill-family\{[^}]*left:calc\(135 \* var\(--mine-rpx\)\)/
     );
     expect(mine).toMatch(/auth-boot\.js\?v=20261010-k90promax-layout/);
-    expect(mine).toMatch(/auth\.js\?v=20261010-k90promax-layout/);
+    expect(mine).toMatch(/auth\.js\?v=20261010-mine-activate/);
     expect(boot).toContain('25102RKBEC|25102RK69C|25102PCBEG');
     expect(boot).toContain('app-android-redmi-k90promax');
     expect(boot).toContain("cl.add('app-android-mine-e1-plainimg')");

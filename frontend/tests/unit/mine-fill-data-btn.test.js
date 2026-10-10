@@ -43,7 +43,7 @@ describe('我的页激活按钮下方填写数据', () => {
     expect(guideSrc).toContain('toggleMineFillDataBtn()');
     expect(guideSrc).toContain('function bindMineFillDataBtn');
     expect(guideSrc).toContain('goMineFillData()');
-    expect(auth).toContain('conversion-guide.js?v=20261010-smoke-hoist-k70');
+    expect(auth).toContain('conversion-guide.js?v=20261010-mine-activate');
     expect(auth).toContain('var(--mine-fill-data-gap,44px)');
     expect(mine).toContain('left: 16px;');
     expect(mine).toContain('right: auto;');

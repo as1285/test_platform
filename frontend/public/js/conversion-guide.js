@@ -260,7 +260,10 @@
 
   function isAccountActive() {
     try {
-      if (localStorage.getItem('account_active') === '1') return true;
+      var flag = localStorage.getItem('account_active');
+      if (flag === '1') return true;
+      /* 明确未开通时不要再看会话缓存，否则换号后右上角「激活」会被藏掉 */
+      if (flag === '0') return false;
     } catch (e) {}
     try {
       var cached = readProfileCache();
@@ -611,9 +614,15 @@
     if (u.account_active !== undefined && u.account_active !== null) {
       var active = isAccountActiveFlag(u.account_active);
       var alreadyActive = false;
+      var localFlag = '';
       try {
-        alreadyActive = localStorage.getItem('account_active') === '1';
+        localFlag = localStorage.getItem('account_active') || '';
+        alreadyActive = localFlag === '1';
       } catch (eLs) {}
+      /* 换号后的旧缓存不能把未开通写成已开通，否则「我的」右上角激活会被藏掉 */
+      if (opts.fromCache && active && localFlag === '0') {
+        active = false;
+      }
       /* 会话缓存不得把已开通打回未开通，否则明细页会闪开通卡 */
       if (active) {
         try {
@@ -677,12 +686,27 @@
     removeMineConversionUi();
   }
 
+  function currentProfileUserId() {
+    try {
+      return String(
+        localStorage.getItem('user_id') ||
+          localStorage.getItem('userName') ||
+          localStorage.getItem('username') ||
+          ''
+      );
+    } catch (e) {
+      return '';
+    }
+  }
+
   function readProfileCache() {
     try {
       var raw = sessionStorage.getItem(PROFILE_CACHE_KEY);
       if (!raw) return null;
       var o = JSON.parse(raw);
       if (!o || !o.t || Date.now() - o.t > PROFILE_CACHE_TTL_MS) return null;
+      var uid = currentProfileUserId();
+      if (uid && String(o.userId || '') !== uid) return null;
       return o;
     } catch (e) {
       return null;
@@ -696,6 +720,7 @@
         PROFILE_CACHE_KEY,
         JSON.stringify({
           t: Date.now(),
+          userId: currentProfileUserId(),
           account_active: u.account_active,
           tax_record_count: u.tax_record_count,
           employer_count: u.employer_count,
@@ -724,10 +749,14 @@
       } else {
         applyProfileSummary(cached, { fromCache: true });
         var localAct = false;
+        var localInactive = false;
         try {
           localAct = localStorage.getItem('account_active') === '1';
+          localInactive = localStorage.getItem('account_active') === '0';
         } catch (eAct) {}
         if (localAct && !isAccountActiveFlag(cached.account_active)) {
+          opts = Object.assign({}, opts, { force: true });
+        } else if (localInactive && isAccountActiveFlag(cached.account_active)) {
           opts = Object.assign({}, opts, { force: true });
         } else {
           return Promise.resolve();

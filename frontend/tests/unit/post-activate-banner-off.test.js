@@ -17,6 +17,6 @@ describe('开通后绿色顶栏提示已下线', () => {
   });
 
   it('auth 注入 conversion-guide 带上缓存戳', () => {
-    expect(auth).toContain('conversion-guide.js?v=20261010-smoke-hoist-k70');
+    expect(auth).toContain('conversion-guide.js?v=20261010-mine-activate');
   });
 });

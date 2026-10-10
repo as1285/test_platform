@@ -36,7 +36,7 @@ describe('product no longer diverts inactive users to refund ads', () => {
     expect(guideSrc).toContain('收入纳税明细不再插入「示例填写个税」空态 CTA');
     expect(guideSrc).toContain('function hideShuimingTaxFillCard');
     expect(guideSrc).toContain('去添加记录');
-    expect(authSrc).toContain('conversion-guide.js?v=20261010-smoke-hoist-k70');
+    expect(authSrc).toContain('conversion-guide.js?v=20261010-mine-activate');
     expect(guideSrc).toContain('function maybeShowActivationNudge() {}');
     expect(guideSrc).toContain('未激活引导弹窗已下线');
     expect(guideSrc).not.toContain('track_activation_nudge_show');
