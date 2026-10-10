@@ -13,10 +13,10 @@ describe('admin email console', () => {
     expect(html).toContain('id="userEmailSendAudience"');
     expect(html).toContain('id="userEmailSendPreview"');
     expect(html).toContain('id="userEmailHalf"');
-    /* bounce 筛选项已从 HTML 撤下；模块仍保留 bounces API 以兼容旧数据 */
-    expect(html).not.toContain('id="userEmailBounce"');
+    expect(html).toContain('id="userEmailBounce"');
+    expect(html).toContain('id="btnUserEmailBounceSync"');
     expect(html).toContain('退税测算邮件已停发');
-    expect(loader).toContain('user-emails.js?v=20260910-week-fill');
+    expect(loader).toContain('user-emails.js?v=20260911-bounces');
     expect(src).toContain('function loadOverview');
     expect(src).toContain('本周填写率');
     expect(src).toContain('function audienceLabel');

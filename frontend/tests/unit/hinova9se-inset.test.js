@@ -46,12 +46,12 @@ describe('Hi nova 9 SE status-bar inset', () => {
     const end = auth.indexOf('function isInsideTabShellEmbed');
     const fn = auth.slice(start, end);
     expect(fn).not.toContain('ensureAndroidFixedBlackStatusPad');
-    expect(fn).toContain('applyAndroidJuly20SystemBar');
+    expect(fn).toContain("style: 'dark'");
     expect(fn).toContain('immersiveTopInsetClient');
   });
 
   it('mine page keeps e1 layout lock without unified 40px black status pad', () => {
-    expect(auth).toMatch(/acepro \|\| reno10 \|\| hinova9se \|\| xiaomi13ultra/);
+    expect(auth).toMatch(/plainImg \|\| acepro \|\| hinova9se \|\| xiaomi13ultra/);
     expect(auth).toContain("? 'important'");
     expect(auth).toContain('function hinova9SeMineE1LockCss');
     expect(auth).toContain('function pinHinova9SeMineE1Layout');

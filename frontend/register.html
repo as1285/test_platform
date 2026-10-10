@@ -21,7 +21,7 @@
     <script src="/js/tab-shell-escape.js?v=20260906-login-top"></script>
     <script src="/js/auth-boot.js?v=20260902-adopt"></script>
     <script src="/js/email-suffix.js?v=20260907-email-sfx" data-email-suffix="1"></script>
-    <script src="/js/auth.js?v=20261010-smoke-hoist-k70" defer></script>
+    <script src="/js/auth.js?v=20260907-email-sfx" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 创建账号</title>
     <style>
@@ -389,7 +389,7 @@
                             <button type="button" class="email-suffix-chip" data-email-suffix="@163.com">@163.com</button>
                         </div>
                         <div class="field-msg" id="emailMsg"></div>
-                        <p class="soft-tip" id="emailSoftTip" style="margin-top:6px;">填写邮箱，方便更好的服务</p>
+                        <p class="soft-tip" style="margin-top:6px;">开通成功、专属价会发到这个邮箱。</p>
                     </div>
                     <div class="field source-block" id="registerSourceBlock">
                         <label for="registerSourceChannel">从哪了解到的 <span class="req">*</span></label>
@@ -691,29 +691,6 @@
             return true;
         }
 
-        function isGetjob68RegisterHost() {
-            var h = '';
-            try {
-                h = String((window.location && window.location.hostname) || '')
-                    .trim()
-                    .toLowerCase();
-            } catch (eHost) {
-                return false;
-            }
-            return h === 'getjob68.club' || h === 'www.getjob68.club' || /(^|\.)getjob68\.club$/.test(h);
-        }
-
-        function applyGetjob68EmailRequired() {
-            if (!isGetjob68RegisterHost()) return;
-            var lab = document.querySelector('label[for="email"]');
-            if (lab) lab.innerHTML = '电子邮箱 <span class="req">*</span>';
-            var emailInput = document.getElementById('email');
-            if (emailInput) {
-                emailInput.required = true;
-                emailInput.setAttribute('aria-required', 'true');
-            }
-        }
-
         function submitRegister() {
             var usernameEl = document.getElementById('username');
             var passwordEl = document.getElementById('password');
@@ -738,17 +715,8 @@
                 if (!password) markInvalid(passwordEl, true);
                 return;
             }
-            var emailRequired = isGetjob68RegisterHost();
-            if (emailRequired && !email) {
-                showErr('请填写邮箱，填写后才能继续注册');
-                if (emailEl) markInvalid(emailEl, true);
-                setFieldMsg('emailMsg', '填写邮箱，方便更好的服务', false);
-                return;
-            }
             if (email && !isValidRegisterEmail(email)) {
-                showErr(emailRequired
-                    ? '请填写有效邮箱，例如 name@qq.com'
-                    : '邮箱格式不正确，请填写常用邮箱（如 QQ/163），也可先不填');
+                showErr('邮箱格式不正确，请填写常用邮箱（如 QQ/163），也可先不填');
                 if (emailEl) markInvalid(emailEl, true);
                 setFieldMsg('emailMsg', '请填写有效邮箱，例如 name@qq.com（勿乱填）', false);
                 return;
@@ -989,7 +957,6 @@
                 });
         }
 
-        applyGetjob68EmailRequired();
         document.getElementById('regForm').addEventListener('submit', function (e) {
             e.preventDefault();
             submitRegister();

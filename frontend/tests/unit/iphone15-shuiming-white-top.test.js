@@ -64,7 +64,7 @@ describe('iPhone 15 收入纳税明细实底白顶栏', () => {
   it('结果页首屏打标并铺实底白，避免毛玻璃透出列表', () => {
     expect(shuimingResult).toContain('data-iphone15-result-firstpaint');
     expect(shuimingResult).toContain("classList.add('app-ios-iphone15')");
-    expect(shuimingResult).toContain('auth.js?v=20261010-smoke-hoist-k70');
+    expect(shuimingResult).toContain('auth.js?v=20261009-16pm-title-seam-2');
     expect(shuimingResult).toContain(
       'html.app-ios-iphone15.app-top-safe-shell:not(.app-ios-status-outer) body.page-shuiming-result .top-fixed .header'
     );
@@ -150,8 +150,7 @@ describe('iPhone 15 收入纳税明细实底白顶栏', () => {
     expect(auth).toContain('function isIosUnifiedFlowChrome');
     expect(auth).toContain('html.app-ios-unified-chrome body.page-shuiming-result .list,html.app-ios-liquid-glass body.page-shuiming-result .list,html.app-ios-unified-chrome.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .list{padding-top:0 !important;margin-top:0 !important;');
     expect(auth).toContain('.shuiming-chrome-shield{display:none !important');
-    expect(auth).toContain('unified-chrome 也要 hoist');
-    expect(auth).toContain("classList.contains('app-ios-header-hoisted')) return");
+    expect(auth).toContain("classList.contains('app-ios-unified-chrome')) return");
     expect(auth).toContain("classList.contains('app-ios-liquid-glass')) return true");
     expect(shuimingResult).toContain('id="iosStickyTint"');
     expect(shuimingResult).toContain('header.top≈0 是稳定态');
@@ -187,7 +186,7 @@ describe('iPhone 15 收入纳税明细实底白顶栏', () => {
   it('筛选页首屏也打 15 标并铺白顶', () => {
     expect(shuiming).toContain('is15LikeSm');
     expect(shuiming).toContain("classList.add('app-ios-iphone15')");
-    expect(shuiming).toContain('auth.js?v=20261010-smoke-hoist-k70');
+    expect(shuiming).toContain('auth.js?v=20261009-honor-oxf-an10');
     expect(shuiming).toContain(
       'html.app-ios-iphone15.app-top-safe-shell:not(.app-ios-status-outer) body.page-shuiming > .header'
     );

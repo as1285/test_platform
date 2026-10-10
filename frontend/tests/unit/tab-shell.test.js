@@ -21,9 +21,9 @@ describe('tab shell (bottom nav cache)', () => {
     expect(tabShell).toContain('warmOtherTabs');
     expect(tabShell).toContain('isAndroidLike');
     expect(tabShell).toContain('baseDelay');
-    expect(tabShell).toContain('android ? 2800 : 600');
-    expect(tabShell).toContain('android ? 900 : 500');
-    expect(tabShell).toContain('isAndroidLike() ? 2200 : 1200');
+    expect(tabShell).toContain('android ? 6500 : 600');
+    expect(tabShell).toContain('android ? 1800 : 500');
+    expect(tabShell).toContain('isAndroidLike() ? 5500 : 1200');
   });
 
   it('tab-shell hides bottom nav on tax sub-pages in iframe', () => {

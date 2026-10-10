@@ -11,7 +11,7 @@
     <script src="/js/tab-shell-escape.js?v=20260907-pay-top2"></script>
     <script src="/js/auth-boot.js?v=20260923-bs4s-restore"></script>
     <script src="/js/email-suffix.js?v=20260907-email-sfx" data-email-suffix="1"></script>
-    <script src="/js/auth.js?v=20261010-smoke-hoist-k70" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20261007-expired-repurchase" defer fetchpriority="low"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 开通演示</title>
     <style>
@@ -1505,7 +1505,7 @@
         <div class="purchase-email-mask" id="purchaseEmailMask" hidden>
             <div class="purchase-email-sheet" role="dialog" aria-modal="true" aria-labelledby="purchaseEmailTitle">
                 <div class="purchase-email-title" id="purchaseEmailTitle">开通回执发到邮箱</div>
-                <p class="purchase-email-sub" id="purchaseEmailSub">填写邮箱，方便更好的服务</p>
+                <p class="purchase-email-sub" id="purchaseEmailSub">付款成功、专属价会发到这个邮箱。先填再付最省事；也可以先付款。</p>
                 <input type="email" id="purchaseEmailInput" maxlength="255" placeholder="填 QQ 号或用户名，再点下方后缀" autocomplete="email" inputmode="email">
                 <div class="email-suffix-chips" id="purchaseEmailSuffixChips">
                     <button type="button" class="email-suffix-chip" data-email-suffix="@qq.com">@qq.com</button>
@@ -2722,7 +2722,7 @@
         var ctaText = '体验价 · 打开支付宝付款';
         if (discounted) {
             ctaText = '优惠价 ¥' + discounted + ' · 打开支付宝付款';
-        } else if (selected && selected.psych_offer && !purchaseHostIsGetjob68()) {
+        } else if (selected && selected.psych_offer) {
             ctaText = '心理价 ¥' + selected.amount + ' · 打开支付宝付款';
         } else if (selected) {
             ctaText = '体验价 ¥' + selected.amount + ' · 打开支付宝付款';
@@ -3419,7 +3419,7 @@
                     priceHtml = '¥' + String(s.amount || '');
                 }
                 var badge = '';
-                if (s.psych_offer && !purchaseHostIsGetjob68()) {
+                if (s.psych_offer) {
                     badge = '<span class="pricing-sku-badge">心理价</span>';
                 } else if (s.id === cheapestId) {
                     badge = '<span class="pricing-sku-badge">体验价</span>';
@@ -3572,11 +3572,6 @@
     }
 
     function refreshBackPromptEligible() {
-        /* 新站 getjob68：不开心理价出价 / 返回拦截 */
-        if (purchaseHostIsGetjob68()) {
-            priceBidUi.backPromptEligible = false;
-            return false;
-        }
         var visits = Math.max(Number(priceBidUi.visitCount) || 0, getLocalPurchaseVisits());
         var within =
             !!priceBidUi.within48h ||
@@ -3621,8 +3616,7 @@
         var btn = document.getElementById('btnPriceBidOpen');
         var state = document.getElementById('priceBidStateText');
         if (!teaser) return;
-        /* 新站 getjob68 隐藏心理价出价入口；旧站 lkj 仍按 enabled 展示 */
-        if (hideAll || !priceBidUi.enabled || purchaseHostIsGetjob68()) {
+        if (hideAll || !priceBidUi.enabled) {
             teaser.hidden = true;
             return;
         }
@@ -3653,8 +3647,7 @@
     }
 
     function syncPriceBidEntry(hideAll) {
-        if (hideAll || purchaseHostIsGetjob68()) {
-            priceBidUi.enabled = false;
+        if (hideAll) {
             renderPriceBidEntry(true);
             return;
         }
@@ -3680,7 +3673,6 @@
     }
 
     function canOpenPriceBidSheet() {
-        if (purchaseHostIsGetjob68()) return false;
         return !!priceBidUi.enabled && priceBidUi.status !== 'accepted';
     }
 
@@ -3713,8 +3705,6 @@
 
         function openBidSheet(opts) {
             opts = opts || {};
-            /* 新站不开放心理价出价（含离开页调研「偏贵」接力） */
-            if (purchaseHostIsGetjob68()) return;
             if (!canOpenPriceBidSheet() && opts.from !== 'price_survey_expensive') {
                 if (priceBidUi.status === 'accepted') {
                     showToast('你的心理价已生效，可直接按新价开通');
@@ -4298,7 +4288,6 @@
 
     function shouldCollectPurchaseEmail() {
         if (purchaseHasEmail === true) return false;
-        if (isGetjob68PurchaseHost()) return purchaseHasEmail !== true;
         if (purchaseEmailSkipped()) return false;
         return purchaseHasEmail === false;
     }
@@ -4400,12 +4389,7 @@
             });
         }
         if (skipBtn) {
-            if (isGetjob68PurchaseHost()) {
-                skipBtn.hidden = true;
-                skipBtn.style.display = 'none';
-            }
             skipBtn.addEventListener('click', function () {
-                if (isGetjob68PurchaseHost()) return;
                 try {
                     sessionStorage.setItem(PURCHASE_EMAIL_SKIP_KEY, '1');
                 } catch (eSk) {}

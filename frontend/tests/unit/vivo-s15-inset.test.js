@@ -52,17 +52,29 @@ describe('vivo S15 status-bar inset', () => {
   });
 
   it('does not force black status bar on S15', () => {
-    expect(boot).toContain('V2203A|V2203T|PD2203');
-    expect(auth).toMatch(/isVivoS15Client|V2203A/);
-    /* mine 可将 S15 划入 underlap-black；白顶纳税页仍走沉浸白顶路径 */
-    expect(auth).toContain('app-android-immersive-white-top');
+    const start = auth.indexOf('function applyImmersiveBlueStatusBar');
+    const end = auth.indexOf('function applyMinePageChrome');
+    const fn = auth.slice(start, end);
+    expect(fn).not.toContain('isVivoS15Client()');
+    expect(fn).not.toContain("classList.contains('app-android-vivo-s15')");
+    expect(boot).not.toContain('V2203A|V2203T|PD2203');
+    expect(pages.mine).not.toContain('if (s15) root.classList.add');
+    expect(pages.shouye).not.toContain('vivoS15BlackBarFirstPaint');
+    expect(pages.shouye).not.toContain('background-color: #000 !important');
   });
 
   it('first-paints tax pages so 返回 is not under the system clock', () => {
-    expect(pages.shuimingResult).toMatch(/auth-boot\.js\?v=2026[\w-]+/);
-    expect(pages.shuimingResult).toMatch(/auth\.js\?v=2026[\w-]+/);
-    expect(pages.shuiming).toMatch(/auth-boot\.js\?v=2026[\w-]+/);
-    /* 机型专属 data-vivos15-* 首绘已并入通用白顶/沉浸首绘 */
-    expect(pages.shuimingResult.length).toBeGreaterThan(1000);
+    Object.entries(pages).forEach(([name, html]) => {
+      expect(FIRST_PAINT_RE.test(html), name).toBe(true);
+      expect(html, name).toContain('app-android-vivo-s15');
+      expect(html, name).toContain('app-android-immersive-white-top');
+    });
+    expect(pages.shuimingResult).toContain('data-vivos15-result-firstpaint');
+    expect(pages.shuimingResult).toContain('auth.js?v=20261009-16pm-title-seam-2');
+    expect(pages.shuiming).toContain('auth.js?v=20261009-honor-oxf-an10');
+    expect(pages.xiangqing).toContain('auth.js?v=20261009-honor-oxf-an10');
+    expect(pages.shouye).toContain('auth.js?v=20261009-honor-oxf-an10');
+    expect(pages.mine).toContain('auth.js?v=20261009-honor-oxf-an10');
+    expect(pages.mine).toContain('auth-boot.js?v=20260919-bs4s-restore');
   });
 });

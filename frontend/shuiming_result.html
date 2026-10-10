@@ -105,13 +105,6 @@
                         }
                     } catch (eChromeTop) {}
                     /* A58（PHJ110）ColorOS 外置状态栏：WebView 已在系统栏下，40px 垫会空出白带 */
-                    if (/V2285A/i.test(u)) {
-                        document.documentElement.classList.add('app-android-vivo-v2285a');
-                        document.documentElement.classList.add('app-android-immersive-white-top');
-                        document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
-                        document.documentElement.style.setProperty('--safe-top', '40px');
-                        document.documentElement.style.setProperty('--shuiming-chrome-top', '40px');
-                    }
                     if (/PHJ110|OPPO\s*A58|A58\s*5G/i.test(u)) {
                         document.documentElement.classList.add('app-android-oppo-a58');
                         document.documentElement.classList.add('app-android-white-page-outer');
@@ -123,12 +116,6 @@
                 }
                 if (/2410DPN6CC|24101PNB7C|Xiaomi\s*15\s*Pro|Mi\s*15\s*Pro/i.test(u)) {
                     document.documentElement.classList.add('app-android-xiaomi-15pro');
-                }
-                if (/25019PNF3|Xiaomi\s*15\s*Ultra|Mi\s*15\s*Ultra/i.test(u)) {
-                    document.documentElement.classList.add('app-android-xiaomi-15ultra');
-                    document.documentElement.classList.add('app-android-immersive-white-top');
-                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
-                    document.documentElement.style.setProperty('--safe-top', '40px');
                 }
                 if (
                     /24129PN74|(?:Xiaomi|Mi|小米)[\s_-]*15(?![\s_-]*(?:Pro|Ultra|S))/i.test(u) &&
@@ -310,14 +297,6 @@
                     document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
                     document.documentElement.style.setProperty('--android-status-inset', '40px');
                 }
-                if (/25102RKBEC|25102RK69C|25102PCBEG|(?:Redmi|Xiaomi|REDMI)[\s_-]*K90[\s_-]*Pro[\s_-]*Max|POCO[\s_-]*F8[\s_-]*Ultra/i.test(u)) {
-                    document.documentElement.classList.add('app-android-client');
-                    document.documentElement.classList.add('app-android-redmi-k90promax');
-                    document.documentElement.classList.add('app-android-immersive-white-top');
-                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
-                    document.documentElement.style.setProperty('--android-status-inset', '40px');
-                }
-
                 if (/22120RN86[CGHI]|22126RN91Y|2212ARNC4L|22127PC95[GHI]|(?:Redmi|POCO)[\s_-]*12C|POCO\s*C55/i.test(u)) {
                     document.documentElement.classList.add('app-android-redmi-12c');
                     document.documentElement.classList.add('app-android-immersive-white-top');
@@ -1055,11 +1034,6 @@
                 var iosMajor = 0;
                 var mIos = ua.match(/OS (\d+)[_.]/i);
                 if (mIos) iosMajor = parseInt(mIos[1], 10);
-                var mVer = ua.match(/Version\/(\d+)/i);
-                if (mVer) {
-                    var verMajor = parseInt(mVer[1], 10);
-                    if (verMajor >= 26 && verMajor > iosMajor) iosMajor = verMajor;
-                }
                 /* 14/15 Pro Max：不进 liquid-glass / app-ios27 / inflow，保持 Aug15 59px */
                 var is15pmUa = /iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone15,5\b/i.test(ua);
                 var is14pmUa = /iPhone\s*14\s*Pro\s*Max|iPhone15,3\b/i.test(ua);
@@ -1222,7 +1196,7 @@
             function hoistIos27ResultChrome() {
                 try {
                     var root = document.documentElement;
-                    /* unified-chrome 也 hoist：与 auth.js 一致，顶栏离开 page-root */
+                    if (root.classList.contains('app-ios-unified-chrome')) return;
                     if (root.classList.contains('app-ios-header-hoisted')) return;
                     var pageRoot = document.querySelector('.page-root');
                     var topFixed = document.querySelector('.top-fixed');
@@ -1238,7 +1212,7 @@
             else document.addEventListener('DOMContentLoaded', hoistIos27ResultChrome);
         })();
     </script>
-    <script src="/js/auth.js?v=20261010-smoke-hoist-k70" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20261009-16pm-title-seam-2" defer fetchpriority="low"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>
@@ -2340,49 +2314,16 @@
          * 小米 15：HyperOS MiSans 行盒偏紧；且「扣缴义务人/收入」包在 .list-row-with-arrow 里，
          * 外层 4px + 内层 7px 会叠出中间两行更挤、上下更疏。外层去垫，四行只走同一套行距。
          */
-        html.app-ios-iphone15 body.page-shuiming-result .list-company {
-            white-space: normal;
-            overflow: visible;
-            text-overflow: unset;
-        }
-        html.app-android-xiaomi-15 body.page-shuiming-result .list-row-with-arrow,
-        html.app-android-xiaomi-15ultra body.page-shuiming-result .list-row-with-arrow {
+        html.app-android-xiaomi-15 body.page-shuiming-result .list-row-with-arrow {
             padding-top: 0 !important;
             padding-bottom: 0 !important;
         }
-        html.app-android-xiaomi-15 body.page-shuiming-result .list-row,
-        html.app-android-xiaomi-15ultra body.page-shuiming-result .list-row {
+        html.app-android-xiaomi-15 body.page-shuiming-result .list-row {
             padding-top: 6px !important;
             padding-bottom: 6px !important;
         }
-        html.app-android-vivo-v2285a body.page-shuiming-result .page-root,
-        html.app-android-xiaomi-15ultra body.page-shuiming-result .page-root {
-            --safe-top: 40px !important;
-            --app-shell-statusbar-top: 40px !important;
-            --shuiming-chrome-top: 40px !important;
-        }
-        html.app-android-vivo-v2285a body.page-shuiming-result .top-fixed .header,
-        html.app-android-xiaomi-15ultra body.page-shuiming-result .top-fixed .header {
-            top: 0 !important;
-            height: calc(var(--header-height, 48px) + 40px) !important;
-            min-height: calc(var(--header-height, 48px) + 40px) !important;
-            padding: 40px 16px 0 !important;
-            box-sizing: border-box !important;
-            background: #fff !important;
-        }
-        html.app-android-vivo-v2285a body.page-shuiming-result .top-fixed .header .back-btn,
-        html.app-android-vivo-v2285a body.page-shuiming-result .top-fixed .header .header-right,
-        html.app-android-xiaomi-15ultra body.page-shuiming-result .top-fixed .header .back-btn,
-        html.app-android-xiaomi-15ultra body.page-shuiming-result .top-fixed .header .header-right {
-            top: 40px !important;
-            height: var(--header-height, 48px) !important;
-            display: flex !important;
-            align-items: center !important;
-        }
         html.app-android-xiaomi-15 body.page-shuiming-result .list-label,
-        html.app-android-xiaomi-15 body.page-shuiming-result .list-company,
-        html.app-android-xiaomi-15ultra body.page-shuiming-result .list-label,
-        html.app-android-xiaomi-15ultra body.page-shuiming-result .list-company {
+        html.app-android-xiaomi-15 body.page-shuiming-result .list-company {
             line-height: 22px !important;
         }
 
@@ -3356,7 +3297,7 @@
         html.app-android-xiaomi-10 body.page-shuiming-result .page-root,
         html.app-android-xiaomi-10.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-redmi-k70-ultra body.page-shuiming-result .page-root,
-        html.app-android-redmi-k80pro, html.app-android-redmi-k90promax body.page-shuiming-result .page-root,
+        html.app-android-redmi-k80pro body.page-shuiming-result .page-root,
         html.app-android-redmi-12c body.page-shuiming-result .page-root,
         html.app-android-redmi-note11-5g body.page-shuiming-result .page-root,
         html.app-android-immersive-white-top body.page-shuiming-result .page-root,
@@ -3408,7 +3349,7 @@
         html.app-android-xiaomi-10 body.page-shuiming-result .top-fixed .header,
         html.app-android-xiaomi-10.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-android-redmi-k70-ultra body.page-shuiming-result .top-fixed .header,
-        html.app-android-redmi-k80pro, html.app-android-redmi-k90promax body.page-shuiming-result .top-fixed .header,
+        html.app-android-redmi-k80pro body.page-shuiming-result .top-fixed .header,
         html.app-android-redmi-12c body.page-shuiming-result .top-fixed .header,
         html.app-android-redmi-note11-5g body.page-shuiming-result .top-fixed .header,
         html.app-android-immersive-white-top body.page-shuiming-result .top-fixed .header,

@@ -70,13 +70,10 @@ const boardPayload = {
 
 describe('运营看板同时点日活', () => {
   it('页面、接口字段与缓存戳齐全', () => {
-    /* 看板 HTML 已去掉常驻 #opsBoardDau 挂载点；JS 仍保留 renderDau（有节点才渲染） */
-    expect(html).not.toContain('id="opsBoardDau"');
-    expect(html).toContain('id="opsBoardKpi"');
-    expect(html).toContain('admin_panel.css?v=20261010-admin-simplify');
+    expect(html).toContain('id="opsBoardDau"');
+    expect(html).toContain('admin_panel.css?v=20261009-hide-legacy-sku');
     expect(html).toContain('loader.js?v=20261009-purchase-copy-daily');
     expect(ops).toContain('function renderDau(');
-    expect(ops).toContain("getElementById('opsBoardDau')");
     expect(ops).toContain('function sparkLineSvg(');
     expect(ops).toContain('data.dau');
     expect(loader).toContain('ops-conversion.js?v=20261008-legacy-plain');
@@ -104,8 +101,8 @@ describe('运营看板同时点日活', () => {
     // eslint-disable-next-line no-eval
     eval(ops);
     window.AdminModules['ops-conversion'].loadPage();
-    for (var i = 0; i < 10; i++) await Promise.resolve();
-    await new Promise(function (r) { setTimeout(r, 0); });
+    await Promise.resolve();
+    await Promise.resolve();
     var dau = document.getElementById('opsBoardDau');
     expect(dau.textContent).toContain('同时点日活');
     expect(dau.textContent).toContain('59');

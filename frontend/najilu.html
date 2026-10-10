@@ -2,8 +2,8 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth-boot.js?v=20261010-p40-v3"></script>
-    <script src="/js/auth.js?v=20261010-smoke-hoist-k70" defer fetchpriority="low"></script>
+    <script src="/js/auth-boot.js?v=20260923-bs4s-restore"></script>
+    <script src="/js/auth.js?v=20260905-qr-guide" defer fetchpriority="low"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>纳税记录开具</title>
     <style>
@@ -450,7 +450,6 @@
         .application-line {
             display: flex;
             align-items: center;
-            flex-wrap: nowrap;
             gap: 8px;
             line-height: 1.9;
             font-size: 15px;
@@ -460,94 +459,23 @@
         .application-label {
             color: #333;
             flex-shrink: 0;
-            white-space: nowrap;
         }
 
         .application-value {
             color: #999;
             min-width: 0;
-            flex: 1 1 auto;
-            white-space: nowrap;
-            word-break: keep-all;
-            overflow-wrap: normal;
-            overflow: hidden;
-            text-overflow: clip;
-        }
-
-        .application-value.application-period {
-            flex: 0 1 auto;
         }
 
         .application-time {
             font-size: 17px;
-            font-weight: 600;
             color: #333;
-            white-space: nowrap;
         }
 
         .application-status {
             margin-left: auto;
             color: #52c41a;
             font-size: 14px;
-            flex-shrink: 0;
             white-space: nowrap;
-        }
-
-        /* Huawei P40 / P40 Pro：沉浸顶距 + 所属期完整可见 + 状态改品牌蓝 */
-        html.app-android-huawei-p40 body.page-najilu .header,
-        html.app-android-huawei-p40pro body.page-najilu .header {
-            padding-top: max(40px, var(--app-shell-statusbar-top, 40px), env(safe-area-inset-top, 0px));
-            box-sizing: border-box;
-        }
-        html.app-android-huawei-p40 body.page-najilu .application-card,
-        html.app-android-huawei-p40pro body.page-najilu .application-card {
-            padding-left: 12px;
-            padding-right: 12px;
-        }
-        html.app-android-huawei-p40 body.page-najilu .application-line,
-        html.app-android-huawei-p40pro body.page-najilu .application-line {
-            gap: 4px;
-            font-size: 12px;
-            line-height: 1.65;
-        }
-        html.app-android-huawei-p40 body.page-najilu .application-label,
-        html.app-android-huawei-p40pro body.page-najilu .application-label {
-            font-size: 12px;
-        }
-        html.app-android-huawei-p40 body.page-najilu .application-time,
-        html.app-android-huawei-p40pro body.page-najilu .application-time {
-            font-size: 13px;
-            font-weight: 500;
-        }
-        html.app-android-huawei-p40 body.page-najilu .application-value,
-        html.app-android-huawei-p40pro body.page-najilu .application-value {
-            font-size: 12px;
-            white-space: nowrap !important;
-            word-break: keep-all !important;
-            overflow-wrap: normal !important;
-        }
-        html.app-android-huawei-p40 body.page-najilu .application-value.application-period,
-        html.app-android-huawei-p40pro body.page-najilu .application-value.application-period {
-            font-size: 11px;
-            letter-spacing: -0.02em;
-            flex: 0 1 auto;
-            min-width: 0;
-            overflow: visible !important;
-            text-overflow: clip;
-            white-space: nowrap !important;
-            word-break: keep-all !important;
-            overflow-wrap: normal !important;
-        }
-        html.app-android-huawei-p40 body.page-najilu .application-status,
-        html.app-android-huawei-p40pro body.page-najilu .application-status {
-            font-size: 11px;
-            color: #1677ff;
-            margin-left: 8px;
-            flex-shrink: 0;
-        }
-        html.app-android-huawei-p40 body.page-najilu .record-tips,
-        html.app-android-huawei-p40pro body.page-najilu .record-tips {
-            display: block !important;
         }
 
         .application-actions {
@@ -978,7 +906,7 @@
 
     <script src="/js/tax-year.js?v=20260816-year-from-2019"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
-    <script src="/js/najilu.js?v=20261010-p40-v3"></script>
+    <script src="/js/najilu.js?v=20260928-page2-save"></script>
     <script src="/js/watermark.js?v=20260831-m60home"></script>
 </body>
 </html>

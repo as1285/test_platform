@@ -146,7 +146,7 @@ export const DEVICE_PROFILES = [
   {
     id: 'iphone-16-pro',
     label: 'iPhone 16 Pro',
-    playwrightDevice: 'iPhone 15 Pro',
+    playwrightDevice: 'iPhone 16 Pro',
     suite: 'ios-chrome',
     platform: 'ios',
     deviceModel: 'iPhone 16 Pro'
@@ -154,7 +154,7 @@ export const DEVICE_PROFILES = [
   {
     id: 'iphone-16-promax',
     label: 'iPhone 16 Pro Max',
-    playwrightDevice: 'iPhone 15 Pro Max',
+    playwrightDevice: 'iPhone 16 Pro Max',
     suite: 'ios-chrome',
     platform: 'ios',
     deviceModel: 'iPhone 16 Pro Max'
@@ -162,7 +162,7 @@ export const DEVICE_PROFILES = [
   {
     id: 'iphone-air',
     label: 'iPhone Air',
-    playwrightDevice: 'iPhone 15 Pro',
+    playwrightDevice: 'iPhone Air',
     suite: 'ios-chrome',
     platform: 'ios',
     deviceModel: 'iPhone Air'
@@ -170,7 +170,7 @@ export const DEVICE_PROFILES = [
   {
     id: 'iphone-17-pro',
     label: 'iPhone 17 Pro',
-    playwrightDevice: 'iPhone 15 Pro',
+    playwrightDevice: 'iPhone 17 Pro',
     suite: 'ios-chrome',
     platform: 'ios',
     deviceModel: 'iPhone 17 Pro'
@@ -178,7 +178,7 @@ export const DEVICE_PROFILES = [
   {
     id: 'iphone-17-promax',
     label: 'iPhone 17 Pro Max',
-    playwrightDevice: 'iPhone 15 Pro Max',
+    playwrightDevice: 'iPhone 17 Pro Max',
     suite: 'ios-chrome',
     platform: 'ios',
     deviceModel: 'iPhone 17 Pro Max'

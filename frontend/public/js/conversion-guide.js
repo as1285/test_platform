@@ -260,10 +260,7 @@
 
   function isAccountActive() {
     try {
-      var flag = localStorage.getItem('account_active');
-      if (flag === '1') return true;
-      /* 明确未开通时不要再看会话缓存，否则换号后右上角「激活」会被藏掉 */
-      if (flag === '0') return false;
+      if (localStorage.getItem('account_active') === '1') return true;
     } catch (e) {}
     try {
       var cached = readProfileCache();
@@ -614,15 +611,9 @@
     if (u.account_active !== undefined && u.account_active !== null) {
       var active = isAccountActiveFlag(u.account_active);
       var alreadyActive = false;
-      var localFlag = '';
       try {
-        localFlag = localStorage.getItem('account_active') || '';
-        alreadyActive = localFlag === '1';
+        alreadyActive = localStorage.getItem('account_active') === '1';
       } catch (eLs) {}
-      /* 换号后的旧缓存不能把未开通写成已开通，否则「我的」右上角激活会被藏掉 */
-      if (opts.fromCache && active && localFlag === '0') {
-        active = false;
-      }
       /* 会话缓存不得把已开通打回未开通，否则明细页会闪开通卡 */
       if (active) {
         try {
@@ -686,27 +677,12 @@
     removeMineConversionUi();
   }
 
-  function currentProfileUserId() {
-    try {
-      return String(
-        localStorage.getItem('user_id') ||
-          localStorage.getItem('userName') ||
-          localStorage.getItem('username') ||
-          ''
-      );
-    } catch (e) {
-      return '';
-    }
-  }
-
   function readProfileCache() {
     try {
       var raw = sessionStorage.getItem(PROFILE_CACHE_KEY);
       if (!raw) return null;
       var o = JSON.parse(raw);
       if (!o || !o.t || Date.now() - o.t > PROFILE_CACHE_TTL_MS) return null;
-      var uid = currentProfileUserId();
-      if (uid && String(o.userId || '') !== uid) return null;
       return o;
     } catch (e) {
       return null;
@@ -720,7 +696,6 @@
         PROFILE_CACHE_KEY,
         JSON.stringify({
           t: Date.now(),
-          userId: currentProfileUserId(),
           account_active: u.account_active,
           tax_record_count: u.tax_record_count,
           employer_count: u.employer_count,
@@ -749,14 +724,10 @@
       } else {
         applyProfileSummary(cached, { fromCache: true });
         var localAct = false;
-        var localInactive = false;
         try {
           localAct = localStorage.getItem('account_active') === '1';
-          localInactive = localStorage.getItem('account_active') === '0';
         } catch (eAct) {}
         if (localAct && !isAccountActiveFlag(cached.account_active)) {
-          opts = Object.assign({}, opts, { force: true });
-        } else if (localInactive && isAccountActiveFlag(cached.account_active)) {
           opts = Object.assign({}, opts, { force: true });
         } else {
           return Promise.resolve();
@@ -3209,7 +3180,6 @@
    * @returns {boolean} 是否成功打开
    */
   function openEmailCollectNudge(opts) {
-    if (window.__emailRequiredGate) return false;
     opts = opts || {};
     var afterRegister = !!opts.afterRegister;
     var bypassLimits = afterRegister || !!opts.force;
@@ -3230,10 +3200,10 @@
     root.className = 'cg-email-nudge-root' + (afterRegister ? ' is-strong' : '');
     root.setAttribute('role', 'dialog');
     root.setAttribute('aria-modal', 'true');
-    var title = afterRegister ? '请先填写邮箱' : '留下邮箱，优惠不错过';
+    var title = afterRegister ? '建议留下邮箱，方便接收优惠' : '留下邮箱，优惠不错过';
     var body = afterRegister
-      ? '填写邮箱，方便更好的服务'
-      : '填写邮箱，方便更好的服务';
+      ? '开通提醒、专属价会发到邮箱。填 QQ 号后点 @qq.com 即可；也可跳过，之后在「个人信息」补填。'
+      : '专属价、开通提醒会发到邮箱。填 QQ 号后点 @qq.com 即可。';
     var saveLabel = afterRegister ? '保存并继续' : '保存邮箱';
     var dismissLabel = afterRegister ? '跳过，稍后再说' : '暂时不用';
     var badgeHtml = afterRegister
@@ -3373,7 +3343,6 @@
   }
 
   function maybeScheduleEmailNudge() {
-    if (window.__emailRequiredGate) return;
     if (!isLoggedIn() || hasEmailCached || skipConversionPromo()) return;
     var page = currentPage();
     var allow =

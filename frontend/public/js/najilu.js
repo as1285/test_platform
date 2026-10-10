@@ -1227,7 +1227,7 @@
             '<div class="application-line"><span class="application-label">申请时间：</span><span class="application-time">' +
             esc(app.apply_time) +
             '</span></div>' +
-            '<div class="application-line"><span class="application-label">税款所属期：</span><span class="application-value application-period">' +
+            '<div class="application-line"><span class="application-label">税款所属期：</span><span class="application-value">' +
             esc(periodText(app.period_start, app.period_end)) +
             '</span><span class="application-status">' +
             esc(app.status || '制作成功') +

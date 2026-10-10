@@ -6,22 +6,36 @@ const auth = readFileSync(resolve(__dirname, '../../public/js/auth.js'), 'utf8')
 const shuimingResult = readFileSync(resolve(__dirname, '../../shuiming_result.html'), 'utf8');
 const shuiming = readFileSync(resolve(__dirname, '../../shuiming.html'), 'utf8');
 
-describe('iPhone 13 Pro Max 收入纳税明细顶栏', () => {
-  it('识别 13 Pro Max，并保留 app-ios-iphone13promax', () => {
-    expect(auth).toContain('function isIPhone13ProMaxClient(');
-    expect(auth).toContain("classList.add('app-ios-iphone13promax')");
-    expect(auth).toContain('app-ios-iphone13promax');
-    expect(shuimingResult).toContain('app-ios-iphone13promax');
+describe('iPhone 133 ProMaxx 收入纳税明细顶栏', () => {
+  it('识别 133 ProMaxx / 13 Pro Max，且不套 status-outer 零顶距', () => {
+    expect(auth).toContain('function isIPhone133ProMaxxOverlapClient()');
+    expect(auth).toContain('ProMaxx');
+    expect(auth).toContain('MLLL63');
+    expect(auth).toContain('iPhone\\s*133');
+    const fn = auth.slice(
+      auth.indexOf('function applyIPhone16ProPageChrome()'),
+      auth.indexOf('function applyImmersiveNotchWhitePageChrome()')
+    );
+    expect(fn).toContain('isIPhone133ProMaxxOverlapClient()');
+    expect(fn).toContain('useOuterBar = false');
+    expect(fn).toContain("classList.add('app-ios-iphone133promax')");
   });
 
-  it('明细页为刘海机顶栏让开状态栏（含 47px 档）', () => {
-    expect(shuimingResult).toContain('47px');
-    expect(auth).toMatch(/iphone13promax[\s\S]{0,200}47px|47px[\s\S]{0,200}iphone13promax|padding:47px/);
-    expect(shuimingResult).toMatch(/auth\.js\?v=2026[\w-]+/);
+  it('明细页首屏即垫 47px，返回/批量申诉避开状态栏', () => {
+    expect(shuimingResult).toContain('data-iphone133pm-result-firstpaint');
+    expect(shuimingResult).toContain('app-ios-iphone133promax');
+    expect(shuimingResult).toContain('padding:47px 16px 0');
+    expect(shuimingResult).toContain('top:47px');
+    expect(shuimingResult).toContain("classList.remove('app-ios-status-outer')");
+    expect(shuimingResult).toContain('auth.js?v=20261009-16pm-title-seam-2');
+    expect(auth).toContain('html.app-ios-iphone133promax.app-ios-status-outer body.page-shuiming-result .top-fixed .header');
+    expect(auth).toContain('padding:47px 16px 0');
   });
 
-  it('筛选页仍走白顶首绘与当前 auth 戳', () => {
-    expect(shuiming).toMatch(/auth\.js\?v=2026[\w-]+/);
-    expect(shuiming).toContain('data-ios-white-status-firstpaint');
+  it('筛选页同样让开状态栏', () => {
+    expect(shuiming).toContain('data-iphone133pm-shuiming-firstpaint');
+    expect(shuiming).toContain('app-ios-iphone133promax');
+    expect(shuiming).toContain('padding-top:calc(14px + 47px)');
+    expect(shuiming).toContain('auth.js?v=20261009-honor-oxf-an10');
   });
 });

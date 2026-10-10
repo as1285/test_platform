@@ -64,7 +64,7 @@ describe('首页蓝顶栏 / 纳税明细顶白底', () => {
     expect(shuimingResult).toContain('background: #fff');
     expect(shuimingResult).toContain('overscroll-behavior-y: none');
     expect(shuimingResult).toContain('width: 4px');
-    expect(shuimingResult).toContain('auth.js?v=20261010-smoke-hoist-k70');
+    expect(shuimingResult).toContain('auth.js?v=20261009-16pm-title-seam-2');
   });
 
   it('首页脚本缓存戳已刷新', () => {
