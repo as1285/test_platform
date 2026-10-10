@@ -61,6 +61,6 @@ describe('iQOO Z9 Turbo+ mine e1 single-layer paint', () => {
     const bootTagIdx = mine.indexOf('/js/auth-boot.js?v=');
     expect(mine.indexOf("classList.add('app-android-iqoo-z9turboplus')")).toBeLessThan(bootTagIdx);
     expect(mine).toMatch(/auth-boot\.js\?v=2026091/);
-    expect(mine).toMatch(/auth\.js\?v=2026091/);
+    expect(mine).toMatch(/auth\.js\?v=2026[\w-]+/);
   });
 });

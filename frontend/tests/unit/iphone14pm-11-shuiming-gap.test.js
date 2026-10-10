@@ -11,7 +11,7 @@ describe('iPhone 14 Pro Max / 11 收入纳税明细灰缝', () => {
       /html\.app-ios-iphone15promax[\s\S]{0,120}\.top-fixed \.summary[\s\S]{0,80}padding:\s*12px 0 10px\s*!important/
     );
     expect(auth).toMatch(
-      /html\.app-ios-iphone15promax\.app-top-safe-shell body\.page-shuiming-result \.top-fixed \.summary\{[^}]*padding:12px 0 10px !important/
+      /html\.app-ios-iphone15promax\.app-ios-iphone-promax-font\.app-top-safe-shell body\.page-shuiming-result \.top-fixed \.summary\{[^}]*padding:12px 0 10px !important/
     );
     expect(shuimingResult).not.toMatch(
       /html\.app-ios-iphone15promax[\s\S]{0,120}\.top-fixed \.summary[\s\S]{0,80}padding:\s*10px 0 6px/
@@ -20,7 +20,7 @@ describe('iPhone 14 Pro Max / 11 收入纳税明细灰缝', () => {
 
   it('promax-font 白底规则排除 15promax，并强制灰底', () => {
     expect(auth).toContain(
-      'html.app-ios-iphone-promax-font.app-top-safe-shell:not(.app-ios-iphone16pro):not(.app-ios-iphone15promax) body.page-shuiming-result .top-fixed .summary'
+      'html.app-ios-iphone-promax-font.app-top-safe-shell:not(.app-ios-iphone16pro):not(.app-ios-iphone15promax):not(.app-ios-iphone16promax):not(.app-ios-iphone17promax) body.page-shuiming-result .top-fixed .summary'
     );
     expect(auth).toContain(
       'html.app-ios-iphone15promax.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{background:#f5f6fa !important;padding:12px 0 10px !important;}'

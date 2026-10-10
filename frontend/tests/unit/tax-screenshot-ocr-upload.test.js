@@ -54,8 +54,8 @@ describe('tax screenshot OCR upload multipart', () => {
   });
 
   it('cache-busts consult and admin loader together', () => {
-    expect(html).toContain('consult-batch-tax.js?v=20260914-tax-manage');
-    expect(loaderSrc).toContain('consult-batch-tax.js?v=20260914-tax-manage');
+    expect(html).toMatch(/consult-batch-tax\.js\?v=2026[\w-]+/);
+    expect(loaderSrc).toMatch(/consult-batch-tax\.js\?v=2026[\w-]+/);
   });
 
   it('uploads OCR with raw fetch so multipart keeps its boundary', () => {

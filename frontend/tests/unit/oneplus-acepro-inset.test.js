@@ -50,7 +50,7 @@ describe('一加 Ace Pro status-bar inset', () => {
     );
     expect(pages.shuimingResult).toContain("classList.contains('app-android-oneplus-acepro')");
     expect(pages.shuimingResult).toContain("setProperty('z-index', '140'");
-    expect(pages.shuimingResult).toContain('auth-boot.js?v=20260918-acepro-top');
+    expect(pages.shuimingResult).toMatch(/auth-boot\.js\?v=2026[\w-]+/);
     expect(boot).toContain('data-oneplus-acepro-result-firstpaint');
     expect(boot).toContain('Ace Pro（PGP110）');
   });

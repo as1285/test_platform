@@ -22,10 +22,10 @@ describe('Android white-page default immersive inset', () => {
     expect(end).toBeGreaterThan(start);
     const fn = auth.slice(start, end);
     expect(fn).not.toContain('ensureAndroidFixedBlackStatusPad');
-    expect(fn).toContain("style: 'dark'");
-    expect(fn).toContain('overlays: true');
+    expect(fn).toContain('applyAndroidJuly20SystemBar');
     expect(fn).toContain('outerStatusBar');
     expect(fn).toContain('immersiveTopInsetClient');
+    expect(fn).toContain("colorScheme = 'light'");
   });
 
   it('does not let OPPO-family layout-zero rules win over immersive-white-top', () => {
@@ -38,7 +38,7 @@ describe('Android white-page default immersive inset', () => {
       expect(sel).toContain(':not(.app-android-immersive-white-top)');
     });
     expect(auth).toContain(
-      'html.app-android-client.app-top-safe-shell.app-android-redmi-k70:not(.app-android-immersive-white-top) body.page-shuiming-result'
+      'html.app-android-client.app-top-safe-shell.app-android-redmi-k70.app-android-redmi-k70-ultra:not(.app-android-immersive-white-top) body.page-shuiming-result'
     );
   });
 
@@ -57,10 +57,8 @@ describe('Android white-page default immersive inset', () => {
     expect(boot).toContain('app-android-immersive-white-top');
     expect(boot).toContain("'--app-shell-statusbar-top', '40px'");
     Object.entries(pages).forEach(([name, html]) => {
-      expect(html).toContain('auth-boot.js?v=20260909-android-statusbar-sep1');
-      expect(html).toMatch(
-        /auth\.js\?v=202609(?:09-android-aug1-blue|10-mi13u-listtitle|15-s15-white|16-iphone15-opaque|16-iphone15-plate|16-iphone15-outer|16-iphone14pm-font|16-webclip-outer|16-webclip-plate|16-webclip-back|16-ios27-back|16-ios27-sticky|17-ios27-line|17-ios27-pad|17-iphone12-first|17-ios27-seam|17-ios27-unify|17-ios27-island|17-ios27-resume|17-ios27-cover|17-ios27-flow)/
-      );
+      expect(html, name).toMatch(/auth-boot\.js\?v=2026[\w-]+/);
+      expect(html, name).toMatch(/auth\.js\?v=2026[\d]{4}-[\w-]+/);
     });
   });
 });

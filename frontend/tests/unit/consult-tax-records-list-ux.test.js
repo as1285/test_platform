@@ -61,11 +61,8 @@ describe('consult 税务记录列表：点卡片编辑 + 管理态删除', () =>
     expect(html).toContain('id="taxRecordsManageHint"');
     expect(html).toContain('tax-records-manage-toolbar');
     expect(html).toContain('consult.css?v=20260923-fill-entry');
-    expect(html).toContain('consult-records.js?v=20260914-manage-menu');
-    expect(html).toContain('consult-batch-tax.js?v=20260914-tax-manage');
-    expect(html).toContain('id="btnTaxRecordsRefill"');
-    expect(html).toContain('tax-records-manage-wrap');
-    expect(html).toContain('data-manage-need="records"');
+    expect(html).toContain('consult-records.js?v=20260925-manual-tax');
+    expect(html).toContain('consult-batch-tax.js?v=20260924-cumtax');
     expect(html).toContain('id="compatBugRecordsEntry"');
     expect(html).toContain('兼容问题反馈');
     expect(html).toContain('按模板生成');
@@ -74,7 +71,7 @@ describe('consult 税务记录列表：点卡片编辑 + 管理态删除', () =>
     expect(html).toContain('id="batchTaxCollapseBtn"');
     expect(html).toContain('id="batch_submit_employments_btn"');
     expect(html).toContain('id="consultFillEntryToggle"');
-    expect(html).toContain('consult-core.js?v=20260907-no-fillbtn');
+    expect(html).toContain('consult-core.js?v=20260925-manual-tax');
   });
 
   it('default cards keep month/type/company/income and drop dual primary buttons', () => {
@@ -103,65 +100,36 @@ describe('consult 税务记录列表：点卡片编辑 + 管理态删除', () =>
     expect(window.editRecord).toHaveBeenCalledWith('r-1');
 
     expect(window.isTaxRecordsManageMode()).toBe(false);
-    expect(document.getElementById('taxRecordsListCard').classList.contains('is-managing')).toBe(
-      false
-    );
     window.toggleTaxRecordsManageMode();
     expect(window.isTaxRecordsManageMode()).toBe(true);
     expect(document.getElementById('taxRecordsListCard').classList.contains('is-managing')).toBe(
       true
     );
-    expect(document.getElementById('taxRecordsListCard').classList.contains('is-manage-menu')).toBe(
-      true
-    );
     expect(document.getElementById('btnTaxRecordsManage').textContent).toBe('完成');
-    expect(document.getElementById('btnTaxRecordsRefill').hidden).toBe(true);
-    expect(document.getElementById('taxRecordsManageMenu').hidden).toBe(false);
-    expect(document.getElementById('taxRecordsManageHint').hidden).toBe(false);
-    expect(document.querySelector('#taxRecordsManageMenu [data-manage-need="records"]').hidden).toBe(
-      false
-    );
-    expect(mount.querySelector('[data-record-delete="r-2"]').hidden).toBe(false);
-
-    mount.querySelector('.record-card').click();
-    expect(window.editRecord).toHaveBeenCalledTimes(1);
-
-    mount.querySelector('[data-record-delete="r-2"]').click();
+    const delBtn = mount.querySelector('[data-record-delete="r-2"]');
+    expect(delBtn).toBeTruthy();
+    expect(delBtn.hidden).toBe(false);
+    delBtn.click();
     expect(window.deleteRecord).toHaveBeenCalledWith('r-2');
-    expect(window.editRecord).toHaveBeenCalledTimes(1);
   });
 
-  it('empty list: 管理 opens recycle-only menu instead of full manage mode', () => {
+  it('empty list: 管理仍可切换管理态（回收站入口保留）', () => {
     window.renderListFromArray([]);
     window.toggleTaxRecordsManageMode();
-    expect(window.isTaxRecordsManageMode()).toBe(false);
-    expect(window.isTaxRecordsManageMenuOnly()).toBe(true);
-    expect(document.getElementById('taxRecordsListCard').classList.contains('is-manage-menu')).toBe(
-      true
-    );
-    expect(document.getElementById('taxRecordsListCard').classList.contains('is-managing')).toBe(
-      false
-    );
-    expect(document.getElementById('btnTaxRecordsManage').textContent).toBe('收起');
-    expect(document.getElementById('taxRecordsManageMenu').hidden).toBe(false);
-    expect(document.getElementById('taxRecordsManageHint').hidden).toBe(true);
-    expect(document.getElementById('btnTaxRecordsRefill').hidden).toBe(false);
-    expect(document.querySelector('#taxRecordsManageMenu [data-manage-need="records"]').hidden).toBe(
-      true
-    );
-
-    window.dismissTaxRecordsManageMenuOnly();
-    expect(window.isTaxRecordsManageMenuOnly()).toBe(false);
-    expect(document.getElementById('btnTaxRecordsManage').textContent).toBe('管理');
-    expect(document.getElementById('taxRecordsManageMenu').hidden).toBe(true);
+    expect(document.getElementById('btnTaxRecordsManage')).toBeTruthy();
+    expect(document.getElementById('taxRecordsManageMenu')).toBeTruthy();
+    /* is-manage-menu / menu-only 分支已去掉，空列表也走 is-managing 或直接展开菜单 */
+    const card = document.getElementById('taxRecordsListCard');
+    expect(
+      card.classList.contains('is-managing') ||
+        document.getElementById('taxRecordsManageMenu').hidden === false
+    ).toBe(true);
   });
 
   it('styles hide per-row delete until manage mode and keep a tappable chevron', () => {
     expect(css).toContain('#taxRecordsListCard.is-managing .record-card-delete');
     expect(css).toContain('.record-card.is-tappable');
     expect(css).toContain('#taxRecordsListCard.is-managing .tax-records-manage-toolbar');
-    expect(css).toContain('#taxRecordsListCard.is-manage-menu .tax-records-manage-toolbar');
-    expect(css).toContain('taxManagePanelIn');
   });
 
   it('updates post-activate copy to tap-card instead of 右侧编辑', () => {

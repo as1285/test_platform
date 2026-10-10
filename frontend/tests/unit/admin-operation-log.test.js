@@ -18,16 +18,13 @@ describe('子管理员操作日志 TAB', () => {
     expect(loader).toContain("'admin-operation-log': 'logs'");
   });
 
-  it('列表展示进入页面和操作按钮，并上报界面事件', () => {
-    expect(html).toContain('进入了哪些页面、点击了哪些按钮');
+  it('列表展示子管理员写操作流水（仅 admin 可见）', () => {
+    expect(html).toContain('子管理员操作流水');
+    expect(html).toContain('仅记录子管理员的写操作');
     expect(html).toContain('>页面</th>');
     expect(html).toContain('>操作</th>');
-    expect(html).toContain('id="adminOpLogKindFilter"');
     expect(html).toContain('admin_panel.js?v=20261009-hide-legacy-sku');
-    expect(panel).toContain('function reportAdminUiEvent(');
-    expect(panel).toContain("kind === 'page'");
-    expect(panel).toContain("api/admin/ui-events");
-    expect(panel).toContain('row.page_label');
-    expect(panel).toContain('row.button_label');
+    expect(panel).toContain('function loadAdminOperationLogPage(');
+    expect(panel).toContain("id: 'op-log', label: '操作日志', page: 'admin-operation-log'");
   });
 });

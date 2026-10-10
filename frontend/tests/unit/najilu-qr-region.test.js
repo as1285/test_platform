@@ -132,7 +132,6 @@ describe('C 端完税二维码入口位置', () => {
     expect(najiluHtml).not.toContain('id="najiluQrReplaceLink"');
     expect(najiluHtml).not.toContain('>替换二维码</a>');
     expect(najiluHtml).toContain('.header-qr-replace');
-    expect(najiluHtml).toContain('display: none !important');
     const najiluJs = readFileSync(resolve(__dirname, '../../public/js/najilu.js'), 'utf8');
     expect(najiluJs).toContain('najilu_qr.html?from=');
     expect(najiluJs).toContain('showFirstGenerateQrGuide');

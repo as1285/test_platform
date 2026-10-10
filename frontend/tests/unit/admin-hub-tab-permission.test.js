@@ -20,13 +20,15 @@ describe('系统与安全 hub TAB 按精确权限显示', () => {
     expect(adminPanel).toContain("tabPage === 'admin-accounts' || tabPage === 'admin-operation-log'");
     expect(adminPanel).toContain('listVisibleHubTabs(hubKey)');
     expect(adminPanel).toMatch(/无权限 TAB：落到该 hub 第一个可见 TAB/);
-    expect(adminPanel).toContain("hubKey === 'ops-board' && (tabPage === 'ops-board' || tabPage === 'codes')");
-    expect(adminPanel).toContain("id: 'board', label: '运营看板', page: 'ops-board', super_only: true");
-    expect(adminPanel).toContain("id: 'codes', label: '激活码', page: 'codes', super_only: true");
+    expect(adminPanel).toContain("if (hubKey === 'ops-board')");
+    expect(adminPanel).toContain("tabPage === 'ops-board'");
+    expect(adminPanel).toContain("tabPage === 'codes'");
+    expect(adminPanel).toContain("id: 'board', label: '运营看板', page: 'ops-board'");
+    expect(adminPanel).toContain("id: 'codes', label: '激活码', page: 'codes'");
     expect(adminPanel).toContain("hubKey === 'ops-board'");
     expect(adminPanel).toContain("tabPage === 'user-emails'");
-    expect(adminPanel).toContain("nav: 'ops-board',\n                super_only: true");
-    expect(adminPanel).toContain("nav: 'insights-product',\n                super_only: true");
+    expect(adminPanel).toContain("nav: 'ops-board'");
+    expect(adminPanel).toContain("nav: 'insights-product'");
   });
 
   it('后端独立 TAB 去掉 login-log 别名继承', () => {

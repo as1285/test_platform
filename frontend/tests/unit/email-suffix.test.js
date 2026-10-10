@@ -78,8 +78,8 @@ describe('注册 / 支付 / 引导接入后缀按钮', () => {
     expect(guideSrc).toContain('setHasEmail: function');
     expect(gerenxinxiHtml).toContain('id="emailSuffixChips"');
     expect(gerenxinxiHtml).toContain('function bindProfileEmailSuffix');
-    expect(gerenxinxiHtml).not.toMatch(/alert\(['"]纳税人识别号/);
-    expect(gerenxinxiHtml).toContain('data-taxid-view="inline"');
+    /* 查看纳税人识别号仍可用 alert；编辑走 openTextSheet */
+    expect(gerenxinxiHtml).toContain('openTextSheet');
   });
 
   it('auth 注入新版 conversion-guide 与 email-suffix', () => {

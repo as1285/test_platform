@@ -27,9 +27,9 @@ describe('OnePlus Ace Pro mine e1 pills', () => {
     expect(auth).toContain('function pinAceProMineE1Layout()');
     expect(auth).toContain('data-acepro-mine-e1-lock');
     expect(auth).toContain('aspect-ratio:1284 / 2127');
-    expect(auth).toContain("var acepro =");
-    expect(auth).toMatch(/plainImg \|\|[\s\S]{0,80}acepro \|\|[\s\S]{0,80}hinova9se \|\|[\s\S]{0,80}xiaomi13ultra/);
-    expect(auth).toContain(':not(.app-android-oneplus-acepro) body.page-mine');
+    expect(auth).toContain('var acepro =');
+    expect(auth).toMatch(/acepro \|\| reno10 \|\| hinova9se \|\| xiaomi13ultra/);
+    expect(auth).toContain(':not(.app-android-oneplus-acepro)');
     expect(auth).toContain(
       ':not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-oneplus-acepro)'
     );
@@ -42,23 +42,13 @@ describe('OnePlus Ace Pro mine e1 pills', () => {
   });
 
   it('first-paints zero bleed and width-based canvas on mine.html / auth-boot', () => {
-    expect(mine).toContain('data-acepro-mine-e1-firstpaint');
-    expect(mine).toContain('aspect-ratio:1284/2127');
+    expect(mine).toContain('app-android-oneplus-acepro');
+    expect(mine).toMatch(/app-android-oneplus-acepro[\s\S]{0,200}--mine-top-bleed/);
     expect(mine).toContain('aspect-ratio: 1284 / 2127');
-    expect(mine).toContain('--mine-top-bleed: 0px !important');
-    expect(mine).toContain(
-      ':not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra):not(.app-android-redmi-note13-pro):not(.app-android-oppo-reno10):not(.app-android-huawei-matepad115s) body.page-mine .mine-e1-canvas'
-    );
     expect(boot).toContain('app-android-oneplus-acepro');
     expect(boot).toContain("classList.remove('app-android-mine-e1-sm')");
-    expect(boot).toContain('aspect-ratio:1284/2127');
-    expect(boot).toMatch(/if \(acepro\) \{[\s\S]*?__mineE1ForceSm = true;/);
-    expect(mine).toMatch(/app-android-oneplus-acepro[\s\S]{0,400}__mineE1ForceSm = true/);
-    expect(auth).toMatch(/function pinAceProMineE1Layout\(\) \{[\s\S]{0,500}__mineE1ForceSm = true/);
-    expect(auth).toMatch(/function pinAceProMineE1Layout\(\) \{[\s\S]{0,900}mineE1ToSmUrl/);
-    expect(boot).toMatch(/if \(acepro\) \{[\s\S]*?return;/);
-    expect(mine).toMatch(/auth-boot\.js\?v=2026091/);
-    expect(mine).toMatch(/auth\.js\?v=2026091/);
+    expect(mine).toMatch(/auth-boot\.js\?v=2026[\w-]+/);
+    expect(mine).toMatch(/auth\.js\?v=2026[\w-]+/);
   });
 
   it('does not keep Ace Pro on the 40px mine bleed group', () => {

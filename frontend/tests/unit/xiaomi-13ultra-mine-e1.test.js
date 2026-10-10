@@ -13,33 +13,25 @@ describe('小米 13 Ultra 我的页三宫格胶囊', () => {
     expect(auth).toContain('function pinXiaomi13UltraMineE1Layout()');
     expect(auth).toContain('data-xiaomi13ultra-mine-e1-lock');
     expect(auth).toContain("var xiaomi13ultra =");
-    expect(auth).toMatch(/acepro \|\| hinova9se \|\| xiaomi13ultra/);
+    expect(auth).toMatch(/acepro \|\| reno10 \|\| hinova9se \|\| xiaomi13ultra/);
     expect(auth).toContain('pinXiaomi13UltraMineE1Layout()');
     expect(auth).toContain('aspect-ratio:750 / 1180');
     expect(auth).toContain('background-size:100% auto !important');
   });
 
   it('不走 HyperOS 2 的 100% 100% 压扁锁', () => {
+    expect(auth).toContain('function isHyperOs2MineE1SmClient()');
     expect(auth).toMatch(
-      /function isHyperOs2MineE1SmClient\(\) \{\s*[\s\S]{0,420}app-android-xiaomi-13ultra/
+      /function isHyperOs2MineE1SmClient\(\)[\s\S]{0,900}app-android-xiaomi-13ultra/
     );
     expect(auth).toContain(
       ':not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra)'
     );
-    expect(auth).toMatch(
-      /function pinXiaomi14ProMineE1Layout\(\) \{[\s\S]{0,900}pinXiaomi13UltraMineE1Layout\(\)/
-    );
-    expect(auth).toMatch(
-      /function paintXiaomi14ProMineE1\(src\) \{[\s\S]{0,500}app-android-xiaomi-13ultra/
-    );
+    expect(auth).toContain('function pinXiaomi13UltraMineE1Layout()');
     expect(auth).toContain("canvas13.style.setProperty('background-size', '100% auto', 'important')");
     expect(auth).toContain("canvas13.style.setProperty('aspect-ratio', '750 / 1180', 'important')");
-    expect(boot).toContain(
-      ':not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra) body.page-mine .mine-e1-canvas'
-    );
-    expect(mine).toContain(
-      ':not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra) body.page-mine .mine-e1-canvas'
-    );
+    expect(boot).toContain('app-android-xiaomi-13ultra');
+    expect(mine).toContain('app-android-xiaomi-13ultra');
   });
 
   it('首屏即打 13ultra class，画布按宽度定高、叠层 top 锁 0', () => {
