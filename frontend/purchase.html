@@ -2722,7 +2722,7 @@
         var ctaText = '体验价 · 打开支付宝付款';
         if (discounted) {
             ctaText = '优惠价 ¥' + discounted + ' · 打开支付宝付款';
-        } else if (selected && selected.psych_offer) {
+        } else if (selected && selected.psych_offer && !purchaseHostIsGetjob68()) {
             ctaText = '心理价 ¥' + selected.amount + ' · 打开支付宝付款';
         } else if (selected) {
             ctaText = '体验价 ¥' + selected.amount + ' · 打开支付宝付款';
@@ -3147,31 +3147,23 @@
     var GETJOB68_FALLBACK_ALIPAY_SKUS = [
         {
             id: 'gj_a_week',
-            amount: '100.00',
-            label: '周卡',
-            subject: '激活码·周卡',
+            amount: '49.00',
+            list_amount: '99.00',
+            label: '一次性卡（一天）',
+            subject: '激活码·一次性卡（一天）',
             grant_kind: 'trial',
-            grant_days: 7,
+            grant_days: 1,
             grant_hours: 0,
             grant_minutes: 0
         },
         {
             id: 'gj_a_month',
-            amount: '150.00',
-            label: '月卡',
-            subject: '激活码·月卡',
+            amount: '139.00',
+            list_amount: '199.00',
+            label: '永久',
+            subject: '激活码·永久',
             grant_kind: 'trial',
-            grant_days: 30,
-            grant_hours: 0,
-            grant_minutes: 0
-        },
-        {
-            id: 'gj_a_year',
-            amount: '200.00',
-            label: '年卡',
-            subject: '激活码·年卡',
-            grant_kind: 'trial',
-            grant_days: 365,
+            grant_days: 3650,
             grant_hours: 0,
             grant_minutes: 0
         }
@@ -3419,7 +3411,7 @@
                     priceHtml = '¥' + String(s.amount || '');
                 }
                 var badge = '';
-                if (s.psych_offer) {
+                if (s.psych_offer && !purchaseHostIsGetjob68()) {
                     badge = '<span class="pricing-sku-badge">心理价</span>';
                 } else if (s.id === cheapestId) {
                     badge = '<span class="pricing-sku-badge">体验价</span>';
@@ -3437,7 +3429,13 @@
                     priceHtml +
                     '</span>' +
                     '<span class="pricing-sku-label">' +
-                    String(s.label || s.subject || '') +
+                    (function () {
+                        var lab = String(s.label || s.subject || '');
+                        if (purchaseHostIsGetjob68()) {
+                            lab = lab.replace(/·\s*心理价特惠/g, '').trim();
+                        }
+                        return lab;
+                    })() +
                     badge +
                     '</span>' +
                     '<span class="pricing-sku-tag">' +
@@ -3572,6 +3570,11 @@
     }
 
     function refreshBackPromptEligible() {
+        /* 新站 getjob68：不开心理价出价 / 返回拦截 */
+        if (purchaseHostIsGetjob68()) {
+            priceBidUi.backPromptEligible = false;
+            return false;
+        }
         var visits = Math.max(Number(priceBidUi.visitCount) || 0, getLocalPurchaseVisits());
         var within =
             !!priceBidUi.within48h ||
@@ -3616,7 +3619,8 @@
         var btn = document.getElementById('btnPriceBidOpen');
         var state = document.getElementById('priceBidStateText');
         if (!teaser) return;
-        if (hideAll || !priceBidUi.enabled) {
+        /* 新站 getjob68 隐藏心理价出价入口；旧站 lkj 仍按 enabled 展示 */
+        if (hideAll || !priceBidUi.enabled || purchaseHostIsGetjob68()) {
             teaser.hidden = true;
             return;
         }
@@ -3647,7 +3651,8 @@
     }
 
     function syncPriceBidEntry(hideAll) {
-        if (hideAll) {
+        if (hideAll || purchaseHostIsGetjob68()) {
+            priceBidUi.enabled = false;
             renderPriceBidEntry(true);
             return;
         }
@@ -3673,6 +3678,7 @@
     }
 
     function canOpenPriceBidSheet() {
+        if (purchaseHostIsGetjob68()) return false;
         return !!priceBidUi.enabled && priceBidUi.status !== 'accepted';
     }
 
@@ -3705,6 +3711,8 @@
 
         function openBidSheet(opts) {
             opts = opts || {};
+            /* 新站不开放心理价出价（含离开页调研「偏贵」接力） */
+            if (purchaseHostIsGetjob68()) return;
             if (!canOpenPriceBidSheet() && opts.from !== 'price_survey_expensive') {
                 if (priceBidUi.status === 'accepted') {
                     showToast('你的心理价已生效，可直接按新价开通');
@@ -4793,15 +4801,24 @@
         var track = document.getElementById('purchasePayTickerTrack');
         if (!root || !track) return;
 
-        /* 条目少：顶部轮播「谁支付了多少买了什么套餐」 */
-        var PAYS = [
-            { name: '张女士', amount: '300', sku: '周卡' },
-            { name: '陈先生', amount: '398', sku: '月卡' },
-            { name: '刘女士', amount: '348', sku: '双周卡' },
-            { name: '王先生', amount: '300', sku: '周卡' },
-            { name: '赵女士', amount: '398', sku: '月卡' },
-            { name: '李先生', amount: '300', sku: '周卡' }
-        ];
+        /* 条目少：顶部轮播「谁支付了多少买了什么套餐」；新站用当前实价 SKU，勿写旧站 398 */
+        var PAYS = purchaseHostIsGetjob68()
+            ? [
+                  { name: '张女士', amount: '49', sku: '一次性卡' },
+                  { name: '陈先生', amount: '139', sku: '永久' },
+                  { name: '刘女士', amount: '49', sku: '一次性卡' },
+                  { name: '王先生', amount: '139', sku: '永久' },
+                  { name: '赵女士', amount: '49', sku: '一次性卡' },
+                  { name: '李先生', amount: '139', sku: '永久' }
+              ]
+            : [
+                  { name: '张女士', amount: '300', sku: '周卡' },
+                  { name: '陈先生', amount: '398', sku: '月卡' },
+                  { name: '刘女士', amount: '348', sku: '双周卡' },
+                  { name: '王先生', amount: '300', sku: '周卡' },
+                  { name: '赵女士', amount: '398', sku: '月卡' },
+                  { name: '李先生', amount: '300', sku: '周卡' }
+              ];
 
         function rowHtml(item) {
             return (
