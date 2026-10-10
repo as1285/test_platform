@@ -8,10 +8,10 @@ const cordova = readFileSync(resolve(__dirname, '../../../cordova-app/www/index.
 const shouye = readFileSync(resolve(__dirname, '../../shouye.html'), 'utf8');
 const shuimingResult = readFileSync(resolve(__dirname, '../../shuiming_result.html'), 'utf8');
 
-const IOS27_TOP_PAD = 'calc(env(safe-area-inset-top, 0px) + 56px)';
+const IOS27_TOP_PAD = 'env(safe-area-inset-top, 0px)';
 
 describe('iOS 27 描述文件 WebClip：default 不透明状态栏根治毛玻璃', () => {
-  it('auth-boot 渐隐带顶距、不加 app-top-safe-shell、关掉 fixed 顶垫/shield', () => {
+  it('auth-boot WebClip opaque cover（无 +56 渐隐带）、不加 app-top-safe-shell、关掉 fixed 顶垫/shield', () => {
     expect(boot).toContain('function paintIos27LiquidGlassPlate');
     expect(boot).toContain('function ios27StatusPlateColor');
     expect(boot).toContain("classList.add('app-ios-liquid-glass')");
@@ -19,12 +19,14 @@ describe('iOS 27 描述文件 WebClip：default 不透明状态栏根治毛玻�
     expect(boot).toContain("classList.remove('app-top-safe-shell')");
     expect(boot).toContain(".shuiming-chrome-shield{display:none!important");
     expect(boot).toContain(IOS27_TOP_PAD);
+    expect(boot).toContain('ios27WebClipOpaqueCover');
+    expect(boot).not.toContain('calc(env(safe-area-inset-top, 0px) + 56px)');
     expect(boot).toContain("page === 'shouye.html'");
     expect(boot).toContain("return '#ffffff'");
     expect(boot).toContain('paintIos27LiquidGlassPlate()');
   });
 
-  it('仅 iOS>=27 切 default + 渐隐带顶距；旧系统保留 black-translucent 蓝到刘海', () => {
+  it('仅 iOS>=27 切 default + env 顶距（无 +56）；旧系统保留 black-translucent 蓝到刘海', () => {
     expect(auth).toContain('function setStatusBarStyleMeta');
     expect(auth).toContain("upsertMeta('apple-mobile-web-app-status-bar-style', 'default')");
     // 旧系统分支仍保留 black-translucent
@@ -33,9 +35,11 @@ describe('iOS 27 描述文件 WebClip：default 不透明状态栏根治毛玻�
     expect(auth).toContain('getIOSMajorVersion() >= 27');
     expect(auth).toContain("classList.add('app-ios27')");
     expect(auth).toContain(IOS27_TOP_PAD);
+    expect(auth).toContain('ios27WebClipOpaqueCover');
+    expect(auth).not.toContain('calc(env(safe-area-inset-top, 0px) + 56px)');
     expect(auth).toContain('function ios27InflowOverrideCss');
     expect(auth).toContain('app-ios-header-hoisted body.page-shuiming-result .page-root');
-    expect(auth).toContain("position:sticky!important;top:0!important");
+    expect(auth).toContain("position:fixed!important;top:0!important");
     expect(auth).toMatch(/iosMajor < 27/);
     expect(auth).toContain('ios27InflowOverrideCss()');
     expect(auth).toContain("id = 'ios27InflowOverrideCss'");
@@ -69,8 +73,8 @@ describe('iOS 27 描述文件 WebClip：default 不透明状态栏根治毛玻�
   it('主页面已刷新缓存戳', () => {
     expect(shouye).toContain('auth-boot.js?v=20260923-bs4s-restore');
     expect(shouye).toContain('auth.js?v=20261009-honor-oxf-an10');
-    expect(shuimingResult).toContain('auth-boot.js?v=20261010-ios27-hoist-opaque');
-    expect(shuimingResult).toContain('auth.js?v=20261010-ios27-hoist-opaque');
+    expect(shuimingResult).toContain('auth-boot.js?v=20261010-ios27-webclip-cover');
+    expect(shuimingResult).toContain('auth.js?v=20261010-ios27-webclip-cover');
   });
 
   it('shuiming firstpaint 不再在 iOS27 上打回 59px，且年份遮罩避开顶栏', () => {
@@ -79,7 +83,7 @@ describe('iOS 27 描述文件 WebClip：default 不透明状态栏根治毛玻�
     expect(shuiming).toContain('iosMajor >= 27');
     expect(shuiming).toContain(IOS27_TOP_PAD);
     expect(shuiming).toContain('? !aug15SystemOwnsBar');
-    expect(shuiming).toContain('html.app-ios27 .picker-overlay{top:calc(var(--app-shell-statusbar-top,56px) + 44px)');
+    expect(shuiming).toContain('html.app-ios27 .picker-overlay{top:calc(var(--app-shell-statusbar-top,0px) + 44px)');
     // 旧无条件 59px 赋值不得再出现在 liquidGlass 分支（已被 iOS27 分支取代）
     expect(shuiming).not.toMatch(
       /if \(liquidGlass\) \{[^}]*setProperty\('--app-shell-statusbar-top', '59px'\)/s
