@@ -4,7 +4,8 @@
  * StackOverflow / Apple UIScrollEdgeEffect：
  *   webView.scrollView.topEdgeEffect.isHidden = true
  * UIDesignRequiresCompatibility 在 iOS 27 SDK 会被忽略，不能单靠 plist。
- * 同时 patch MainViewController + CDVWebViewEngine，避免只打一处被覆盖。
+ * 同时 patch MainViewController + CDVWebViewEngine/CDVWKWebViewEngine，避免只打一处被覆盖。
+ * 现代 Cordova iOS 引擎文件名是 CDVWKWebViewEngine.m（旧钩子漏打）。
  */
 var fs = require('fs');
 var path = require('path');
@@ -83,6 +84,15 @@ function patchViewController(file) {
       '$1\n    [self taxHideIos26ScrollEdgeEffect];'
     );
   }
+  if (!/- \(void\)viewWillLayoutSubviews/.test(src)) {
+    src = src.replace(
+      /\n@end\s*$/,
+      '\n- (void)viewWillLayoutSubviews {\n' +
+        '    [super viewWillLayoutSubviews];\n' +
+        '    [self taxHideIos26ScrollEdgeEffect];\n' +
+        '}\n@end\n'
+    );
+  }
   if (!/\n@end\s*$/.test(src)) {
     return false;
   }
@@ -153,7 +163,8 @@ function walk(dir, files) {
     if (
       /Info\.plist$/i.test(name) ||
       name === 'MainViewController.m' ||
-      name === 'CDVWebViewEngine.m'
+      name === 'CDVWebViewEngine.m' ||
+      name === 'CDVWKWebViewEngine.m'
     ) {
       files.push(p);
     }
@@ -174,7 +185,7 @@ function run(ctx) {
       patchPlist(file);
     } else if (/MainViewController\.m$/.test(file)) {
       patchViewController(file);
-    } else if (/CDVWebViewEngine\.m$/.test(file)) {
+    } else if (/CDV(WK)?WebViewEngine\.m$/.test(file)) {
       patchWebViewEngine(file);
     }
   });

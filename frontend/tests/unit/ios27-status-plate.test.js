@@ -34,6 +34,9 @@ describe('iOS 27 描述文件 WebClip：default 不透明状态栏根治毛玻�
     expect(auth).toContain("classList.add('app-ios27')");
     expect(auth).toContain(IOS27_TOP_PAD);
     expect(auth).toContain('function ios27InflowOverrideCss');
+    expect(auth).toContain('app-ios-header-hoisted body.page-shuiming-result .page-root');
+    expect(auth).toContain("position:sticky!important;top:0!important");
+    expect(auth).toMatch(/iosMajor < 27/);
     expect(auth).toContain('ios27InflowOverrideCss()');
     expect(auth).toContain("id = 'ios27InflowOverrideCss'");
     // iOS 27 明细页 inflow：根文档不滚、列表内部滚动，消除顶部滚动边缘毛玻璃
@@ -66,8 +69,8 @@ describe('iOS 27 描述文件 WebClip：default 不透明状态栏根治毛玻�
   it('主页面已刷新缓存戳', () => {
     expect(shouye).toContain('auth-boot.js?v=20260923-bs4s-restore');
     expect(shouye).toContain('auth.js?v=20261009-honor-oxf-an10');
-    expect(shuimingResult).toContain('auth-boot.js?v=20260923-bs4s-restore');
-    expect(shuimingResult).toContain('auth.js?v=20261009-16pm-title-seam-2');
+    expect(shuimingResult).toContain('auth-boot.js?v=20261010-ios27-hoist-opaque');
+    expect(shuimingResult).toContain('auth.js?v=20261010-ios27-hoist-opaque');
   });
 
   it('shuiming firstpaint 不再在 iOS27 上打回 59px，且年份遮罩避开顶栏', () => {

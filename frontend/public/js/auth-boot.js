@@ -1105,19 +1105,30 @@
             /* 明细页 inflow：根文档不滚，列表内部滚动 —— 消除 iOS 27 顶部滚动边缘毛玻璃 */
             'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result,html.app-ios27.app-ios-liquid-glass:has(body.page-shuiming-result){' +
             'height:100%!important;max-height:100%!important;overflow:hidden!important;overscroll-behavior:none!important;position:relative!important;}' +
-            'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .page-root{' +
+            'html.app-ios27.app-ios-liquid-glass:not(.app-ios-header-hoisted) body.page-shuiming-result .page-root{' +
             'display:flex!important;flex-direction:column!important;height:100dvh!important;max-height:100dvh!important;min-height:0!important;' +
-            'overflow:hidden!important;isolation:auto!important;}' +
-            'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed{' +
-            'position:relative!important;top:auto!important;left:auto!important;right:auto!important;flex:0 0 auto!important;' +
-            'height:auto!important;background:#fff!important;z-index:2!important;transform:none!important;-webkit-transform:none!important;' +
+            'overflow:hidden!important;isolation:isolate!important;}' +
+            'html.app-ios27.app-ios-header-hoisted body.page-shuiming-result .page-root{' +
+            'display:flex!important;flex-direction:column!important;flex:1 1 auto!important;min-height:0!important;' +
+            'height:auto!important;max-height:none!important;overflow:hidden!important;isolation:isolate!important;}' +
+            'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result,' +
+            'html.app-ios27.app-ios-header-hoisted body.page-shuiming-result{' +
+            'display:flex!important;flex-direction:column!important;}' +
+            'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed,' +
+            'html.app-ios27.app-ios-header-hoisted body.page-shuiming-result .top-fixed{' +
+            'position:sticky!important;top:0!important;left:0!important;right:0!important;flex:0 0 auto!important;' +
+            'width:100%!important;min-height:6px!important;height:auto!important;margin:0!important;' +
+            'background:#fff!important;background-color:#fff!important;z-index:40!important;isolation:isolate!important;' +
+            '-webkit-transform:translateZ(0)!important;transform:translateZ(0)!important;' +
             '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}' +
             /* 顶栏文字下移：避开 iOS 27 系统玻璃渐隐带（盖在纯白上不可见，盖在文字上才糊）。 */
-            'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header{' +
-            'position:relative!important;top:auto!important;' +
+            'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header,' +
+            'html.app-ios27.app-ios-header-hoisted body.page-shuiming-result .top-fixed .header{' +
+            'position:relative!important;top:auto!important;width:100%!important;' +
             'height:calc(44px + var(--app-shell-statusbar-top,56px))!important;min-height:calc(44px + var(--app-shell-statusbar-top,56px))!important;' +
             'padding:var(--app-shell-statusbar-top,56px) 16px 0!important;' +
-            'box-sizing:border-box!important;background:#fff!important;box-shadow:none!important;' +
+            'box-sizing:border-box!important;background:#fff!important;background-color:#fff!important;box-shadow:none!important;' +
+            'isolation:isolate!important;-webkit-transform:translateZ(0)!important;transform:translateZ(0)!important;' +
             '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}' +
             'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header .back-btn,' +
             'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header .header-right{top:var(--app-shell-statusbar-top,56px)!important;height:44px!important;display:flex!important;align-items:center!important;}' +

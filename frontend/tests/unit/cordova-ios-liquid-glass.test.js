@@ -39,6 +39,12 @@ describe('Cordova iOS Liquid Glass 彻底退出', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
+  it('hook 也识别 CDVWKWebViewEngine.m（现代 Cordova iOS 引擎文件名）', () => {
+    const src = readFileSync(hookPath, 'utf8');
+    expect(src).toContain("CDVWKWebViewEngine.m");
+    expect(src).toMatch(/CDV\(WK\)\?WebViewEngine/);
+  });
+
   it('hook 给 CDVWebViewEngine 在 updateSettings 里关 topEdgeEffect', () => {
     const dir = mkdtempSync(join(tmpdir(), 'ios-engine-'));
     const file = join(dir, 'CDVWebViewEngine.m');

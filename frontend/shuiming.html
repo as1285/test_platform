@@ -340,7 +340,7 @@
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260923-bs4s-restore"></script>
+    <script src="/js/auth-boot.js?v=20261010-ios27-hoist-opaque"></script>
     <meta name="theme-color" content="#ffffff">
     <script>
         (function () {
@@ -485,8 +485,9 @@
                             'html.app-ios27{--app-shell-statusbar-top:calc(env(safe-area-inset-top, 0px) + 56px)!important;}' +
                             'html.app-ios27,html.app-ios27 body.page-shuiming{height:100%!important;max-height:100%!important;overflow:hidden!important;overscroll-behavior:none!important;background:#fff!important;}' +
                             'html.app-ios27 body.page-shuiming{display:flex!important;flex-direction:column!important;}' +
-                            'html.app-ios27 body.page-shuiming > .header{position:relative!important;top:auto!important;flex:0 0 auto!important;z-index:20!important;' +
-                            'padding-top:calc(14px + var(--app-shell-statusbar-top,56px))!important;background:#fff!important;box-shadow:none!important;' +
+                            'html.app-ios27 body.page-shuiming > .header{position:sticky!important;top:0!important;flex:0 0 auto!important;width:100%!important;min-height:6px!important;z-index:40!important;' +
+                            'padding-top:calc(14px + var(--app-shell-statusbar-top,56px))!important;background:#fff!important;background-color:#fff!important;box-shadow:none!important;' +
+                            'isolation:isolate!important;-webkit-transform:translateZ(0)!important;transform:translateZ(0)!important;' +
                             '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}' +
                             'html.app-ios27 body.page-shuiming > .content{flex:1 1 auto!important;min-height:0!important;overflow-x:hidden!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain!important;}' +
                             /* 年份遮罩勿用全屏半透明黑：会被 iOS 27 玻璃采成顶部发黑糊带 */
@@ -519,7 +520,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20261009-honor-oxf-an10" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20261010-ios27-hoist-opaque" defer fetchpriority="low"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>

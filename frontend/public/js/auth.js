@@ -5481,50 +5481,72 @@
     );
   }
 
-  /** iOS 27 明细页：根文档不滚 + 顶栏相对定位 + 渐隐带顶距（后注入，压过 sticky 规则）。 */
+  /** iOS 27 明细页：根文档不滚 + 顶栏实白贴顶；hoist 后 body flex、page-root 勿 100dvh。仅 app-ios27。 */
   function ios27InflowOverrideCss() {
     var pad = 'var(--app-shell-statusbar-top,56px)';
     return (
       'html.app-ios27{--app-shell-statusbar-top:calc(env(safe-area-inset-top, 0px) + 56px)!important;}' +
-      'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result,html.app-ios27.app-ios-liquid-glass:has(body.page-shuiming-result){' +
-      'height:100%!important;max-height:100%!important;overflow:hidden!important;overscroll-behavior:none!important;position:relative!important;}' +
-      'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .page-root{' +
+      'html.app-ios27,html.app-ios27 body{height:100%!important;max-height:100%!important;overflow:hidden!important;overscroll-behavior:none!important;}' +
+      'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result,html.app-ios27.app-ios-liquid-glass:has(body.page-shuiming-result),' +
+      'html.app-ios27.app-ios-unified-chrome body.page-shuiming-result{' +
+      'display:flex!important;flex-direction:column!important;height:100%!important;max-height:100%!important;' +
+      'overflow:hidden!important;overscroll-behavior:none!important;position:relative!important;background:#fff!important;}' +
+      'html.app-ios27.app-ios-header-hoisted body.page-shuiming-result .page-root,' +
+      'html.app-ios27.app-ios-liquid-glass.app-ios-header-hoisted body.page-shuiming-result .page-root,' +
+      'html.app-ios27.app-ios-unified-chrome.app-ios-header-hoisted body.page-shuiming-result .page-root{' +
+      'display:flex!important;flex-direction:column!important;flex:1 1 auto!important;min-height:0!important;' +
+      'height:auto!important;max-height:none!important;overflow:hidden!important;isolation:isolate!important;}' +
+      'html.app-ios27.app-ios-liquid-glass:not(.app-ios-header-hoisted) body.page-shuiming-result .page-root,' +
+      'html.app-ios27.app-ios-unified-chrome:not(.app-ios-header-hoisted) body.page-shuiming-result .page-root{' +
       'display:flex!important;flex-direction:column!important;height:100dvh!important;max-height:100dvh!important;min-height:0!important;' +
-      'overflow:hidden!important;isolation:auto!important;}' +
+      'overflow:hidden!important;isolation:isolate!important;}' +
       'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed,' +
-      'html.app-ios27.app-ios-unified-chrome body.page-shuiming-result .top-fixed{' +
-      'position:relative!important;top:auto!important;left:auto!important;right:auto!important;flex:0 0 auto!important;' +
-      'height:auto!important;background:#fff!important;z-index:2!important;transform:none!important;-webkit-transform:none!important;' +
+      'html.app-ios27.app-ios-unified-chrome body.page-shuiming-result .top-fixed,' +
+      'html.app-ios27.app-ios-header-hoisted body.page-shuiming-result .top-fixed{' +
+      'position:sticky!important;top:0!important;left:0!important;right:0!important;flex:0 0 auto!important;' +
+      'width:100%!important;max-width:100%!important;height:auto!important;min-height:6px!important;' +
+      'margin:0!important;background:#fff!important;background-color:#fff!important;z-index:40!important;' +
+      'overflow:visible!important;isolation:isolate!important;' +
+      '-webkit-transform:translateZ(0)!important;transform:translateZ(0)!important;' +
       '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}' +
       'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header,' +
-      'html.app-ios27.app-ios-unified-chrome body.page-shuiming-result .top-fixed .header{' +
-      'position:relative!important;top:auto!important;' +
+      'html.app-ios27.app-ios-unified-chrome body.page-shuiming-result .top-fixed .header,' +
+      'html.app-ios27.app-ios-header-hoisted body.page-shuiming-result .top-fixed .header{' +
+      'position:relative!important;top:auto!important;left:auto!important;right:auto!important;' +
+      'width:100%!important;box-sizing:border-box!important;' +
       'height:calc(44px + ' + pad + ')!important;min-height:calc(44px + ' + pad + ')!important;' +
-      'padding:' + pad + ' 16px 0!important;box-sizing:border-box!important;background:#fff!important;box-shadow:none!important;' +
+      'padding:' + pad + ' 16px 0!important;background:#fff!important;background-color:#fff!important;' +
+      'box-shadow:none!important;isolation:isolate!important;' +
+      '-webkit-transform:translateZ(0)!important;transform:translateZ(0)!important;' +
       '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}' +
       'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header .back-btn,' +
       'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header .header-right,' +
       'html.app-ios27.app-ios-unified-chrome body.page-shuiming-result .top-fixed .header .back-btn,' +
-      'html.app-ios27.app-ios-unified-chrome body.page-shuiming-result .top-fixed .header .header-right{' +
+      'html.app-ios27.app-ios-unified-chrome body.page-shuiming-result .top-fixed .header .header-right,' +
+      'html.app-ios27.app-ios-header-hoisted body.page-shuiming-result .top-fixed .header .back-btn,' +
+      'html.app-ios27.app-ios-header-hoisted body.page-shuiming-result .top-fixed .header .header-right{' +
       'top:' + pad + '!important;height:44px!important;display:flex!important;align-items:center!important;}' +
       'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .summary,' +
-      'html.app-ios27.app-ios-unified-chrome body.page-shuiming-result .top-fixed .summary{' +
+      'html.app-ios27.app-ios-unified-chrome body.page-shuiming-result .top-fixed .summary,' +
+      'html.app-ios27.app-ios-header-hoisted body.page-shuiming-result .top-fixed .summary{' +
       'position:relative!important;top:auto!important;background:#f5f6fa!important;}' +
       'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .list,' +
-      'html.app-ios27.app-ios-unified-chrome body.page-shuiming-result .list{' +
+      'html.app-ios27.app-ios-unified-chrome body.page-shuiming-result .list,' +
+      'html.app-ios27.app-ios-header-hoisted body.page-shuiming-result .list{' +
       'position:relative!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;' +
       'flex:1 1 auto!important;min-height:0!important;height:auto!important;max-height:none!important;' +
       'margin-top:0!important;padding-top:0!important;overflow-x:hidden!important;overflow-y:auto!important;' +
       '-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain!important;background:#f5f6fa!important;}' +
+      'html.app-ios27.app-ios-liquid-glass body.page-shuiming,html.app-ios27.app-ios-unified-chrome body.page-shuiming{' +
+      'display:flex!important;flex-direction:column!important;height:100%!important;max-height:100%!important;' +
+      'overflow:hidden!important;overscroll-behavior:none!important;background:#fff!important;}' +
       'html.app-ios27.app-ios-liquid-glass body.page-shuiming>.header,' +
       'html.app-ios27.app-ios-unified-chrome body.page-shuiming>.header{' +
-      'position:relative!important;top:auto!important;flex:0 0 auto!important;background:#fff!important;background-color:#fff!important;' +
-      'padding-top:calc(14px + ' + pad + ')!important;z-index:20!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}' +
-      'html.app-ios27.app-ios-liquid-glass,html.app-ios27.app-ios-liquid-glass body.page-shuiming,' +
-      'html.app-ios27.app-ios-unified-chrome body.page-shuiming{' +
-      'height:100%!important;max-height:100%!important;overflow:hidden!important;overscroll-behavior:none!important;}' +
-      'html.app-ios27.app-ios-liquid-glass body.page-shuiming,html.app-ios27.app-ios-unified-chrome body.page-shuiming{' +
-      'display:flex!important;flex-direction:column!important;background:#fff!important;}' +
+      'position:sticky!important;top:0!important;flex:0 0 auto!important;width:100%!important;min-height:6px!important;' +
+      'background:#fff!important;background-color:#fff!important;' +
+      'padding-top:calc(14px + ' + pad + ')!important;z-index:40!important;box-shadow:none!important;' +
+      'isolation:isolate!important;-webkit-transform:translateZ(0)!important;transform:translateZ(0)!important;' +
+      '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}' +
       'html.app-ios27.app-ios-liquid-glass body.page-shuiming>.content,html.app-ios27.app-ios-unified-chrome body.page-shuiming>.content{' +
       'flex:1 1 auto!important;min-height:0!important;overflow-x:hidden!important;overflow-y:auto!important;' +
       '-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain!important;}' +
@@ -5619,18 +5641,51 @@
       if (!isLikelyIOSViewportClient()) return;
       if (!document.body || !document.body.classList.contains('page-shuiming-result')) return;
       var root = document.documentElement;
-      /* 统一顶栏走文档流 sticky，提到 body 会和列表各占一份高度 */
-      if (root.classList.contains('app-ios-unified-chrome')) return;
-      if (root.classList.contains('app-ios-header-hoisted')) return;
+      /* 仅 iOS 27+：iOS 26 保持 unified-chrome 文档流 sticky，不 hoist */
+      var iosMajor = 0;
+      try { iosMajor = getIOSMajorVersion(); } catch (eMaj) { iosMajor = 0; }
+      if (iosMajor < 27 && !root.classList.contains('app-ios27')) return;
+      if (root.classList.contains('app-ios-header-hoisted')) {
+        try { injectIos27StickyStyles(); } catch (eRe) {}
+        return;
+      }
       var pageRoot = document.querySelector('.page-root');
       var topFixed = document.querySelector('.top-fixed');
       if (!topFixed) return;
       document.body.insertBefore(topFixed, pageRoot || document.body.firstChild);
       root.classList.add('app-ios-header-hoisted');
+      try {
+        topFixed.style.setProperty('position', 'sticky', 'important');
+        topFixed.style.setProperty('top', '0', 'important');
+        topFixed.style.setProperty('left', '0', 'important');
+        topFixed.style.setProperty('right', '0', 'important');
+        topFixed.style.setProperty('width', '100%', 'important');
+        topFixed.style.setProperty('background', '#fff', 'important');
+        topFixed.style.setProperty('background-color', '#fff', 'important');
+        topFixed.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
+        topFixed.style.setProperty('backdrop-filter', 'none', 'important');
+        topFixed.style.setProperty('isolation', 'isolate', 'important');
+        topFixed.style.setProperty('transform', 'translateZ(0)', 'important');
+        topFixed.style.setProperty('-webkit-transform', 'translateZ(0)', 'important');
+        topFixed.style.setProperty('z-index', '40', 'important');
+        if (pageRoot) {
+          pageRoot.style.setProperty('flex', '1 1 auto', 'important');
+          pageRoot.style.setProperty('min-height', '0', 'important');
+          pageRoot.style.setProperty('height', 'auto', 'important');
+          pageRoot.style.setProperty('max-height', 'none', 'important');
+          pageRoot.style.setProperty('overflow', 'hidden', 'important');
+        }
+        document.body.style.setProperty('display', 'flex', 'important');
+        document.body.style.setProperty('flex-direction', 'column', 'important');
+        document.body.style.setProperty('overflow', 'hidden', 'important');
+        document.body.style.setProperty('height', '100%', 'important');
+        document.body.style.setProperty('max-height', '100%', 'important');
+      } catch (eStyle) {}
       var back = topFixed.querySelector('.back-btn');
       if (back) {
         back.style.setProperty('top', 'auto', 'important');
       }
+      try { injectIos27StickyStyles(); } catch (eInj) {}
     } catch (e) {}
   }
 
