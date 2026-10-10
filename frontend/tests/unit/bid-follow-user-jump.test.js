@@ -11,7 +11,7 @@ describe('已通过跟进账号可跳转注册用户', () => {
     expect(panel).toContain('admin-user-jump js-bid-follow-open-user');
     expect(panel).toContain('accountJumpButton(row.username)');
     expect(panel).toContain('jumpToRegisteredUser(userBtn.getAttribute');
-    expect(html).toContain('admin_panel.js?v=20261010-user-email-col');
+    expect(html).toContain('admin_panel.js?v=20261010-admin-simplify');
     expect(html).toContain('bidFollowTbody');
   });
 });

@@ -73,7 +73,7 @@ describe('运营看板同时点日活', () => {
     /* 看板 HTML 已去掉常驻 #opsBoardDau 挂载点；JS 仍保留 renderDau（有节点才渲染） */
     expect(html).not.toContain('id="opsBoardDau"');
     expect(html).toContain('id="opsBoardKpi"');
-    expect(html).toContain('admin_panel.css?v=20261009-hide-legacy-sku');
+    expect(html).toContain('admin_panel.css?v=20261010-admin-simplify');
     expect(html).toContain('loader.js?v=20261009-purchase-copy-daily');
     expect(ops).toContain('function renderDau(');
     expect(ops).toContain("getElementById('opsBoardDau')");

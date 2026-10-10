@@ -8,7 +8,7 @@ const auth = readFileSync(resolve(__dirname, '../../public/js/auth.js'), 'utf8')
 describe('purchase expired trial repurchase', () => {
   it('purchaseAuthFetch always soft-allows activation_expired', () => {
     expect(purchase).toContain('opts.allowActivationExpired = true');
-    expect(purchase).toContain('auth.js?v=20261007-expired-repurchase');
+    expect(purchase).toContain('auth.js?v=20261010-smoke-hoist-k70');
     expect(purchase).toContain("authFetch('api/user?action=info', { allowActivationExpired: true })");
     expect(purchase).toContain('allowActivationExpired: true');
   });

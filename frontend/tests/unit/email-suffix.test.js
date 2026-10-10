@@ -55,7 +55,7 @@ describe('注册 / 支付 / 引导接入后缀按钮', () => {
     expect(registerHtml).toContain('id="emailSuffixChips"');
     expect(registerHtml).toContain('data-email-suffix="@qq.com"');
     expect(registerHtml).toContain('data-email-suffix="@163.com"');
-    expect(registerHtml).toContain('开通成功、专属价会发到这个邮箱');
+    expect(registerHtml).toContain('填写邮箱，方便更好的服务');
     expect(registerHtml).not.toContain('不填也能注册');
     expect(registerHtml).toContain('email-suffix.js?v=20260907-email-sfx');
   });
@@ -73,7 +73,7 @@ describe('注册 / 支付 / 引导接入后缀按钮', () => {
   it('注册后引导和个人信息也有后缀按钮', () => {
     expect(guideSrc).toContain('id="cgEmailSuffixChips"');
     expect(guideSrc).toContain('data-email-suffix="@qq.com"');
-    expect(guideSrc).toContain('填 QQ 号后点 @qq.com 即可');
+    expect(guideSrc).toContain('填写邮箱，方便更好的服务');
     expect(guideSrc).toContain('hasEmail: function');
     expect(guideSrc).toContain('setHasEmail: function');
     expect(gerenxinxiHtml).toContain('id="emailSuffixChips"');
@@ -84,6 +84,6 @@ describe('注册 / 支付 / 引导接入后缀按钮', () => {
 
   it('auth 注入新版 conversion-guide 与 email-suffix', () => {
     expect(authSrc).toContain('email-suffix.js?v=20260907-email-sfx');
-    expect(authSrc).toContain('conversion-guide.js?v=20261009-remove-act-nudge');
+    expect(authSrc).toContain('conversion-guide.js?v=20261010-smoke-hoist-k70');
   });
 });

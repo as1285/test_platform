@@ -1214,7 +1214,7 @@
             function hoistIos27ResultChrome() {
                 try {
                     var root = document.documentElement;
-                    if (root.classList.contains('app-ios-unified-chrome')) return;
+                    /* unified-chrome 也 hoist：与 auth.js 一致，顶栏离开 page-root */
                     if (root.classList.contains('app-ios-header-hoisted')) return;
                     var pageRoot = document.querySelector('.page-root');
                     var topFixed = document.querySelector('.top-fixed');
@@ -1230,7 +1230,7 @@
             else document.addEventListener('DOMContentLoaded', hoistIos27ResultChrome);
         })();
     </script>
-    <script src="/js/auth.js?v=20261010-compat-feedback" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20261010-smoke-hoist-k70" defer fetchpriority="low"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>

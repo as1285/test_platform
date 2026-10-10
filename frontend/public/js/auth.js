@@ -5654,8 +5654,8 @@
       if (!isLikelyIOSViewportClient()) return;
       if (!document.body || !document.body.classList.contains('page-shuiming-result')) return;
       var root = document.documentElement;
-      /* 统一顶栏走文档流 sticky，提到 body 会和列表各占一份高度 */
-      if (root.classList.contains('app-ios-unified-chrome')) return;
+      /* unified-chrome 也要 hoist：CSS 已有 app-ios-header-hoisted.app-ios-unified-chrome sticky 规则；
+       * 冒烟/真机都要求顶栏离开 page-root，否则返回钮仍可能被 shield 盖住 */
       if (root.classList.contains('app-ios-header-hoisted')) return;
       var pageRoot = document.querySelector('.page-root');
       var topFixed = document.querySelector('.top-fixed');
@@ -5769,6 +5769,18 @@
           if (body) {
             body.style.setProperty('--app-shell-statusbar-top', '40px');
             body.style.setProperty('--android-status-inset', '40px');
+          }
+          /* 清掉沉浸机 pinWhitePageImmersiveHeader 可能留下的 54px */
+          if (body.classList.contains('page-shuiming')) {
+            var k70Hdr = body.querySelector('.header');
+            if (k70Hdr) {
+              k70Hdr.style.setProperty('padding-top', '40px', 'important');
+              k70Hdr.style.setProperty('box-sizing', 'border-box', 'important');
+            }
+            var k70Content = body.querySelector('.content');
+            if (k70Content) {
+              k70Content.style.setProperty('padding-top', '72px', 'important');
+            }
           }
         } catch (eK70Inset) {}
         applyAndroidJuly20SystemBar('#f5f6fa');
@@ -7401,6 +7413,13 @@
           'html.app-android-xiaomi-14.app-top-safe-shell:has(body.page-xiangqing)::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,48px) !important;background:#f5f6fa !important;z-index:2147483000 !important;pointer-events:none !important;}' +
           /* 红米 K70 标准版：顶距 40px，不刷页内黑条 */
           'html.app-android-redmi-k70.app-top-safe-shell:not(.app-android-redmi-k70-ultra){--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
+          /* K70 标准版筛选页：总顶距 ≤48（shell40），勿叠 14+40=54 */
+          'html.app-android-redmi-k70.app-android-client.app-top-safe-shell:not(.app-android-redmi-k70-ultra) body.page-shuiming > .header,' +
+          'html.app-android-redmi-k70.app-top-safe-shell:not(.app-android-redmi-k70-ultra) body.page-shuiming > .header{' +
+          'padding-top:40px !important;padding-bottom:12px !important;box-sizing:border-box !important;}' +
+          'html.app-android-redmi-k70.app-android-client.app-top-safe-shell:not(.app-android-redmi-k70-ultra) body.page-shuiming > .content,' +
+          'html.app-android-redmi-k70.app-top-safe-shell:not(.app-android-redmi-k70-ultra) body.page-shuiming > .content{' +
+          'padding-top:72px !important;}' +
           'html.app-android-xiaomi-mix-fold.app-top-safe-shell{--app-shell-statusbar-top:40px !important;}' +
           'html.app-android-xiaomi-13.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
           'html.app-android-xiaomi-13ultra.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
@@ -11940,7 +11959,7 @@
     function appendCg() {
       if (document.querySelector('script[data-conversion-guide]')) return;
       var s = document.createElement('script');
-      s.src = '/js/conversion-guide.js?v=20261009-remove-act-nudge';
+      s.src = '/js/conversion-guide.js?v=20261010-smoke-hoist-k70';
       s.setAttribute('data-conversion-guide', '1');
       s.async = true;
       s.defer = true;
@@ -12636,5 +12655,145 @@
     } else {
       arkBoot();
     }
+  })();
+
+  (function bootGetjob68EmailRequiredGate() {
+    function hostIsGetjob68() {
+      var h = '';
+      try {
+        h = String((window.location && window.location.hostname) || '')
+          .trim()
+          .toLowerCase();
+      } catch (eHost) {
+        return false;
+      }
+      return h === 'getjob68.club' || h === 'www.getjob68.club' || /(^|\.)getjob68\.club$/.test(h);
+    }
+    var page = currentPageName();
+    if (
+      page === 'register.html' ||
+      page === 'admin_panel.html' ||
+      page === 'admin_login.html' ||
+      page === 'login.html'
+    ) {
+      return;
+    }
+    if (!getToken()) return;
+    if (hostIsGetjob68()) window.__emailRequiredGate = 'pending';
+
+    function emailOk(raw) {
+      if (window.EmailSuffix && typeof window.EmailSuffix.isValidUserEmail === 'function') {
+        return window.EmailSuffix.isValidUserEmail(raw);
+      }
+      var s = raw == null ? '' : String(raw).trim();
+      if (!s || s.length > 255 || /\s/.test(s) || s.indexOf('..') >= 0) return false;
+      var at = s.lastIndexOf('@');
+      if (at < 2 || at !== s.indexOf('@')) return false;
+      return s.slice(at + 1).indexOf('.') > 0;
+    }
+
+    function showGate() {
+      if (document.getElementById('email-required-gate')) return;
+      window.__emailRequiredGate = 'open';
+      var soft = document.getElementById('cg-email-nudge-root');
+      if (soft && soft.parentNode) soft.parentNode.removeChild(soft);
+      var root = document.createElement('div');
+      root.id = 'email-required-gate';
+      root.setAttribute('role', 'dialog');
+      root.setAttribute('aria-modal', 'true');
+      root.style.cssText =
+        'position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:rgba(0,0,0,.55);';
+      root.innerHTML =
+        '<div style="width:100%;max-width:340px;background:#fff;border-radius:12px;padding:22px 18px 16px;box-shadow:0 8px 32px rgba(0,0,0,.18);">' +
+        '<div style="font-size:17px;font-weight:600;text-align:center;color:#111;margin:0 0 8px;">请先填写邮箱</div>' +
+        '<p style="margin:0 0 14px;font-size:14px;line-height:1.6;color:#555;text-align:center;">填写邮箱，方便更好的服务</p>' +
+        '<input id="emailRequiredInput" type="email" maxlength="255" autocomplete="email" inputmode="email" placeholder="填 QQ 号或用户名，再点后缀" style="width:100%;box-sizing:border-box;height:42px;border:1px solid #d0d5dd;border-radius:8px;padding:0 12px;font-size:15px;">' +
+        '<div id="emailRequiredChips" style="display:flex;gap:8px;margin-top:10px;">' +
+        '<button type="button" data-email-suffix="@qq.com" style="flex:1;height:34px;border:1px solid #d0d5dd;border-radius:8px;background:#f8fafc;font-size:14px;">@qq.com</button>' +
+        '<button type="button" data-email-suffix="@163.com" style="flex:1;height:34px;border:1px solid #d0d5dd;border-radius:8px;background:#f8fafc;font-size:14px;">@163.com</button>' +
+        '</div>' +
+        '<div id="emailRequiredErr" style="min-height:20px;margin-top:8px;font-size:13px;color:#b91c1c;text-align:center;"></div>' +
+        '<button type="button" id="emailRequiredSave" style="width:100%;height:44px;border:none;border-radius:8px;background:#1e6fff;color:#fff;font-size:16px;">保存并继续</button>' +
+        '</div>';
+      document.body.appendChild(root);
+      var input = document.getElementById('emailRequiredInput');
+      var chips = document.getElementById('emailRequiredChips');
+      var errEl = document.getElementById('emailRequiredErr');
+      var saveBtn = document.getElementById('emailRequiredSave');
+      if (chips && input && window.EmailSuffix && typeof window.EmailSuffix.wireEmailSuffixChips === 'function') {
+        window.EmailSuffix.wireEmailSuffixChips(chips, input);
+      } else if (chips && input) {
+        chips.addEventListener('click', function (ev) {
+          var t = ev.target;
+          var suf = t && t.getAttribute ? t.getAttribute('data-email-suffix') : '';
+          if (!suf) return;
+          ev.preventDefault();
+          var cur = String(input.value || '').trim();
+          var at = cur.indexOf('@');
+          input.value = (at >= 0 ? cur.slice(0, at) : cur) + suf;
+        });
+      }
+      if (!saveBtn) return;
+      saveBtn.addEventListener('click', function () {
+        var val = input ? String(input.value || '').trim() : '';
+        if (!emailOk(val)) {
+          if (errEl) errEl.textContent = '请填写有效邮箱，例如 name@qq.com';
+          return;
+        }
+        if (errEl) errEl.textContent = '';
+        saveBtn.disabled = true;
+        window
+          .authFetch('api/user', {
+            method: 'POST',
+            allowActivationExpired: true,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'save_profile', email: val })
+          })
+          .then(function (r) {
+            return (window.authParseJson || function (x) {
+              return x.json();
+            })(r);
+          })
+          .then(function (data) {
+            if (!data || data.code !== 200) {
+              throw new Error((data && data.msg) || '保存失败');
+            }
+            window.__emailRequiredGate = '';
+            window.location.reload();
+          })
+          .catch(function (e) {
+            saveBtn.disabled = false;
+            if (errEl) errEl.textContent = (e && e.message) || '保存失败';
+          });
+      });
+    }
+
+    if (typeof window.authFetch !== 'function') return;
+    window
+      .authFetch('api/user?action=summary', { allowActivationExpired: true })
+      .then(function (r) {
+        return (window.authParseJson || function (x) {
+          return x.json();
+        })(r);
+      })
+      .then(function (data) {
+        var u = data && data.code === 200 ? data.data : null;
+        if (!u || u.is_guest) {
+          window.__emailRequiredGate = '';
+          return;
+        }
+        var site = String(u.register_site || '')
+          .trim()
+          .toLowerCase();
+        var need = (hostIsGetjob68() || site === 'getjob68') && !u.has_email;
+        if (!need) {
+          window.__emailRequiredGate = '';
+          return;
+        }
+        showGate();
+      })
+      .catch(function () {
+        if (!hostIsGetjob68()) window.__emailRequiredGate = '';
+      });
   })();
 })();

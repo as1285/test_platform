@@ -47,7 +47,7 @@ describe('管理后台注册站点分頁', () => {
     expect(adminJs).toContain("url += '&site='");
     expect(ops).toContain('function appendSiteQuery');
     expect(loader).toContain('ops-conversion.js?v=20261008-legacy-plain');
-    expect(html).toContain('admin_panel.js?v=20261010-user-email-col');
+    expect(html).toContain('admin_panel.js?v=20261010-admin-simplify');
   });
   it('注册列表用用户邮箱替换注册站点列，新旧站都显示', () => {
     expect(html).toContain('id="usersRegisterSiteTh">用户邮箱</th>');

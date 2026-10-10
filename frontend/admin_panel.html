@@ -7,7 +7,7 @@
     <meta http-equiv="Cache-Control" content="no-store">
     <title>运营台</title>
     <!-- 不走 Google Fonts：CSP 仅允许同域，且国内常拦 fonts.googleapis.com -->
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20261009-hide-legacy-sku">
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20261010-admin-simplify">
     <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260905-ch-psych-col">
 </head>
 <body>
@@ -49,29 +49,12 @@
             </div>
             <div class="wrap">
                 <div id="page-settings" class="page-panel" role="tabpanel">
-                    <div class="page-lede"><p class="page-lede-text">套餐价格与心理价、离职证明价格、招行模拟器价格、改名费用与个税修改收费</p></div>
+                    <div class="page-lede"><p class="page-lede-text" id="settingsPageLede">套餐价格与心理价、离职证明价格、招行模拟器价格、改名费用与个税修改收费</p></div>
                     <section id="sectionPriceBids">
-                        <h2>心理价出价</h2>
-                        <p class="stat mt-0" style="margin-bottom:8px;">当前心理价位（支付页「心理价特惠」实付价）</p>
-                        <div id="bidPsychPriceBar" class="user-data-stats" style="margin:0 0 12px;">
-                            <div class="user-data-stat-card">
-                                <div class="ud-label" id="bidPsychWeekLabel">周卡心理价</div>
-                                <div class="ud-val" id="bidPsychWeekDisplay">—</div>
-                                <div class="hint" id="bidPsychWeekSub"></div>
-                            </div>
-                            <div class="user-data-stat-card">
-                                <div class="ud-label" id="bidPsychTwoWeekLabel">双周卡心理价</div>
-                                <div class="ud-val" id="bidPsychTwoWeekDisplay">—</div>
-                                <div class="hint" id="bidPsychTwoWeekSub"></div>
-                            </div>
-                            <div class="user-data-stat-card">
-                                <div class="ud-label" id="bidPsychMonthLabel">月卡心理价</div>
-                                <div class="ud-val" id="bidPsychMonthDisplay">—</div>
-                                <div class="hint" id="bidPsychMonthSub"></div>
-                            </div>
-                        </div>
+                        <details id="bidReviewDetails">
+                        <summary class="admin-fold-summary">心理价出价</summary>
                         <div id="bidCfgForm">
-                        <p class="hint mt-0">用户在购买页可提交理想价：出价 ≥ 该套餐自动通过线时立即生效为专属价并站内信通知（有邮箱则同步邮件）；低于线的进入下方待处理。上方卡片为支付页默认「心理价特惠」；要改请到下方「支付套餐 → 心理价」<button type="button" class="btn-sm btn-page" id="btnJumpSkuPsych" style="margin-left:6px;">去修改</button>。此处为议价自动通过线。无套餐金额时回退为「目录价 × 百分比」。</p>
+                        <p class="hint mt-0">出价达到自动通过线时立即生效；低于线的留在下面待处理。默认心理价在「支付方案」里改<button type="button" class="btn-sm btn-page" id="btnJumpSkuPsych" style="margin-left:6px;">去修改</button>。</p>
                         <div class="form-row form-stack">
                             <div class="form-field form-field-narrow">
                                 <label><input type="checkbox" id="bidCfgEnabled" checked> 开放出价入口</label>
@@ -132,9 +115,11 @@
                                 <tbody id="bidTbody"><tr><td colspan="8" class="hint">加载中…</td></tr></tbody>
                             </table>
                         </div>
+                        </details>
                     </section>
                     <section id="sectionPriceBidFollowup">
-                        <h2>已通过跟进</h2>
+                        <details id="bidFollowupDetails">
+                        <summary class="admin-fold-summary">已通过跟进</summary>
                         <p class="hint mt-0" style="margin-bottom:8px;">跟踪心理价已通过用户是否付费开通；可发催付邮件（复用专属优惠提醒文案）。点击上方「已通过」计数或本按钮进入时默认看未付费。</p>
                         <div class="form-row" style="align-items:center;gap:12px;flex-wrap:wrap;">
                             <label><input type="radio" name="bidFollowPayFilter" value="unpaid" checked> 未付费</label>
@@ -167,6 +152,7 @@
                             <span id="bidFollowPageInfo">第 1 页</span>
                             <button type="button" class="btn-page" id="bidFollowNext">下一页</button>
                         </div>
+                        </details>
                     </section>
                     <section id="skuCatalogSection">
                         <h2 id="skuCatalogTitle">支付套餐</h2>
@@ -297,10 +283,6 @@
 
                 <div id="page-install-guide" class="page-panel" role="tabpanel">
                     <div class="page-lede"><p class="page-lede-text">安装包、代理渠道与引导视频</p></div>
-                    <section>
-                        <h2>落地页说明</h2>
-                        <p class="hint">落地页相关设置在此单独配置；购买页全站同一套套餐价，见「定价与引导」。</p>
-                    </section>
                     <section>
                         <h2>安装包下载</h2>
                         <details class="page-hint-details"><summary>说明</summary><p class="hint">用户在「安装包和使用方法」页<strong>只看到下载按钮</strong>。推荐在此<strong>本地上传</strong>安装包（写入站点 <code>uploads/</code>）；也可手填外链（安卓须 https 完整 URL）或站内路径（苹果如 <code>/personal.mobileconfig</code>）。留空则对应按钮不显示。</p></details>
@@ -2929,7 +2911,7 @@
                         <h2>待跟进</h2>
                         <div class="ops-board-todo" id="opsBoardTodo" aria-live="polite"></div>
                     </section>
-                    <section>
+                    <section id="opsBoardShortcuts">
                         <h2>快捷入口</h2>
                         <div class="ops-hub-grid mb-12">
                             <a class="ops-hub-card" href="#ops-inactive"><strong>未激活名单</strong><span>筛人群、导出、点进用户</span></a>
@@ -4428,6 +4410,6 @@
     <script src="/js/admin/loader.js?v=20261009-purchase-copy-daily"></script>
     <script src="/js/admin/nav.js?v=20261010-outline-cleanup"></script>
     <script src="/js/admin-analytics-period.js?v=20260905-ch-psych-col"></script>
-    <script src="/js/admin_panel.js?v=20261010-user-email-col"></script>
+    <script src="/js/admin_panel.js?v=20261010-admin-simplify"></script>
 </body>
 </html>

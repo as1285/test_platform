@@ -1991,6 +1991,27 @@ tr.users-detail-row > td {
     user-select: none;
     -webkit-user-select: none;
 }
+.admin-fold-summary {
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--admin-heading);
+    list-style: none;
+    user-select: none;
+}
+.admin-fold-summary::-webkit-details-marker { display: none; }
+.admin-fold-summary::before {
+    content: '▸ ';
+    font-size: 11px;
+    opacity: 0.65;
+}
+details[open] > .admin-fold-summary::before {
+    content: '▾ ';
+}
+details[open] > .admin-fold-summary {
+    margin-bottom: 12px;
+}
 
 /* 表单布局工具类 */
 .form-stack {

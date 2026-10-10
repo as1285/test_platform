@@ -5860,7 +5860,7 @@ async function loadUserAuthState(username) {
   const conn = await pool.getConnection();
   try {
     const [rows] = await conn.execute(
-      'SELECT banned, session_rev, account_active, user_type, activation_kind, active_until FROM users WHERE username = ? LIMIT 1',
+      'SELECT banned, session_rev, account_active, user_type, activation_kind, active_until, email, register_site FROM users WHERE username = ? LIMIT 1',
       [u]
     );
     if (!rows.length) {
@@ -5873,7 +5873,10 @@ async function loadUserAuthState(username) {
       account_active: rows[0].account_active === 1 || rows[0].account_active === true,
       user_type: rows[0].user_type != null ? Number(rows[0].user_type) : USER_TYPE_NORMAL,
       activation_kind: rows[0].activation_kind != null ? String(rows[0].activation_kind) : 'none',
-      active_until: rows[0].active_until || null
+      active_until: rows[0].active_until || null,
+      email: rows[0].email != null ? String(rows[0].email).trim() : '',
+      register_site:
+        rows[0].register_site != null ? String(rows[0].register_site).trim().toLowerCase() : ''
     };
     row.account_active = isUserEffectivelyActive(row);
     _userAuthCache.set(u, { expiresAt: now + USER_AUTH_CACHE_TTL_MS, row: row });
@@ -8989,6 +8992,44 @@ async function requireAdminAuth(req, res, next) {
   }
 }
 
+/**
+ * 新域名账号，或正在新域名上操作的正式用户，没有有效邮箱时不能继续。
+ * 游客除外。旧站账号在旧域名上仍可不填邮箱。
+ */
+function userMustProvideEmail(row, req) {
+  if (!row || rowUserTypeIsGuest(row)) return false;
+  var site = row.register_site != null ? String(row.register_site).trim().toLowerCase() : '';
+  var hostSite = '';
+  try {
+    hostSite = (registerSite.siteFromRequest(req).site || '').trim().toLowerCase();
+  } catch (eSite) {
+    hostSite = '';
+  }
+  if (site !== registerSite.SITE_GETJOB68 && hostSite !== registerSite.SITE_GETJOB68) return false;
+  return !isValidUserEmail(row.email);
+}
+
+/** 没邮箱时只放行读摘要和保存邮箱，其余接口视为后续操作。 */
+function isEmailRequiredRequestExempt(req) {
+  var path = normalizeUserApiPath(req);
+  var method = String(req.method || 'GET').toUpperCase();
+  var action = '';
+  if (req.query && req.query.action != null) action = String(req.query.action).trim();
+  if (req.body && req.body.action != null && String(req.body.action).trim() !== '') {
+    action = String(req.body.action).trim();
+  }
+  var userRoot = path === '/api/user' || path === '/api/user.php' || path === '/user.php';
+  if (method === 'GET' && userRoot) {
+    return action === '' || action === 'summary' || action === 'info';
+  }
+  if (method === 'POST' && /^track_[a-z0-9_]{1,80}$/i.test(action)) return true;
+  if (method === 'POST' && userRoot && action === 'save_profile') {
+    var email = req.body && req.body.email != null ? String(req.body.email).trim() : '';
+    return isValidUserEmail(email);
+  }
+  return false;
+}
+
 /** 要求已登录（JWT） */
 async function requireAuth(req, res, next) {
   var auth = req.headers.authorization || '';
@@ -9040,6 +9081,13 @@ async function requireAuth(req, res, next) {
       });
     }
     req.authUserRow = row;
+    if (userMustProvideEmail(row, req) && !isEmailRequiredRequestExempt(req)) {
+      return res.status(403).json({
+        code: 403,
+        msg: '请先填写邮箱',
+        email_required: true
+      });
+    }
     /* 游客不计入日活；仍同步设备，便于管理后台「游客模式」查看机型 */
     if (!rowUserTypeIsGuest(row)) {
       touchUserDailyActivity(req.authUserId);
@@ -9118,6 +9166,9 @@ async function registerUser(
   }
   if (!regSite || regSite === registerSite.SITE_ALL) {
     regSite = registerSite.SITE_UNKNOWN;
+  }
+  if (regSite === registerSite.SITE_GETJOB68 && !emailNorm) {
+    throw new Error('请填写邮箱后再注册');
   }
 
   const saltBuf = crypto.randomBytes(16);
@@ -9814,6 +9865,7 @@ async function getUserSummaryForApi(userId) {
     const [rows] = await conn.execute(
       `SELECT real_name, tax_id, gender, account_active, employer_count, family_count, bank_card_count, user_type,
               activation_kind, active_until, created_at, register_source_channel, sales_promo_channel, email,
+              register_site,
               TIMESTAMPDIFF(HOUR, created_at, UTC_TIMESTAMP()) AS hours_since_register
        FROM users WHERE username = ? LIMIT 1`,
       [uid]
@@ -9838,7 +9890,8 @@ async function getUserSummaryForApi(userId) {
         is_guest: false,
         created_at: null,
         hours_since_register: 0,
-        has_email: false
+        has_email: false,
+        register_site: ''
       };
       _userSummaryApiCache.set(uid, { v: empty, t: now });
       return empty;
@@ -9872,7 +9925,9 @@ async function getUserSummaryForApi(userId) {
       is_guest: ut === USER_TYPE_GUEST,
       created_at: rec.created_at ? rec.created_at.toISOString() : null,
       hours_since_register: Number(rec.hours_since_register) || 0,
-      has_email: isValidUserEmail(rec.email)
+      has_email: isValidUserEmail(rec.email),
+      register_site:
+        rec.register_site != null ? String(rec.register_site).trim().toLowerCase() : ''
     };
     _userSummaryApiCache.set(uid, { v: out, t: now });
     if (_userSummaryApiCache.size > 800) {
@@ -10641,6 +10696,26 @@ async function handleUserPost(req, res) {
         }
         var pfEmail = profileField(body, 'email', 255);
         if (pfEmail !== undefined) {
+          var profileSite =
+            profileUser && profileUser.register_site != null
+              ? String(profileUser.register_site).trim().toLowerCase()
+              : '';
+          var profileHostSite = '';
+          try {
+            profileHostSite = (registerSite.siteFromRequest(req).site || '').trim().toLowerCase();
+          } catch (eProfSite) {
+            profileHostSite = '';
+          }
+          var profileEmailRequired =
+            profileSite === registerSite.SITE_GETJOB68 ||
+            profileHostSite === registerSite.SITE_GETJOB68;
+          if (profileEmailRequired && !isValidUserEmail(pfEmail)) {
+            await conn.rollback();
+            return res.status(400).json({
+              code: 400,
+              msg: pfEmail ? '邮箱格式不正确，请填写常用邮箱（如 QQ/163）' : '请填写邮箱'
+            });
+          }
           if (pfEmail && !isValidUserEmail(pfEmail)) {
             await conn.rollback();
             return res.status(400).json({ code: 400, msg: '邮箱格式不正确，请填写常用邮箱（如 QQ/163）' });
@@ -10682,6 +10757,7 @@ async function handleUserPost(req, res) {
         }
         
         await conn.commit();
+        invalidateUserAuthCache(userId);
         invalidateUserInfoApiCache(userId);
         
         return res.json({ code: 200, data: { success: true } });

@@ -3180,6 +3180,7 @@
    * @returns {boolean} 是否成功打开
    */
   function openEmailCollectNudge(opts) {
+    if (window.__emailRequiredGate) return false;
     opts = opts || {};
     var afterRegister = !!opts.afterRegister;
     var bypassLimits = afterRegister || !!opts.force;
@@ -3200,10 +3201,10 @@
     root.className = 'cg-email-nudge-root' + (afterRegister ? ' is-strong' : '');
     root.setAttribute('role', 'dialog');
     root.setAttribute('aria-modal', 'true');
-    var title = afterRegister ? '建议留下邮箱，方便接收优惠' : '留下邮箱，优惠不错过';
+    var title = afterRegister ? '请先填写邮箱' : '留下邮箱，优惠不错过';
     var body = afterRegister
-      ? '开通提醒、专属价会发到邮箱。填 QQ 号后点 @qq.com 即可；也可跳过，之后在「个人信息」补填。'
-      : '专属价、开通提醒会发到邮箱。填 QQ 号后点 @qq.com 即可。';
+      ? '填写邮箱，方便更好的服务'
+      : '填写邮箱，方便更好的服务';
     var saveLabel = afterRegister ? '保存并继续' : '保存邮箱';
     var dismissLabel = afterRegister ? '跳过，稍后再说' : '暂时不用';
     var badgeHtml = afterRegister
@@ -3343,6 +3344,7 @@
   }
 
   function maybeScheduleEmailNudge() {
+    if (window.__emailRequiredGate) return;
     if (!isLoggedIn() || hasEmailCached || skipConversionPromo()) return;
     var page = currentPage();
     var allow =

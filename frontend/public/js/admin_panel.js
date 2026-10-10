@@ -1482,12 +1482,24 @@
         function listVisibleHubTabs(hubKey) {
             var hubDef = ADMIN_HUB_DEFS[hubKey];
             if (!hubDef || !Array.isArray(hubDef.tabs)) return [];
-            return hubDef.tabs.filter(function (t) {
+            var tabs = hubDef.tabs.filter(function (t) {
                 if (t && t.super_only && !(currentAdminProfile && currentAdminProfile.is_super)) {
                     return false;
                 }
                 return t && t.page && adminCanSeeHubTab(hubKey, t.page);
             });
+            /* 新站后台：广告配置/数据/触达是同一页，只留一个页签 */
+            if (!isLegacyAdminHostClient() && hubKey === 'ops-board') {
+                tabs = tabs
+                    .filter(function (t) {
+                        return t.id !== 'ads-data' && t.id !== 'ads-reach';
+                    })
+                    .map(function (t) {
+                        if (t.id === 'ads') return { id: t.id, label: '广告', page: t.page };
+                        return t;
+                    });
+            }
+            return tabs;
         }
         window.adminCanSeeHubTab = adminCanSeeHubTab;
         window.adminHasExactMenu = adminHasExactMenu;
@@ -1522,6 +1534,13 @@
                 }
             }
             if (!activeOk) active = visible[0].id;
+            if (
+                !isLegacyAdminHostClient() &&
+                hubKey === 'ops-board' &&
+                (active === 'ads-data' || active === 'ads-reach')
+            ) {
+                active = 'ads';
+            }
             bar.innerHTML = visible
                 .map(function (t) {
                     var isOn = t.id === active ? ' is-active' : '';
@@ -6121,7 +6140,30 @@
             }
         }
 
+        function simplifyNewDomainAdmin() {
+            if (isLegacyAdminHostClient()) {
+                var bidOpen = document.getElementById('bidReviewDetails');
+                var followOpen = document.getElementById('bidFollowupDetails');
+                if (bidOpen) bidOpen.open = true;
+                if (followOpen) followOpen.open = true;
+                return;
+            }
+            var lede = document.getElementById('settingsPageLede');
+            if (lede) lede.textContent = '支付方案，以及证明、完税二维码、招行、改名和个税修改的价格';
+            var settings = document.getElementById('page-settings');
+            var sku = document.getElementById('skuCatalogSection');
+            if (settings && sku) {
+                var ledeWrap = settings.querySelector('.page-lede');
+                if (ledeWrap && sku.previousElementSibling !== ledeWrap) {
+                    settings.insertBefore(sku, ledeWrap.nextSibling);
+                }
+            }
+            var shortcuts = document.getElementById('opsBoardShortcuts');
+            if (shortcuts) shortcuts.hidden = true;
+        }
+
         function applyUsersListPageChrome() {
+            simplifyNewDomainAdmin();
             var legacyHost = isLegacyAdminHostClient();
             var site = currentUsersListSite();
             var lkjAbc = currentUsersListContentPage() === 'users-lkj-abc';
@@ -10100,6 +10142,8 @@
                 }
                 function jumpToFollowup(pay) {
                     if (pay) setPayFilter(pay);
+                    var details = document.getElementById('bidFollowupDetails');
+                    if (details) details.open = true;
                     var el = document.getElementById('sectionPriceBidFollowup');
                     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     loadFollowup();

@@ -27,7 +27,7 @@ describe('荣耀 V30 Pro（OXF-AN10）顶部系统栏', () => {
     expect(auth).toContain(':not(.app-android-honor-oxf)');
     expect(login).toContain('app-android-honor-oxf');
     expect(login).toContain('padding-top: 55px !important;');
-    expect(login).toContain('auth.js?v=20261009-honor-oxf-an10');
+    expect(login).toContain('auth.js?v=20261010-smoke-hoist-k70');
     expect(shouye).toContain('OXF-AN10');
     expect(shouye).toContain('app-android-honor-oxf');
   });
