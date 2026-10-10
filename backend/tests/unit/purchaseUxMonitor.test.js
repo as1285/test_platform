@@ -16,13 +16,30 @@ describe('purchaseUxMonitor', () => {
     expect(ALERT_EVENT_KEYS.length).toBe(4);
   });
 
-  it('alerts on probe fail immediately', () => {
+  it('alerts on hard probe fail (activation_expired block) immediately', () => {
     const d = evaluateAlert(
-      { total: 1, activation_expired: 0, probe_fail: 1, by_key: {} },
+      { total: 1, activation_expired: 1, probe_fail: 1, probe_soft_fail: 0, by_key: {} },
       { minEvents: 3 }
     );
     expect(d.shouldAlert).toBe(true);
-    expect(d.reason).toMatch(/探活/);
+    expect(d.reason).toMatch(/activation_expired/);
+  });
+
+  it('stays quiet on a single soft probe fail (timeout noise)', () => {
+    const d = evaluateAlert(
+      { total: 1, activation_expired: 0, probe_fail: 0, probe_soft_fail: 1, by_key: {} },
+      { minEvents: 3, softProbeMin: 2 }
+    );
+    expect(d.shouldAlert).toBe(false);
+  });
+
+  it('alerts when soft probe fails repeat in window', () => {
+    const d = evaluateAlert(
+      { total: 2, activation_expired: 0, probe_fail: 0, probe_soft_fail: 2, by_key: {} },
+      { minEvents: 3, softProbeMin: 2 }
+    );
+    expect(d.shouldAlert).toBe(true);
+    expect(d.reason).toMatch(/非 activation_expired/);
   });
 
   it('alerts when activation_expired >= 2', () => {

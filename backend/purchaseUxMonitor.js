@@ -69,13 +69,27 @@ function isAlertTrackAction(action) {
 function evaluateAlert(stats, opts) {
   opts = opts || {};
   var minEvents = opts.minEvents != null ? opts.minEvents : MIN_EVENTS;
+  var softProbeMin =
+    opts.softProbeMin != null
+      ? opts.softProbeMin
+      : Math.max(2, parseInt(process.env.PURCHASE_UX_PROBE_SOFT_ALERT_MIN || '2', 10) || 2);
   var total = Number(stats && stats.total) || 0;
   var expired = Number(stats && stats.activation_expired) || 0;
   var probeFail = Number(stats && stats.probe_fail) || 0;
+  var probeSoftFail = Number(stats && stats.probe_soft_fail) || 0;
+  /* 硬失败：支付接口仍返回 activation_expired（产品回归） */
   if (probeFail > 0) {
     return {
       shouldAlert: true,
       reason: '过期账号合成探活失败（支付接口仍被 activation_expired 拦截）',
+      stats: stats
+    };
+  }
+  /* 软失败：超时/5xx/异常。单次常见于部署或瞬时卡顿，避免误报成「仍被拦截」 */
+  if (probeSoftFail >= softProbeMin) {
+    return {
+      shouldAlert: true,
+      reason: '过期账号合成探活异常（超时/5xx ×' + probeSoftFail + '，非 activation_expired）',
       stats: stats
     };
   }
@@ -89,7 +103,7 @@ function evaluateAlert(stats, opts) {
   if (total >= minEvents) {
     return {
       shouldAlert: true,
-      reason: '近窗支付页失败事件 ×' + total + '（阈值 ≥' + minEvents + '）',
+      reason: '近窗支付页失败事件 ×' + total + '（频率 ≥' + minEvents + '）',
       stats: stats
     };
   }
@@ -222,6 +236,7 @@ async function loadWindowStats(pool, windowMinutes) {
   var total = 0;
   var expired = 0;
   var probeFail = 0;
+  var probeSoftFail = 0;
   for (var i = 0; i < rows.length; i++) {
     var k = String(rows[i].event_key || '');
     var c = Number(rows[i].cnt) || 0;
@@ -229,9 +244,19 @@ async function loadWindowStats(pool, windowMinutes) {
     byKey[k] = { count: c, expired: e };
     total += c;
     expired += e;
-    if (k === 'probe_purchase_expired_block') probeFail += c;
+    if (k === 'probe_purchase_expired_block') {
+      /* activation_expired=1 → 真拦截；其余为超时/5xx/异常软失败 */
+      probeFail += e;
+      probeSoftFail += Math.max(0, c - e);
+    }
   }
-  return { total: total, activation_expired: expired, probe_fail: probeFail, by_key: byKey };
+  return {
+    total: total,
+    activation_expired: expired,
+    probe_fail: probeFail,
+    probe_soft_fail: probeSoftFail,
+    by_key: byKey
+  };
 }
 
 async function sendAlertMail(decision) {
@@ -248,6 +273,8 @@ async function sendAlertMail(decision) {
     '窗口：近 ' + WINDOW_MINUTES + ' 分钟',
     '失败总数：' + (stats.total || 0),
     'activation_expired：' + (stats.activation_expired || 0),
+    'probe_fail(硬/仍拦截)：' + (stats.probe_fail || 0),
+    'probe_soft_fail(超时/5xx)：' + (stats.probe_soft_fail || 0),
     '',
     '分事件：'
   ];
@@ -266,8 +293,9 @@ async function sendAlertMail(decision) {
   return true;
 }
 
-function httpGetJson(path, token) {
+function httpGetJson(path, token, timeoutMs) {
   var port = parseInt(process.env.PORT || '3000', 10) || 3000;
+  var ms = Math.max(3000, parseInt(timeoutMs, 10) || 12000);
   return new Promise(function (resolve, reject) {
     var req = http.request(
       {
@@ -280,7 +308,7 @@ function httpGetJson(path, token) {
           Accept: 'application/json',
           'X-Page-Path': '/purchase.html'
         },
-        timeout: 8000
+        timeout: ms
       },
       function (res) {
         var chunks = [];
@@ -306,6 +334,27 @@ function httpGetJson(path, token) {
     });
     req.end();
   });
+}
+
+function sleep(ms) {
+  return new Promise(function (resolve) {
+    setTimeout(resolve, ms);
+  });
+}
+
+async function httpGetJsonWithRetry(path, token, attempts) {
+  var n = Math.max(1, parseInt(attempts, 10) || 3);
+  var lastErr = null;
+  for (var i = 0; i < n; i++) {
+    try {
+      return await httpGetJson(path, token);
+    } catch (e) {
+      lastErr = e;
+      if (i + 1 >= n) break;
+      await sleep(400 * (i + 1));
+    }
+  }
+  throw lastErr || new Error('probe failed');
 }
 
 async function ensureProbeUser(pool) {
@@ -337,7 +386,7 @@ async function runExpiredRepurchaseProbe(pool) {
   var token = jwt.sign({ sub: PROBE_USER, act: 1, srv: 0 }, config.JWT_SECRET, {
     expiresIn: '15m'
   });
-  var pay = await httpGetJson('/api/payments/alipay/config', token);
+  var pay = await httpGetJsonWithRetry('/api/payments/alipay/config', token, 3);
   var expired = !!(pay.body && pay.body.activation_expired);
   if (pay.status === 401 && expired) {
     await insertEvent({
@@ -352,7 +401,7 @@ async function runExpiredRepurchaseProbe(pool) {
         1024
       )
     });
-    return { ok: false, pay: pay };
+    return { ok: false, hard: true, pay: pay };
   }
   if (pay.status >= 500) {
     await insertEvent({
@@ -362,9 +411,9 @@ async function runExpiredRepurchaseProbe(pool) {
       reason: 'alipay_config_5xx',
       route_key: '/api/payments/alipay/config',
       activation_expired: false,
-      meta_json: JSON.stringify({ probe: 1 }).substring(0, 1024)
+      meta_json: JSON.stringify({ probe: 1, soft: 1 }).substring(0, 1024)
     });
-    return { ok: false, pay: pay };
+    return { ok: false, soft: true, pay: pay };
   }
   return { ok: true, pay: pay };
 }
@@ -378,13 +427,15 @@ async function tick() {
         await runExpiredRepurchaseProbe(_pool);
       } catch (eProbe) {
         console.error('[purchase-ux] probe', eProbe && eProbe.message);
+        /* 软失败：超时/网络；activation_expired=0，单次不触发「仍被拦截」硬告警 */
         await insertEvent({
           event_key: 'probe_purchase_expired_block',
           username: PROBE_USER,
           reason:
             'probe_exception:' + String((eProbe && eProbe.message) || eProbe).substring(0, 120),
           route_key: 'probe',
-          activation_expired: 0
+          activation_expired: 0,
+          meta_json: JSON.stringify({ probe: 1, soft: 1 }).substring(0, 1024)
         });
       }
     }
