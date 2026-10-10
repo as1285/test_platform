@@ -25174,6 +25174,104 @@ async function handleAdminAnalyticsActivateEventUsers(req, res) {
   }
 }
 
+/** 我的页右上角激活按钮点击统计（track_activate_mine_btn_click） */
+async function handleAdminAnalyticsMineActivateBtnStats(req, res) {
+  try {
+    var period = parseAnalyticsPeriod(req.query.days, 90);
+    var siteScope = registerSite.resolveAdminSiteScope(req, req.query && req.query.site);
+    var cnDay = 'DATE(DATE_ADD(e.created_at, INTERVAL 8 HOUR))';
+    var pf = analyticsPeriodCnDateFilter(cnDay, period);
+    var where = [pf.sql, "e.route_key LIKE '%#track_activate_mine_btn_click'"];
+    var params = pf.params.slice();
+    registerSite.appendRegisterSiteFilter(where, params, siteScope.site, 'u');
+    registerSite.appendExcludeGetjob68UnlessViewer(where, params, req.admin, 'u');
+    var whereSql = where.join(' AND ');
+    const conn = await pool.getConnection();
+    try {
+      const [dailyRows] = await conn.execute(
+        `SELECT ${cnDay} AS stat_date,
+                COUNT(*) AS pv,
+                COUNT(DISTINCT e.username) AS uv
+         FROM user_page_events e
+         LEFT JOIN users u ON u.username = e.username
+         WHERE ${whereSql}
+         GROUP BY ${cnDay}
+         ORDER BY stat_date DESC`,
+        params
+      );
+      const [siteRows] = await conn.execute(
+        `SELECT IFNULL(NULLIF(TRIM(u.register_site), ''), 'unknown') AS site,
+                COUNT(*) AS pv,
+                COUNT(DISTINCT e.username) AS uv
+         FROM user_page_events e
+         LEFT JOIN users u ON u.username = e.username
+         WHERE ${whereSql}
+         GROUP BY IFNULL(NULLIF(TRIM(u.register_site), ''), 'unknown')
+         ORDER BY pv DESC`,
+        params
+      );
+      const [uvRows] = await conn.execute(
+        `SELECT COUNT(DISTINCT e.username) AS uv
+         FROM user_page_events e
+         LEFT JOIN users u ON u.username = e.username
+         WHERE ${whereSql}`,
+        params
+      );
+      var byDay = (dailyRows || []).map(function (r) {
+        return {
+          date: formatDateKey(r.stat_date),
+          pv: Number(r.pv) || 0,
+          uv: Number(r.uv) || 0
+        };
+      });
+      var totalPv = 0;
+      byDay.forEach(function (d) {
+        totalPv += d.pv;
+      });
+      var totalUv = Number((uvRows[0] || {}).uv) || 0;
+      var bySite = (siteRows || []).map(function (r) {
+        var sk = String(r.site || 'unknown');
+        return {
+          site: sk,
+          label: registerSite.siteLabel(sk),
+          pv: Number(r.pv) || 0,
+          uv: Number(r.uv) || 0
+        };
+      });
+      return res.json({
+        code: 200,
+        data: Object.assign(
+          {
+            event_key: 'track_activate_mine_btn_click',
+            event_label: '我的页·激活按钮点击',
+            summary: {
+              pv: totalPv,
+              uv: totalUv,
+              days_with_clicks: byDay.length
+            },
+            by_day: byDay,
+            by_site: bySite,
+            site_scope: {
+              site: siteScope.site,
+              locked: !!siteScope.locked,
+              allow_filter: !!siteScope.allow_filter,
+              label: siteScope.label || ''
+            },
+            definition:
+              '统计「我的」页右上角「激活」按钮点击。埋点 track_activate_mine_btn_click；PV=点击次数，UV=去重用户名。游客未登录点击不计入。'
+          },
+          conversionAnalyticsPeriodMeta(period)
+        )
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error('[admin mine-activate-btn-stats]', e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 /** 最近登录 */
 async function handleAdminAnalyticsLoginRecent(req, res) {
   try {
@@ -25693,6 +25791,7 @@ function getHandlers() {
     handleAdminAnalyticsEvents,
     handleAdminAnalyticsActivateEvents,
     handleAdminAnalyticsActivateEventUsers,
+    handleAdminAnalyticsMineActivateBtnStats,
     handleAdminAnalyticsEventsClear,
     handleAdminAnalyticsLoginRecent,
     handleAdminAnalyticsPricingAb,

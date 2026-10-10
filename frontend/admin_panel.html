@@ -3613,6 +3613,30 @@
                     </section>
                 </div>
 
+                
+                <div id="page-mine-activate-btn-stats" class="page-panel" role="tabpanel">
+                    <section>
+                        <h2>激活按钮点击</h2>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">统计「我的」页右上角「激活」按钮点击。埋点 <code>track_activate_mine_btn_click</code>。PV=点击次数，UV=去重用户名；游客未登录点击不计入。与支付分析里的激活弹窗埋点分开。</p></details>
+                        <div class="form-row flex-align-center mt-8">
+                            <div>
+                                <label for="mineActivateBtnStatsDays">统计区间</label>
+                                <select id="mineActivateBtnStatsDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90,180" data-default="custom"></select>
+                            </div>
+                            <span id="mineActivateBtnStatsSiteWrap" style="display:inline-flex;align-items:center;gap:8px;margin-left:12px">
+                                <label for="mineActivateBtnStatsSite" class="hint" style="margin:0">站点</label>
+                                <select id="mineActivateBtnStatsSite" class="filter-select" aria-label="激活按钮统计站点">
+                                    <option value="all" selected>全部站点</option>
+                                    <option value="getjob68">新站 getjob68</option>
+                                    <option value="lkj">旧站 lkj</option>
+                                </select>
+                            </span>
+                            <button type="button" class="btn-page" id="btnRefreshMineActivateBtnStats">刷新</button>
+                        </div>
+                        <div id="mineActivateBtnStatsMount" class="analytics-conv-wrap" aria-live="polite">加载中…</div>
+                    </section>
+                </div>
+
                 <div id="page-analytics-purchase" class="page-panel" role="tabpanel">
                     <div class="page-lede"><p class="page-lede-text">购买链路、支付宝漏斗与收入表现</p></div>
                     <section>

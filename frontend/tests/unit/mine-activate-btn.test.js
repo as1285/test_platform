@@ -21,6 +21,13 @@ describe('我的页右上角激活按钮', () => {
     expect(mine).toContain('试用过期');
   });
 
+
+  it('click reports track_activate_mine_btn_click', () => {
+    expect(mine).toMatch(
+      /mineActivateBtn\.addEventListener\('click'[\s\S]*track_activate_mine_btn_click/
+    );
+  });
+
   it('点击走开通入口', () => {
     expect(mine).toMatch(/mineActivateBtn\.addEventListener\('click'[\s\S]*openMineActivateModal/);
   });

@@ -334,6 +334,7 @@ const ADMIN_PAGE_DEFS = [
       'install-guide-stats',
       'ops-inactive',
       'analytics-purchase',
+      'mine-activate-btn-stats',
       'insights-growth'
     ]
   },
@@ -429,6 +430,17 @@ const ADMIN_PAGE_DEFS = [
     module: 'analytics',
     order: 60,
     alias_menus: ['insights-growth', 'insights-product'],
+    assignable: false,
+    nav_hidden: true
+  },
+  {
+    page: 'mine-activate-btn-stats',
+    menu_key: 'mine-activate-btn-stats',
+    label: '激活按钮',
+    group: 'insights',
+    module: 'analytics',
+    order: 41,
+    alias_menus: ['insights-product', 'analytics-purchase', 'analytics'],
     assignable: false,
     nav_hidden: true
   },
@@ -639,7 +651,8 @@ const ADMIN_HUB_DEFS = {
       { id: 'channel', label: '渠道分析', page: 'channel-analysis' },
       { id: 'inactive', label: '未激活用户', page: 'ops-inactive' },
       { id: 'install-stats', label: '安装统计', page: 'install-guide-stats' },
-      { id: 'purchase', label: '支付分析', page: 'analytics-purchase' }
+      { id: 'purchase', label: '支付分析', page: 'analytics-purchase' },
+      { id: 'mine-activate', label: '激活按钮', page: 'mine-activate-btn-stats' }
     ]
   },
   'login-log': {

@@ -5282,6 +5282,12 @@
                 });
                 mineActivateBtn.addEventListener('click', function (e) {
                     e.stopPropagation();
+                    /* dedicated mine header activate btn click */
+                    if (typeof window.trackUserAction === 'function') {
+                        window.trackUserAction('track_activate_mine_btn_click', { page: 'mine', source: 'header_btn' });
+                    } else if (typeof window.trackPublicAction === 'function') {
+                        window.trackPublicAction('track_activate_mine_btn_click', { page: 'mine', source: 'header_btn' });
+                    }
                     openMineActivateModal();
                 });
             }

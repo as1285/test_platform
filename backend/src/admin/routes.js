@@ -525,6 +525,19 @@ app.get(
   h.handleAdminAnalyticsEvents
 );
 app.get(
+  '/api/admin/analytics/mine-activate-btn-stats',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu([
+    'mine-activate-btn-stats',
+    'insights-product',
+    'analytics-purchase',
+    'analytics',
+    'analytics-conversion'
+  ]),
+  h.handleAdminAnalyticsMineActivateBtnStats
+);
+
+app.get(
   '/api/admin/analytics/activate-events',
   mw.requireAdminAuth,
   mw.requireAdminAnyMenu(['analytics']),

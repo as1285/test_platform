@@ -930,7 +930,8 @@
                     'channel-analysis',
                     'install-guide-stats',
                     'ops-inactive',
-                    'analytics-purchase'
+                    'analytics-purchase',
+                    'mine-activate-btn-stats'
                 ],
                 'insights-growth': ['ops-inactive', 'channel-analysis', 'install-guide-stats'],
                 'abc-ops': ['abc-users', 'abc-install-stats']
@@ -974,6 +975,7 @@
                 'channel-analysis': 'insights-product',
                 'install-guide-stats': 'insights-product',
                 'analytics-purchase': 'insights-product',
+                'mine-activate-btn-stats': 'insights-product',
                 'payment-orders': 'ops-board',
                 'abc-install-stats': 'abc-ops',
                 'abc-users': 'abc-ops',
@@ -1258,7 +1260,8 @@
                     { id: 'channel', label: '渠道分析', page: 'channel-analysis' },
                     { id: 'inactive', label: '未激活用户', page: 'ops-inactive' },
                     { id: 'install-stats', label: '安装统计', page: 'install-guide-stats' },
-                    { id: 'purchase', label: '支付分析', page: 'analytics-purchase' }
+                    { id: 'purchase', label: '支付分析', page: 'analytics-purchase' },
+                    { id: 'mine-activate', label: '激活按钮', page: 'mine-activate-btn-stats' }
                 ]
             },
             'login-log': {
@@ -1715,6 +1718,9 @@
             }
             if (pageKey === 'analytics-purchase') {
                 loadAnalyticsPurchasePage();
+            }
+            if (pageKey === 'mine-activate-btn-stats') {
+                loadMineActivateBtnStats();
             }
             if (pageKey === 'analytics-devices') {
                 if (typeof loadAnalyticsDevicesPage === 'function') {
@@ -4260,6 +4266,109 @@
                 });
             }
         }
+
+
+        function loadMineActivateBtnStats() {
+            var el = document.getElementById('mineActivateBtnStatsMount');
+            if (!el) return;
+            var daysEl = document.getElementById('mineActivateBtnStatsDays');
+            var days = analyticsPeriodVal(daysEl);
+            var siteEl = document.getElementById('mineActivateBtnStatsSite');
+            var site = siteEl && siteEl.value ? String(siteEl.value) : 'all';
+            if (isLegacyAdminHostClient()) site = 'lkj';
+            el.textContent = '加载中…';
+            adminFetch(
+                'api/admin/analytics/mine-activate-btn-stats?days=' +
+                    encodeURIComponent(days) +
+                    '&site=' +
+                    encodeURIComponent(site)
+            )
+                .then(function (r) {
+                    return (window.adminParseJson || function (r) { return r.json(); })(r);
+                })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        el.textContent = j.msg || '加载失败';
+                        return;
+                    }
+                    if (j.data.site_scope) {
+                        window._adminSiteScope = j.data.site_scope;
+                        applyAdminSiteScopeToSelect(
+                            document.getElementById('mineActivateBtnStatsSite'),
+                            j.data.site_scope
+                        );
+                    }
+                    renderMineActivateBtnStats(j.data);
+                })
+                .catch(function () {
+                    el.textContent = '加载失败';
+                });
+        }
+
+        function renderMineActivateBtnStats(data) {
+            var el = document.getElementById('mineActivateBtnStatsMount');
+            if (!el) return;
+            if (!data || !data.summary) {
+                el.textContent = '暂无数据';
+                return;
+            }
+            var s = data.summary;
+            var html = '';
+            if (typeof analyticsPeriodHintHtml === 'function') {
+                html += analyticsPeriodHintHtml(data);
+            } else if (data.period_label) {
+                html += '<p class="hint" style="margin:0 0 10px;">统计区间：' + esc(data.period_label) + '</p>';
+            }
+            if (data.definition) {
+                html += '<p class="hint" style="margin:0 0 12px;">' + esc(data.definition) + '</p>';
+            }
+            html += '<div class="user-data-stats" style="margin-bottom:14px;">';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">点击次数 (PV)</div><div class="ud-val">' +
+                esc(String(s.pv != null ? s.pv : 0)) +
+                '</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">点击人数 (UV)</div><div class="ud-val">' +
+                esc(String(s.uv != null ? s.uv : 0)) +
+                '</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">有点击天数</div><div class="ud-val">' +
+                esc(String(s.days_with_clicks != null ? s.days_with_clicks : 0)) +
+                '</div></div>';
+            html += '</div>';
+
+            var bySite = Array.isArray(data.by_site) ? data.by_site : [];
+            if (bySite.length) {
+                html += '<div class="scroll-x" style="margin-bottom:16px;"><table><thead><tr>';
+                html += '<th>站点</th><th>PV</th><th>UV</th></tr></thead><tbody>';
+                bySite.forEach(function (row) {
+                    html += '<tr>';
+                    html += '<td>' + esc(row.label || row.site || '—') + '</td>';
+                    html += '<td>' + esc(String(row.pv != null ? row.pv : 0)) + '</td>';
+                    html += '<td>' + esc(String(row.uv != null ? row.uv : 0)) + '</td>';
+                    html += '</tr>';
+                });
+                html += '</tbody></table></div>';
+            }
+
+            var daily = Array.isArray(data.by_day) ? data.by_day : [];
+            html += '<div class="scroll-x"><table><thead><tr>';
+            html += '<th>日期</th><th>PV</th><th>UV</th></tr></thead><tbody>';
+            if (!daily.length) {
+                html += '<tr><td colspan="3">区间内暂无点击</td></tr>';
+            } else {
+                daily.forEach(function (row) {
+                    html += '<tr>';
+                    html += '<td>' + esc(row.date || '—') + '</td>';
+                    html += '<td>' + esc(String(row.pv != null ? row.pv : 0)) + '</td>';
+                    html += '<td>' + esc(String(row.uv != null ? row.uv : 0)) + '</td>';
+                    html += '</tr>';
+                });
+            }
+            html += '</tbody></table></div>';
+            el.innerHTML = html;
+        }
+
 
         function loadInstallGuideStats() {
             var el = document.getElementById('installGuideStatsMount');
@@ -7788,6 +7897,7 @@
             'ops-ad-analytics': '广告页',
             'analytics-conversion': '转化概览',
             'analytics-purchase': '支付分析',
+            'mine-activate-btn-stats': '激活按钮',
             'payment-orders': '订单检索',
             'analytics-activity': '用户活跃',
             'feature-survey': '功能调研',
@@ -11115,6 +11225,29 @@
                 setChannelFunnelTab(btn.getAttribute('data-funnel'));
             });
         });
+
+        var mineActivateBtnStatsDays = document.getElementById('mineActivateBtnStatsDays');
+        if (mineActivateBtnStatsDays) {
+            mineActivateBtnStatsDays.addEventListener('change', function () {
+                loadMineActivateBtnStats();
+            });
+        }
+        var mineActivateBtnStatsSite = document.getElementById('mineActivateBtnStatsSite');
+        if (mineActivateBtnStatsSite) {
+            if (window._adminSiteScope) {
+                applyAdminSiteScopeToSelect(mineActivateBtnStatsSite, window._adminSiteScope);
+            }
+            mineActivateBtnStatsSite.addEventListener('change', function () {
+                loadMineActivateBtnStats();
+            });
+        }
+        var btnRefreshMineActivateBtnStats = document.getElementById('btnRefreshMineActivateBtnStats');
+        if (btnRefreshMineActivateBtnStats) {
+            btnRefreshMineActivateBtnStats.onclick = function () {
+                loadMineActivateBtnStats();
+            };
+        }
+
         var btnRefreshInstallGuideStats = document.getElementById('btnRefreshInstallGuideStats');
         if (btnRefreshInstallGuideStats) {
             btnRefreshInstallGuideStats.onclick = function () {
