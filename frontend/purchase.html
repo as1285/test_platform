@@ -2722,7 +2722,7 @@
         var ctaText = '体验价 · 打开支付宝付款';
         if (discounted) {
             ctaText = '优惠价 ¥' + discounted + ' · 打开支付宝付款';
-        } else if (selected && selected.psych_offer) {
+        } else if (selected && selected.psych_offer && !purchaseHostIsGetjob68()) {
             ctaText = '心理价 ¥' + selected.amount + ' · 打开支付宝付款';
         } else if (selected) {
             ctaText = '体验价 ¥' + selected.amount + ' · 打开支付宝付款';
@@ -3419,7 +3419,7 @@
                     priceHtml = '¥' + String(s.amount || '');
                 }
                 var badge = '';
-                if (s.psych_offer) {
+                if (s.psych_offer && !purchaseHostIsGetjob68()) {
                     badge = '<span class="pricing-sku-badge">心理价</span>';
                 } else if (s.id === cheapestId) {
                     badge = '<span class="pricing-sku-badge">体验价</span>';
@@ -3572,6 +3572,11 @@
     }
 
     function refreshBackPromptEligible() {
+        /* 新站 getjob68：不开心理价出价 / 返回拦截 */
+        if (purchaseHostIsGetjob68()) {
+            priceBidUi.backPromptEligible = false;
+            return false;
+        }
         var visits = Math.max(Number(priceBidUi.visitCount) || 0, getLocalPurchaseVisits());
         var within =
             !!priceBidUi.within48h ||
@@ -3616,7 +3621,8 @@
         var btn = document.getElementById('btnPriceBidOpen');
         var state = document.getElementById('priceBidStateText');
         if (!teaser) return;
-        if (hideAll || !priceBidUi.enabled) {
+        /* 新站 getjob68 隐藏心理价出价入口；旧站 lkj 仍按 enabled 展示 */
+        if (hideAll || !priceBidUi.enabled || purchaseHostIsGetjob68()) {
             teaser.hidden = true;
             return;
         }
@@ -3647,7 +3653,8 @@
     }
 
     function syncPriceBidEntry(hideAll) {
-        if (hideAll) {
+        if (hideAll || purchaseHostIsGetjob68()) {
+            priceBidUi.enabled = false;
             renderPriceBidEntry(true);
             return;
         }
@@ -3673,6 +3680,7 @@
     }
 
     function canOpenPriceBidSheet() {
+        if (purchaseHostIsGetjob68()) return false;
         return !!priceBidUi.enabled && priceBidUi.status !== 'accepted';
     }
 
@@ -3705,6 +3713,8 @@
 
         function openBidSheet(opts) {
             opts = opts || {};
+            /* 新站不开放心理价出价（含离开页调研「偏贵」接力） */
+            if (purchaseHostIsGetjob68()) return;
             if (!canOpenPriceBidSheet() && opts.from !== 'price_survey_expensive') {
                 if (priceBidUi.status === 'accepted') {
                     showToast('你的心理价已生效，可直接按新价开通');
