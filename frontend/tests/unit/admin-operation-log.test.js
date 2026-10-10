@@ -23,7 +23,7 @@ describe('子管理员操作日志 TAB', () => {
     expect(html).toContain('仅记录子管理员的写操作');
     expect(html).toContain('>页面</th>');
     expect(html).toContain('>操作</th>');
-    expect(html).toContain('admin_panel.js?v=20261009-hide-legacy-sku');
+    expect(html).toContain('admin_panel.js?v=20261010-user-email-col');
     expect(panel).toContain('function loadAdminOperationLogPage(');
     expect(panel).toContain("id: 'op-log', label: '操作日志', page: 'admin-operation-log'");
   });

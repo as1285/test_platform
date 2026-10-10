@@ -102,9 +102,9 @@ describe('iPhone 14/15 Pro Max：顶栏回退 Aug15（black-translucent + 59px�
 
   it('主页面缓存戳已刷新', () => {
     expect(shuiming).toContain('auth-boot.js?v=20260923-bs4s-restore');
-    expect(shuiming).toContain('auth.js?v=20261009-honor-oxf-an10');
+    expect(shuiming).toContain('auth.js?v=20261010-compat-feedback');
     expect(shuimingResult).toContain('auth-boot.js?v=20260923-bs4s-restore');
-    expect(shuimingResult).toContain('auth.js?v=20261009-16pm-title-seam-2');
+    expect(shuimingResult).toContain('auth.js?v=20261010-compat-feedback');
   });
 
   it('xiangqing 首屏按 env≈0 决定 0 或 59，避免双顶距', () => {

@@ -125,8 +125,14 @@
                     /* iOS 26 的 393×852（iPhone 16 等）：系统栏已占位，首页勿再叠 59px */
                     var iosMajorHome = 0;
                     try {
-                        var umHome = String(navigator.userAgent || '').match(/OS (\d+)[_.]/i);
+                        var uaHome = String(navigator.userAgent || '');
+                        var umHome = uaHome.match(/OS (\d+)[_.]/i);
                         iosMajorHome = umHome ? parseInt(umHome[1], 10) : 0;
+                        var uvHome = uaHome.match(/Version\/(\d+)/i);
+                        if (uvHome) {
+                            var verHome = parseInt(uvHome[1], 10);
+                            if (verHome >= 26 && verHome > iosMajorHome) iosMajorHome = verHome;
+                        }
                     } catch (eIosHome) {}
                     if (iosMajorHome === 26 && !ip14pm && !ip15pm) {
                         try {
@@ -269,7 +275,7 @@
         })();
     </script>
     <script src="/js/auth-boot.js?v=20260923-bs4s-restore"></script>
-    <script src="/js/auth.js?v=20261009-honor-oxf-an10" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20261010-compat-feedback" defer fetchpriority="low"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js" defer></script>

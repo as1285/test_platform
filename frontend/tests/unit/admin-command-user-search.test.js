@@ -27,7 +27,7 @@ describe('管理台搜索能打开支付明细里的账号', () => {
     expect(html).toContain('搜功能或账号');
     expect(html).toContain('没有匹配的功能或账号');
     expect(html).toContain('nav.js?v=20261010-outline-cleanup');
-    expect(html).toContain('admin_panel.js?v=20261009-hide-legacy-sku');
+    expect(html).toContain('admin_panel.js?v=20261010-user-email-col');
     expect(loader).toContain('ops-conversion.js?v=20261008-legacy-plain');
   });
 });

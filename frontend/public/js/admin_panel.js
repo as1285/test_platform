@@ -6125,7 +6125,6 @@
             var legacyHost = isLegacyAdminHostClient();
             var site = currentUsersListSite();
             var lkjAbc = currentUsersListContentPage() === 'users-lkj-abc';
-            var showSiteCol = !legacyHost && site === 'getjob68';
             var h2 = document.getElementById('usersPageTitle');
             var lede = document.getElementById('usersPageLede');
             var siteField = document.getElementById('filterRegisterSiteField');
@@ -6140,8 +6139,9 @@
             }
             var siteTh = document.getElementById('usersRegisterSiteTh');
             if (siteTh) {
-                siteTh.hidden = !showSiteCol;
-                siteTh.style.display = showSiteCol ? '' : 'none';
+                siteTh.hidden = false;
+                siteTh.style.display = '';
+                siteTh.textContent = '用户邮箱';
             }
             if (lkjAbc) {
                 if (h2) h2.textContent = '旧站ABC用户';
@@ -6279,13 +6279,13 @@
                     applyUsersListPageChrome();
                     var list = data.data.users || [];
                     var total = data.data.total || 0;
-                    var showSiteCol =
+                    var newSiteList =
                         !isLegacyAdminHostClient() && registerSite === 'getjob68';
-                    var usersColspan = showSiteCol ? 13 : 12;
+                    var usersColspan = 13;
                     var statText = '共 ' + total + ' 个账号';
                     if (salesCh === 'abc') {
                         statText += ' · 旧站ABC';
-                    } else if (showSiteCol) {
+                    } else if (newSiteList) {
                         statText += ' · 新站 getjob68';
                     } else if (
                         !isLegacyAdminHostClient() &&
@@ -6595,21 +6595,16 @@
                             esc(u.real_name || '—') +
                             nameChangeBadge +
                             '</td>';
-                        if (showSiteCol) {
-                            var siteLabel =
-                                u.register_site_label ||
-                                (u.register_site === 'getjob68'
-                                    ? '新站 getjob68'
-                                    : u.register_site === 'lkj'
-                                      ? '旧站 lkj'
-                                      : u.register_site || '—');
-                            html +=
-                                '<td class="cell-break" title="' +
-                                esc(u.register_host || '') +
-                                '">' +
-                                esc(siteLabel) +
-                                '</td>';
-                        }
+                        var emailText =
+                            u.email != null && String(u.email).trim() !== ''
+                                ? String(u.email).trim()
+                                : '';
+                        html +=
+                            '<td class="cell-break" title="' +
+                            esc(emailText) +
+                            '">' +
+                            (emailText ? esc(emailText) : '<span style="color:#bbb;">—</span>') +
+                            '</td>';
                         var channelLabel =
                             u.channel_analysis_label || u.register_source_channel_label || '';
                         if (!channelLabel && u.is_agent) {

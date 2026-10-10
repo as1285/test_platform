@@ -368,7 +368,12 @@
                 }
                 var iosMajor = 0;
                 var mIos = ua.match(/OS (\d+)[_.]/i);
+                var mVerSm = ua.match(/Version\/(\d+)/i);
                 if (mIos) iosMajor = parseInt(mIos[1], 10);
+                if (mVerSm) {
+                    var verMajorSm = parseInt(mVerSm[1], 10);
+                    if (verMajorSm >= 26 && verMajorSm > iosMajor) iosMajor = verMajorSm;
+                }
                 /* 14/15 Pro Max：不进 liquid-glass / app-ios27 / inflow，保持 Aug15 59px */
                 var is15pmUa = /iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone15,5\b/i.test(ua);
                 var is14pmUa = /iPhone\s*14\s*Pro\s*Max|iPhone15,3\b/i.test(ua);
@@ -519,7 +524,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20261009-honor-oxf-an10" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20261010-compat-feedback" defer fetchpriority="low"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>

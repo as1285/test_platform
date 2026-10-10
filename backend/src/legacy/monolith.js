@@ -18973,7 +18973,7 @@ async function handleAdminUsers(req, res) {
              is_agent,
              last_login_city, created_at, hash, plain_password, register_source_channel,
              activation_source_channel, activation_kind, active_until, activation_credit_amount,
-             user_type, sales_promo_channel, register_site, register_host, invited_by,
+             user_type, sales_promo_channel, register_site, register_host, email, invited_by,
              (SELECT ule.ip FROM user_login_events ule
               WHERE ule.username = users.username AND ule.ip IS NOT NULL
               ORDER BY ule.created_at DESC LIMIT 1) AS ip_last,
@@ -19267,6 +19267,10 @@ async function handleAdminUsers(req, res) {
         register_host:
           r.register_host != null && String(r.register_host).trim() !== ''
             ? String(r.register_host).trim()
+            : '',
+        email:
+          r.email != null && String(r.email).trim() !== ''
+            ? String(r.email).trim()
             : '',
         invited_by:
           r.invited_by != null && String(r.invited_by).trim() !== ''

@@ -5,7 +5,7 @@ import { resolve } from 'path';
 const frontend = resolve(__dirname, '../..');
 const adminHtml = readFileSync(resolve(frontend, 'admin_panel.html'), 'utf8');
 const adminCss = readFileSync(resolve(frontend, 'css/admin_panel.css'), 'utf8');
-const CACHE = '20261009-hide-legacy-sku';
+const CACHE = '20261010-user-email-col';
 
 function extractChannelSkuTable(html) {
   const start = html.indexOf('class="data-table agent-ch-sku-table"');

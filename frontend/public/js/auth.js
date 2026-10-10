@@ -668,6 +668,11 @@
   }
 
   /** vivo 族沉浸压栏机（Neo8 / Neo8 Pro / X200 Pro / mini / X300 Pro / S50 Pro mini / X90 / iQOO 13/15）：白顶栏须留 40px */
+  /** vivo V2285A：Cordova 仍压在状态栏上，按外置栏清零会挡住顶部文字（反馈 #44） */
+  function isVivoV2285AClient() {
+    return /V2285A/i.test(clientUaBlob());
+  }
+
   function isVivoImmersiveTopClient() {
     return (
       isIqooNeo8Client() ||
@@ -677,7 +682,8 @@
       isVivoS50ProMiniClient() ||
       isVivoX90Client() ||
       isIqoo13Client() ||
-      isIqoo15Client()
+      isIqoo15Client() ||
+      isVivoV2285AClient()
     );
   }
 
@@ -1453,8 +1459,17 @@
   }
 
   function getIOSMajorVersion() {
-    var m = String(navigator.userAgent || '').match(/OS (\d+)[_.]/i);
-    return m ? parseInt(m[1], 10) : 0;
+    var ua = String(navigator.userAgent || '');
+    var os = ua.match(/OS (\d+)[_.]/i);
+    var osMajor = os ? parseInt(os[1], 10) : 0;
+    var ver = ua.match(/Version\/(\d+)/i);
+    var verMajor = ver ? parseInt(ver[1], 10) : 0;
+    /*
+     * 描述文件 / Safari：CPU iPhone OS 仍写 18_7，真实系统在 Version/26、Version/27。
+     * 若按 18 处理，会把仍压在状态栏上的纳税明细当成外置栏，顶距清 0，返回和批量申诉点不到。
+     */
+    if (verMajor >= 26 && verMajor > osMajor) return verMajor;
+    return osMajor;
   }
 
   /**
@@ -7026,6 +7041,13 @@
         document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
         document.documentElement.style.setProperty('--android-status-inset', '40px');
       }
+      if (androidClient && /25019PNF3|Xiaomi\s*15\s*Ultra|Mi\s*15\s*Ultra/i.test(clientUaBlob())) {
+        document.documentElement.classList.add('app-android-xiaomi-15ultra');
+        document.documentElement.classList.add('app-android-immersive-white-top');
+        document.documentElement.classList.remove('app-android-white-page-outer');
+        document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+        document.documentElement.style.setProperty('--android-status-inset', '40px');
+      }
       if (xiaomi10NotchClient) {
         document.documentElement.classList.add('app-android-xiaomi-10');
       }
@@ -7104,6 +7126,13 @@
       if (vivoX90Client) {
         document.documentElement.classList.add('app-android-vivo-x90');
         document.documentElement.classList.add('app-android-immersive-white-top');
+      }
+      if (androidClient && isVivoV2285AClient()) {
+        document.documentElement.classList.add('app-android-vivo-v2285a');
+        document.documentElement.classList.add('app-android-immersive-white-top');
+        document.documentElement.classList.add('app-top-safe-shell');
+        document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+        document.documentElement.style.setProperty('--android-status-inset', '40px');
       }
       if (vivoS15Client) {
         document.documentElement.classList.add('app-android-vivo-s15');
@@ -7382,8 +7411,9 @@
           'html.app-android-xiaomi-10.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
           'html.app-android-iqoo-neo8.app-top-safe-shell,html.app-android-iqoo-neo8pro.app-top-safe-shell,html.app-android-iqoo-13.app-top-safe-shell,html.app-android-iqoo-15.app-top-safe-shell,html.app-android-meizu-20pro.app-top-safe-shell,html.app-android-vivo-x300pro.app-top-safe-shell,html.app-android-vivo-s50promini.app-top-safe-shell,html.app-android-vivo-x200pro.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
           'html.app-android-vivo-x90.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
+          'html.app-android-vivo-v2285a.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
           'html.app-android-vivo-s15.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;background-image:none !important;}' +
-          'html.app-android-mi-family.app-top-safe-shell:not(.app-android-redmi-k80pro):not(.app-android-redmi-k80ultra):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-immersive-white-top),html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oneplus-ace6):not(.app-android-oneplus-12):not(.app-android-oppo-reno10):not(.app-android-oppo-k9x):not(.app-android-immersive-white-top),html.app-android-vivo-family.app-top-safe-shell:not(.app-android-immersive-white-top):not(.app-android-vivo-x300pro):not(.app-android-vivo-s50promini):not(.app-android-vivo-x200pro):not(.app-android-vivo-x90):not(.app-android-vivo-s15):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-meizu-20pro),html.app-android-samsung.app-top-safe-shell:not(.app-android-immersive-white-top):not(.app-android-samsung-s23u),html.app-android-samsung-s24u.app-top-safe-shell:not(.app-android-immersive-white-top),html.app-android-huawei-harmony.app-top-safe-shell:not(.app-android-huawei-mate60):not(.app-android-huawei-mate70):not(.app-android-huawei-mate30):not(.app-android-huawei-mate30pro):not(.app-android-huawei-lio-an00):not(.app-android-huawei-nova13):not(.app-android-huawei-p40):not(.app-android-huawei-p40pro):not(.app-android-immersive-white-top):not(.app-android-honor-oxf),html.app-android-hinova.app-top-safe-shell:not(.app-android-immersive-white-top){--app-shell-statusbar-top:0px !important;}' +
+          'html.app-android-mi-family.app-top-safe-shell:not(.app-android-redmi-k80pro):not(.app-android-redmi-k80ultra):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-immersive-white-top),html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oneplus-ace6):not(.app-android-oneplus-12):not(.app-android-oppo-reno10):not(.app-android-oppo-k9x):not(.app-android-immersive-white-top),html.app-android-vivo-family.app-top-safe-shell:not(.app-android-immersive-white-top):not(.app-android-vivo-x300pro):not(.app-android-vivo-s50promini):not(.app-android-vivo-x200pro):not(.app-android-vivo-x90):not(.app-android-vivo-v2285a):not(.app-android-vivo-s15):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-meizu-20pro),html.app-android-samsung.app-top-safe-shell:not(.app-android-immersive-white-top):not(.app-android-samsung-s23u),html.app-android-samsung-s24u.app-top-safe-shell:not(.app-android-immersive-white-top),html.app-android-huawei-harmony.app-top-safe-shell:not(.app-android-huawei-mate60):not(.app-android-huawei-mate70):not(.app-android-huawei-mate30):not(.app-android-huawei-mate30pro):not(.app-android-huawei-lio-an00):not(.app-android-huawei-nova13):not(.app-android-huawei-p40):not(.app-android-huawei-p40pro):not(.app-android-immersive-white-top):not(.app-android-honor-oxf),html.app-android-hinova.app-top-safe-shell:not(.app-android-immersive-white-top){--app-shell-statusbar-top:0px !important;}' +
           /* 沉浸压栏机（含 Mate60 / Mate70 白顶栏 / 小米10 / K70至尊 / 12C / Ace 2 Pro / Neo8 Pro / 魅族 20 Pro）：压过族清零 */ +
           'html.app-android-immersive-white-top.app-top-safe-shell,' +
           'html.app-android-huawei-mate60.app-top-safe-shell,' +
@@ -7447,7 +7477,7 @@
           'html.app-android-client.app-top-safe-shell .list{margin-top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;}' +
           /* 收入纳税明细：外置黑条机型勿叠顶距；Cordova 沉浸壳用 shell 顶距兜底（压状态栏时） */
           'html.app-android-client.app-top-safe-shell.app-android-oppo-family:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oneplus-ace6):not(.app-android-oneplus-12):not(.app-android-oppo-reno10):not(.app-android-oppo-k9x):not(.app-android-immersive-white-top) body.page-shuiming-result .page-root,' +
-          'html.app-android-client.app-top-safe-shell.app-android-vivo-family:not(.app-android-immersive-white-top):not(.app-android-vivo-x300pro):not(.app-android-vivo-s50promini):not(.app-android-vivo-x200pro):not(.app-android-vivo-x90) body.page-shuiming-result .page-root,' +
+          'html.app-android-client.app-top-safe-shell.app-android-vivo-family:not(.app-android-immersive-white-top):not(.app-android-vivo-x300pro):not(.app-android-vivo-s50promini):not(.app-android-vivo-x200pro):not(.app-android-vivo-x90):not(.app-android-vivo-v2285a) body.page-shuiming-result .page-root,' +
           'html.app-android-client.app-top-safe-shell.app-android-mi-family:not(.app-android-xiaomi-14pro):not(.app-android-immersive-white-top) body.page-shuiming-result .page-root,' +
           'html.app-android-client.app-top-safe-shell.app-android-redmi-k70.app-android-redmi-k70-ultra:not(.app-android-immersive-white-top) body.page-shuiming-result .page-root,' +
           'html.app-android-client.app-top-safe-shell.app-android-samsung:not(.app-android-immersive-white-top):not(.app-android-samsung-s23u) body.page-shuiming-result .page-root,' +
@@ -7456,20 +7486,20 @@
           'html.app-android-client.app-top-safe-shell.app-android-honor-fcp:not(.app-android-immersive-white-top) body.page-shuiming-result .page-root,' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oneplus-ace6):not(.app-android-oneplus-12):not(.app-android-oppo-reno10):not(.app-android-oppo-k9x):not(.app-android-xiaomi-14pro):not(.app-android-immersive-white-top) body.page-shuiming-result .page-root{--safe-top:0px !important;}' +
           'html.app-android-client.app-top-safe-shell.app-android-oppo-family:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oneplus-ace6):not(.app-android-oneplus-12):not(.app-android-oppo-reno10):not(.app-android-oppo-k9x):not(.app-android-immersive-white-top) body.page-shuiming-result .top-fixed .header,' +
-          'html.app-android-client.app-top-safe-shell.app-android-vivo-family:not(.app-android-immersive-white-top):not(.app-android-vivo-x300pro):not(.app-android-vivo-s50promini):not(.app-android-vivo-x200pro):not(.app-android-vivo-x90) body.page-shuiming-result .top-fixed .header,' +
+          'html.app-android-client.app-top-safe-shell.app-android-vivo-family:not(.app-android-immersive-white-top):not(.app-android-vivo-x300pro):not(.app-android-vivo-s50promini):not(.app-android-vivo-x200pro):not(.app-android-vivo-x90):not(.app-android-vivo-v2285a) body.page-shuiming-result .top-fixed .header,' +
           'html.app-android-client.app-top-safe-shell.app-android-mi-family:not(.app-android-xiaomi-14pro):not(.app-android-immersive-white-top) body.page-shuiming-result .top-fixed .header,' +
           'html.app-android-client.app-top-safe-shell.app-android-redmi-k70.app-android-redmi-k70-ultra:not(.app-android-immersive-white-top) body.page-shuiming-result .top-fixed .header,' +
           'html.app-android-client.app-top-safe-shell.app-android-honor-flc:not(.app-android-immersive-white-top) body.page-shuiming-result .top-fixed .header,' +
           'html.app-android-client.app-top-safe-shell.app-android-honor-fcp:not(.app-android-immersive-white-top) body.page-shuiming-result .top-fixed .header,' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oneplus-ace6):not(.app-android-oneplus-12):not(.app-android-oppo-reno10):not(.app-android-oppo-k9x):not(.app-android-xiaomi-14pro):not(.app-android-immersive-white-top) body.page-shuiming-result .top-fixed .header{top:0 !important;height:var(--header-height,48px) !important;min-height:var(--header-height,48px) !important;padding:8px 16px !important;box-sizing:border-box !important;z-index:120 !important;}' +
           'html.app-android-client.app-top-safe-shell.app-android-oppo-family:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oneplus-ace6):not(.app-android-oneplus-12):not(.app-android-oppo-reno10):not(.app-android-oppo-k9x):not(.app-android-immersive-white-top) body.page-shuiming-result .top-fixed .header .back-btn,' +
-          'html.app-android-client.app-top-safe-shell.app-android-vivo-family:not(.app-android-immersive-white-top):not(.app-android-vivo-x300pro):not(.app-android-vivo-s50promini):not(.app-android-vivo-x200pro):not(.app-android-vivo-x90) body.page-shuiming-result .top-fixed .header .back-btn,' +
+          'html.app-android-client.app-top-safe-shell.app-android-vivo-family:not(.app-android-immersive-white-top):not(.app-android-vivo-x300pro):not(.app-android-vivo-s50promini):not(.app-android-vivo-x200pro):not(.app-android-vivo-x90):not(.app-android-vivo-v2285a) body.page-shuiming-result .top-fixed .header .back-btn,' +
           'html.app-android-client.app-top-safe-shell.app-android-mi-family:not(.app-android-xiaomi-14pro):not(.app-android-immersive-white-top) body.page-shuiming-result .top-fixed .header .back-btn,' +
           'html.app-android-client.app-top-safe-shell.app-android-redmi-k70.app-android-redmi-k70-ultra:not(.app-android-immersive-white-top) body.page-shuiming-result .top-fixed .header .back-btn,' +
           'html.app-android-client.app-top-safe-shell.app-android-honor-flc:not(.app-android-immersive-white-top) body.page-shuiming-result .top-fixed .header .back-btn,' +
           'html.app-android-client.app-top-safe-shell.app-android-honor-fcp:not(.app-android-immersive-white-top) body.page-shuiming-result .top-fixed .header .back-btn,' +
           'html.app-android-client.app-top-safe-shell.app-android-oppo-family:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oneplus-ace6):not(.app-android-oneplus-12):not(.app-android-oppo-reno10):not(.app-android-oppo-k9x):not(.app-android-immersive-white-top) body.page-shuiming-result .top-fixed .header .header-right,' +
-          'html.app-android-client.app-top-safe-shell.app-android-vivo-family:not(.app-android-immersive-white-top):not(.app-android-vivo-x300pro):not(.app-android-vivo-s50promini):not(.app-android-vivo-x200pro):not(.app-android-vivo-x90) body.page-shuiming-result .top-fixed .header .header-right,' +
+          'html.app-android-client.app-top-safe-shell.app-android-vivo-family:not(.app-android-immersive-white-top):not(.app-android-vivo-x300pro):not(.app-android-vivo-s50promini):not(.app-android-vivo-x200pro):not(.app-android-vivo-x90):not(.app-android-vivo-v2285a) body.page-shuiming-result .top-fixed .header .header-right,' +
           'html.app-android-client.app-top-safe-shell.app-android-mi-family:not(.app-android-xiaomi-14pro):not(.app-android-immersive-white-top) body.page-shuiming-result .top-fixed .header .header-right,' +
           'html.app-android-client.app-top-safe-shell.app-android-redmi-k70.app-android-redmi-k70-ultra:not(.app-android-immersive-white-top) body.page-shuiming-result .top-fixed .header .header-right,' +
           'html.app-android-client.app-top-safe-shell.app-android-honor-flc:not(.app-android-immersive-white-top) body.page-shuiming-result .top-fixed .header .header-right,' +
@@ -7477,14 +7507,14 @@
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oneplus-ace6):not(.app-android-oneplus-12):not(.app-android-oppo-reno10):not(.app-android-oppo-k9x):not(.app-android-xiaomi-14pro):not(.app-android-immersive-white-top) body.page-shuiming-result .top-fixed .header .back-btn,' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oneplus-ace6):not(.app-android-oneplus-12):not(.app-android-oppo-reno10):not(.app-android-oppo-k9x):not(.app-android-xiaomi-14pro):not(.app-android-immersive-white-top) body.page-shuiming-result .top-fixed .header .header-right{top:0 !important;height:var(--header-height,48px) !important;display:flex !important;align-items:center !important;}' +
           'html.app-android-client.app-top-safe-shell.app-android-oppo-family:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oneplus-ace6):not(.app-android-oneplus-12):not(.app-android-oppo-reno10):not(.app-android-oppo-k9x):not(.app-android-immersive-white-top) body.page-shuiming-result .top-fixed .summary,' +
-          'html.app-android-client.app-top-safe-shell.app-android-vivo-family:not(.app-android-immersive-white-top):not(.app-android-vivo-x300pro):not(.app-android-vivo-s50promini):not(.app-android-vivo-x200pro):not(.app-android-vivo-x90) body.page-shuiming-result .top-fixed .summary,' +
+          'html.app-android-client.app-top-safe-shell.app-android-vivo-family:not(.app-android-immersive-white-top):not(.app-android-vivo-x300pro):not(.app-android-vivo-s50promini):not(.app-android-vivo-x200pro):not(.app-android-vivo-x90):not(.app-android-vivo-v2285a) body.page-shuiming-result .top-fixed .summary,' +
           'html.app-android-client.app-top-safe-shell.app-android-mi-family:not(.app-android-xiaomi-14pro):not(.app-android-immersive-white-top) body.page-shuiming-result .top-fixed .summary,' +
           'html.app-android-client.app-top-safe-shell.app-android-redmi-k70.app-android-redmi-k70-ultra:not(.app-android-immersive-white-top) body.page-shuiming-result .top-fixed .summary,' +
           'html.app-android-client.app-top-safe-shell.app-android-honor-flc:not(.app-android-immersive-white-top) body.page-shuiming-result .top-fixed .summary,' +
           'html.app-android-client.app-top-safe-shell.app-android-honor-fcp:not(.app-android-immersive-white-top) body.page-shuiming-result .top-fixed .summary,' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oneplus-ace6):not(.app-android-oneplus-12):not(.app-android-oppo-reno10):not(.app-android-oppo-k9x):not(.app-android-xiaomi-14pro):not(.app-android-immersive-white-top) body.page-shuiming-result .top-fixed .summary{top:var(--header-height,48px) !important;}' +
           'html.app-android-client.app-top-safe-shell.app-android-oppo-family:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oneplus-ace6):not(.app-android-oneplus-12):not(.app-android-oppo-reno10):not(.app-android-oppo-k9x):not(.app-android-immersive-white-top) body.page-shuiming-result .list,' +
-          'html.app-android-client.app-top-safe-shell.app-android-vivo-family:not(.app-android-immersive-white-top):not(.app-android-vivo-x300pro):not(.app-android-vivo-s50promini):not(.app-android-vivo-x200pro):not(.app-android-vivo-x90) body.page-shuiming-result .list,' +
+          'html.app-android-client.app-top-safe-shell.app-android-vivo-family:not(.app-android-immersive-white-top):not(.app-android-vivo-x300pro):not(.app-android-vivo-s50promini):not(.app-android-vivo-x200pro):not(.app-android-vivo-x90):not(.app-android-vivo-v2285a) body.page-shuiming-result .list,' +
           'html.app-android-client.app-top-safe-shell.app-android-mi-family:not(.app-android-xiaomi-14pro):not(.app-android-immersive-white-top) body.page-shuiming-result .list,' +
           'html.app-android-client.app-top-safe-shell.app-android-redmi-k70.app-android-redmi-k70-ultra:not(.app-android-immersive-white-top) body.page-shuiming-result .list,' +
           'html.app-android-client.app-top-safe-shell.app-android-honor-flc:not(.app-android-immersive-white-top) body.page-shuiming-result .list,' +

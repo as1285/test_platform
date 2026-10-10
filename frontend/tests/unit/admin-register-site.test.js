@@ -47,7 +47,13 @@ describe('管理后台注册站点分頁', () => {
     expect(adminJs).toContain("url += '&site='");
     expect(ops).toContain('function appendSiteQuery');
     expect(loader).toContain('ops-conversion.js?v=20261008-legacy-plain');
-    expect(html).toContain('admin_panel.js?v=20261009-hide-legacy-sku');
+    expect(html).toContain('admin_panel.js?v=20261010-user-email-col');
+  });
+  it('注册列表用用户邮箱替换注册站点列，新旧站都显示', () => {
+    expect(html).toContain('id="usersRegisterSiteTh">用户邮箱</th>');
+    expect(adminJs).toContain("siteTh.textContent = '用户邮箱'");
+    expect(adminJs).toContain('u.email');
+    expect(adminJs).toContain('var usersColspan = 13');
   });
   it('注册列表不再用站点下拉切换，由页面固定站点', () => {
     expect(adminJs).toContain('注册站点由「新站注册 / 旧站注册」页面决定');
