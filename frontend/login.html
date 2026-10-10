@@ -185,7 +185,7 @@
             width: 112px;
             height: 112px;
             border-radius: 50%;
-            overflow: visible;
+            overflow: hidden;
             background: transparent;
             flex-shrink: 0;
             line-height: 0;
@@ -859,16 +859,21 @@
                             <stop offset="54%" stop-color="#3f82d0"/>
                             <stop offset="100%" stop-color="#3474c4"/>
                         </linearGradient>
+                        <clipPath id="loginAvatarCircleClip">
+                            <circle cx="60" cy="60" r="38"/>
+                        </clipPath>
                     </defs>
                     <!-- 官方柔光外晕 -->
                     <circle cx="60" cy="60" r="58" fill="url(#loginAvatarGlow)"/>
                     <!-- 浅蓝圆底 -->
                     <circle cx="60" cy="60" r="38" fill="#c9e2f8"/>
-                    <!-- 双色人像 -->
-                    <circle cx="60" cy="50" r="15.5" fill="url(#loginAvatarPerson)"/>
-                    <path d="M28 98 C28 72.5 41 66 60 66 C79 66 92 72.5 92 98 Z" fill="url(#loginAvatarPerson)"/>
-                    <!-- 白色微笑 -->
-                    <path d="M51.5 52.5 Q60 61 68.5 52.5" fill="none" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    <!-- 双色人像（裁剪到圆内，避免肩部溢出） -->
+                    <g clip-path="url(#loginAvatarCircleClip)">
+                        <circle cx="60" cy="50" r="15.5" fill="url(#loginAvatarPerson)"/>
+                        <path d="M28 98 C28 72.5 41 66 60 66 C79 66 92 72.5 92 98 Z" fill="url(#loginAvatarPerson)"/>
+                        <!-- 白色微笑 -->
+                        <path d="M51.5 52.5 Q60 61 68.5 52.5" fill="none" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    </g>
                 </svg>
             </div>
         </div>
