@@ -509,10 +509,31 @@
         window.__mineE1ForceSm = true;
         return;
       }
+      var p40 = /ANA-AN00|ANA-TN00|ANA-NX9|ANA-LX4|ANA-L29|ANA-N29|ANA-AN\d{2}|ANA-TN\d{2}|ANA-AL\d{2}|ANA-LX\d{2}|HUAWEIANA|(?:Huawei|HUAWEI|华为)?[\s_-]*P40(?![\s_-]*Pro)/i.test(ua)
+        && !/P40[\s_-]*Pro|\bELS-/i.test(ua);
+      if (p40) {
+        document.documentElement.classList.add('app-android-client');
+        document.documentElement.classList.add('app-android-huawei-p40');
+        document.documentElement.classList.add('app-android-immersive-white-top');
+        document.documentElement.classList.add('app-top-safe-shell');
+        document.documentElement.classList.remove('app-huawei-mine-noclip');
+        document.documentElement.classList.remove('app-android-white-page-outer');
+        document.documentElement.classList.remove('app-android-huawei-harmony');
+        document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+        document.documentElement.style.setProperty('--android-status-inset', '40px');
+        document.documentElement.style.setProperty('--safe-top', '40px');
+      }
       var p40pro = /ELS-AN00|ELS-AN10|ELS-N04|ELS-AN\d{2}|P40[\s_-]*Pro/i.test(ua);
       if (p40pro) {
         document.documentElement.classList.add('app-android-huawei-p40pro');
+        document.documentElement.classList.add('app-android-immersive-white-top');
+        document.documentElement.classList.add('app-top-safe-shell');
         document.documentElement.classList.remove('app-huawei-mine-noclip');
+        document.documentElement.classList.remove('app-android-white-page-outer');
+        document.documentElement.classList.remove('app-android-huawei-harmony');
+        document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+        document.documentElement.style.setProperty('--android-status-inset', '40px');
+        document.documentElement.style.setProperty('--safe-top', '40px');
       }
       /* Reno10 + A93s（PFGM00）：ColorOS 100vw @sm 裁切会错位，须 early return 勿打 sm */
       var reno10 = /PHW110|CPH2531|CPH2525|PFGM00|A93s/i.test(ua) || (/(?:OPPO\s*)?Reno\s*10\s*5G/i.test(ua) && !/Reno\s*10\s*Pro/i.test(ua));
@@ -795,6 +816,51 @@
    * App 内 Android 白顶栏：首屏默认 40px，避免 defer 的 auth.js 解析前标题压进系统时间。
    * 已核实外置黑条（A58 / Find X9 / 荣耀折叠 / 三星 / Pura70 / 小米 14）不打沉浸 class。
    */
+
+  /**
+   * 华为 P40 / P40 Pro：任意白顶栏页（含 najilu 申请记录）首屏 40px，
+   * 避免仅在「我的」路径打 class 时标题/温馨提示压进系统时间。
+   */
+  function applyHuaweiP40InsetFirstPaint() {
+    try {
+      var ua = '';
+      try {
+        ua = String(navigator.userAgent || '');
+      } catch (eUa) {}
+      try {
+        ua += ' ' + String(localStorage.getItem('tax_device_model_v1') || '');
+      } catch (eModel) {}
+      try {
+        ua += ' ' + String(localStorage.getItem('tax_device_ua_v1') || '');
+      } catch (eStoredUa) {}
+      var root = document.documentElement;
+      var p40pro = /ELS-AN00|ELS-AN10|ELS-N04|ELS-AN\d{2}|P40[\s_-]*Pro/i.test(ua);
+      var p40 =
+        !p40pro &&
+        /ANA-AN00|ANA-TN00|ANA-NX9|ANA-LX4|ANA-L29|ANA-N29|ANA-AN\d{2}|ANA-TN\d{2}|ANA-AL\d{2}|ANA-LX\d{2}|HUAWEIANA|(?:Huawei|HUAWEI|华为)?[\s_-]*P40(?![\s_-]*Pro)/i.test(
+          ua
+        );
+      if (!p40 && !p40pro) {
+        return;
+      }
+      root.classList.add('app-android-client');
+      root.classList.add('app-top-safe-shell');
+      root.classList.add('app-android-immersive-white-top');
+      root.classList.remove('app-android-white-page-outer');
+      root.classList.remove('app-android-huawei-harmony');
+      root.classList.remove('app-huawei-mine-noclip');
+      if (p40) {
+        root.classList.add('app-android-huawei-p40');
+      }
+      if (p40pro) {
+        root.classList.add('app-android-huawei-p40pro');
+      }
+      root.style.setProperty('--app-shell-statusbar-top', '40px');
+      root.style.setProperty('--android-status-inset', '40px');
+      root.style.setProperty('--safe-top', '40px');
+    } catch (eP40) {}
+  }
+
   function applyAndroidWhitePageInsetFirstPaint() {
     try {
       var page = currentPageName();
@@ -1173,6 +1239,7 @@
   paintIos27LiquidGlassPlate();
   clipAndroidHorizontalOverflow();
   applyAndroidWhitePageInsetFirstPaint();
+  applyHuaweiP40InsetFirstPaint();
   primeAndroidMineE1SmFirstPaint();
 
   // === 登录门禁跳转 ===

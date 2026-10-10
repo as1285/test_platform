@@ -2577,6 +2577,26 @@
   }
 
   /**
+   * 华为 P40（ANA-AN00 等，非 Pro）。
+   * 纳税记录申请记录页税款所属期在 ArkWeb 大字号下会折成「2025-08至 / 2026-09」两行。
+   * Cordova iframe UA 常无 ANA，须读 clientUaBlob（含 tax_device_model_v1）。
+   */
+  function isHuaweiP40Client() {
+    var ua = clientUaBlob();
+    if (/P40[\s_-]*Pro|\bELS-|Mate\s*60|\bALN-|Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(ua)) {
+      return false;
+    }
+    if (
+      /HUAWEIANA|ANA-AN00|ANA-TN00|ANA-NX9|ANA-LX4|ANA-L29|ANA-N29|ANA-AN\d{2}|ANA-TN\d{2}|ANA-AL\d{2}|ANA-LX\d{2}|ANA-N\d{2}/i.test(
+        ua
+      )
+    ) {
+      return true;
+    }
+    return /(?:Huawei|HUAWEI|华为)?[\s_-]*P40(?![\s_-]*Pro)/i.test(ua);
+  }
+
+  /**
    * 华为 P40 Pro（ELS-AN00 / HarmonyOS 4.2 ArkWeb）。
    * 100vw 常宽于画布，「我的」三宫格胶囊会掉到白卡下沿；勿套 noclip 的 100cqw。
    */
@@ -4782,7 +4802,7 @@
           'html.app-android-mi-family.app-top-safe-shell:not(.app-android-redmi-k80pro):not(.app-android-redmi-k80ultra):not(.app-android-immersive-white-top),' +
           'html.app-android-samsung.app-top-safe-shell:not(.app-android-immersive-white-top):not(.app-android-samsung-s23u),' +
           'html.app-android-samsung-s24u.app-top-safe-shell:not(.app-android-immersive-white-top),' +
-          'html.app-android-huawei-harmony.app-top-safe-shell:not(.app-android-huawei-mate60):not(.app-android-immersive-white-top):not(.app-android-honor-oxf),' +
+          'html.app-android-huawei-harmony.app-top-safe-shell:not(.app-android-huawei-mate60):not(.app-android-huawei-p40):not(.app-android-huawei-p40pro):not(.app-android-immersive-white-top):not(.app-android-honor-oxf),' +
           'html.app-android-hinova.app-top-safe-shell:not(.app-android-immersive-white-top),' +
           'html.app-android-honor-flc.app-top-safe-shell:not(.app-android-immersive-white-top),' +
           'html.app-android-honor-fcp.app-top-safe-shell:not(.app-android-immersive-white-top){--app-shell-statusbar-top:0px !important;}' +
@@ -6622,6 +6642,10 @@
       if (hiNova9SeClient) {
         androidClient = true;
       }
+      var huaweiP40Client = isHuaweiP40Client();
+      if (huaweiP40Client) {
+        androidClient = true;
+      }
       var huaweiP40ProClient = isHuaweiP40ProClient();
       if (huaweiP40ProClient) {
         androidClient = true;
@@ -6693,6 +6717,8 @@
         !huaweiMate30Client &&
         !huaweiLioAn00Client &&
         !huaweiNova13Client &&
+        !huaweiP40Client &&
+        !huaweiP40ProClient &&
         !huaweiMatePad115SClient;
       var hiNovaFamily = androidClient && isHiNovaFamilyClient();
       var tallAndroidStatusBar =
@@ -7224,10 +7250,23 @@
         document.documentElement.classList.remove('app-android-huawei-harmony');
         document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
       }
+      if (huaweiP40Client) {
+        document.documentElement.classList.add('app-android-client');
+        document.documentElement.classList.add('app-android-huawei-p40');
+        document.documentElement.classList.add('app-android-immersive-white-top');
+        document.documentElement.classList.remove('app-huawei-mine-noclip');
+        document.documentElement.classList.remove('app-android-white-page-outer');
+        document.documentElement.classList.remove('app-android-huawei-harmony');
+        document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+      }
       if (huaweiP40ProClient) {
         document.documentElement.classList.add('app-android-client');
         document.documentElement.classList.add('app-android-huawei-p40pro');
+        document.documentElement.classList.add('app-android-immersive-white-top');
         document.documentElement.classList.remove('app-huawei-mine-noclip');
+        document.documentElement.classList.remove('app-android-white-page-outer');
+        document.documentElement.classList.remove('app-android-huawei-harmony');
+        document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
       }
       if (huaweiNova13Client) {
         document.documentElement.classList.add('app-android-client');
@@ -7344,7 +7383,7 @@
           'html.app-android-iqoo-neo8.app-top-safe-shell,html.app-android-iqoo-neo8pro.app-top-safe-shell,html.app-android-iqoo-13.app-top-safe-shell,html.app-android-iqoo-15.app-top-safe-shell,html.app-android-meizu-20pro.app-top-safe-shell,html.app-android-vivo-x300pro.app-top-safe-shell,html.app-android-vivo-s50promini.app-top-safe-shell,html.app-android-vivo-x200pro.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
           'html.app-android-vivo-x90.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
           'html.app-android-vivo-s15.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;background-image:none !important;}' +
-          'html.app-android-mi-family.app-top-safe-shell:not(.app-android-redmi-k80pro):not(.app-android-redmi-k80ultra):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-immersive-white-top),html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oneplus-ace6):not(.app-android-oneplus-12):not(.app-android-oppo-reno10):not(.app-android-oppo-k9x):not(.app-android-immersive-white-top),html.app-android-vivo-family.app-top-safe-shell:not(.app-android-immersive-white-top):not(.app-android-vivo-x300pro):not(.app-android-vivo-s50promini):not(.app-android-vivo-x200pro):not(.app-android-vivo-x90):not(.app-android-vivo-s15):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-meizu-20pro),html.app-android-samsung.app-top-safe-shell:not(.app-android-immersive-white-top):not(.app-android-samsung-s23u),html.app-android-samsung-s24u.app-top-safe-shell:not(.app-android-immersive-white-top),html.app-android-huawei-harmony.app-top-safe-shell:not(.app-android-huawei-mate60):not(.app-android-huawei-mate70):not(.app-android-huawei-mate30):not(.app-android-huawei-mate30pro):not(.app-android-huawei-lio-an00):not(.app-android-huawei-nova13):not(.app-android-immersive-white-top):not(.app-android-honor-oxf),html.app-android-hinova.app-top-safe-shell:not(.app-android-immersive-white-top){--app-shell-statusbar-top:0px !important;}' +
+          'html.app-android-mi-family.app-top-safe-shell:not(.app-android-redmi-k80pro):not(.app-android-redmi-k80ultra):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-immersive-white-top),html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oneplus-ace6):not(.app-android-oneplus-12):not(.app-android-oppo-reno10):not(.app-android-oppo-k9x):not(.app-android-immersive-white-top),html.app-android-vivo-family.app-top-safe-shell:not(.app-android-immersive-white-top):not(.app-android-vivo-x300pro):not(.app-android-vivo-s50promini):not(.app-android-vivo-x200pro):not(.app-android-vivo-x90):not(.app-android-vivo-s15):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-meizu-20pro),html.app-android-samsung.app-top-safe-shell:not(.app-android-immersive-white-top):not(.app-android-samsung-s23u),html.app-android-samsung-s24u.app-top-safe-shell:not(.app-android-immersive-white-top),html.app-android-huawei-harmony.app-top-safe-shell:not(.app-android-huawei-mate60):not(.app-android-huawei-mate70):not(.app-android-huawei-mate30):not(.app-android-huawei-mate30pro):not(.app-android-huawei-lio-an00):not(.app-android-huawei-nova13):not(.app-android-huawei-p40):not(.app-android-huawei-p40pro):not(.app-android-immersive-white-top):not(.app-android-honor-oxf),html.app-android-hinova.app-top-safe-shell:not(.app-android-immersive-white-top){--app-shell-statusbar-top:0px !important;}' +
           /* 沉浸压栏机（含 Mate60 / Mate70 白顶栏 / 小米10 / K70至尊 / 12C / Ace 2 Pro / Neo8 Pro / 魅族 20 Pro）：压过族清零 */ +
           'html.app-android-immersive-white-top.app-top-safe-shell,' +
           'html.app-android-huawei-mate60.app-top-safe-shell,' +
@@ -8916,10 +8955,23 @@
         document.documentElement.classList.add('app-android-immersive-white-top');
         document.documentElement.classList.remove('app-android-white-page-outer');
       }
+      if (isHuaweiP40Client()) {
+        document.documentElement.classList.add('app-android-client');
+        document.documentElement.classList.add('app-android-huawei-p40');
+        document.documentElement.classList.add('app-android-immersive-white-top');
+        document.documentElement.classList.remove('app-huawei-mine-noclip');
+        document.documentElement.classList.remove('app-android-white-page-outer');
+        document.documentElement.classList.remove('app-android-huawei-harmony');
+        document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+      }
       if (isHuaweiP40ProClient()) {
         document.documentElement.classList.add('app-android-client');
         document.documentElement.classList.add('app-android-huawei-p40pro');
+        document.documentElement.classList.add('app-android-immersive-white-top');
         document.documentElement.classList.remove('app-huawei-mine-noclip');
+        document.documentElement.classList.remove('app-android-white-page-outer');
+        document.documentElement.classList.remove('app-android-huawei-harmony');
+        document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
       }
       if (isHuaweiNova13Client()) {
         document.documentElement.classList.add('app-android-client');
