@@ -1600,13 +1600,13 @@
       if (getIOSMajorVersion() >= 27) {
         /*
          * iOS 27+：default 不透明状态栏；不加 app-top-safe-shell（避免再叠 max(59px)）。
-         * 顶距 = env(safe-area-inset-top) only（杀掉 +56px 渐隐带）；WebClip 用 y=0 实白 opaque cover。firstpaint must not revert to 59px.
+         * 顶距 = env(safe-area-inset-top) + 56px 渐隐带；firstpaint 不得再打回 59px。
          */
         root.classList.add('app-ios27');
         root.classList.remove('app-top-safe-shell');
         root.style.setProperty(
           '--app-shell-statusbar-top',
-          'env(safe-area-inset-top, 0px)',
+          'calc(env(safe-area-inset-top, 0px) + 56px)',
           'important'
         );
       } else {
@@ -4391,10 +4391,10 @@
       ) {
         document.documentElement.classList.remove('app-ios-status-outer');
         document.documentElement.classList.remove('app-top-safe-shell');
-        /* 内联 !important：压过所有 max(59px) 顶垫规则；WebClip 不用 +56 渐隐带 */
+        /* 内联 !important：压过所有 max(59px) 顶垫规则；含玻璃渐隐带 */
         document.documentElement.style.setProperty(
           '--app-shell-statusbar-top',
-          'env(safe-area-inset-top, 0px)',
+          'calc(env(safe-area-inset-top, 0px) + 56px)',
           'important'
         );
         return;
@@ -5463,7 +5463,7 @@
       'html.app-ios-liquid-glass body.page-shuiming-result .shuiming-chrome-shield,html.app-ios-unified-chrome body.page-shuiming-result .shuiming-chrome-shield{display:none !important;height:0 !important;visibility:hidden !important;}' +
       'html.app-ios-iphone15 .ios-sticky-tint,html.app-ios-liquid-glass .ios-sticky-tint,html.app-ios-unified-chrome .ios-sticky-tint,html.app-ios-iphone15 #iosStickyTint,html.app-ios-liquid-glass #iosStickyTint,html.app-ios-unified-chrome #iosStickyTint{display:none !important;height:0 !important;margin:0 !important;}' +
       'html.app-ios-unified-chrome body.page-shuiming-result .page-root,html.app-ios-liquid-glass body.page-shuiming-result .page-root{isolation:auto !important;}' +
-      'html.app-ios-header-hoisted:not(.app-ios-unified-chrome):not(.app-ios27) body.page-shuiming-result .top-fixed{position:relative !important;z-index:140 !important;}' +
+      'html.app-ios-header-hoisted:not(.app-ios-unified-chrome) body.page-shuiming-result .top-fixed{position:relative !important;z-index:140 !important;}' +
       'html.app-ios-unified-chrome body.page-shuiming-result .top-fixed,html.app-ios-liquid-glass body.page-shuiming-result .top-fixed,html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed,html.app-ios-header-hoisted.app-ios-unified-chrome body.page-shuiming-result .top-fixed{position:sticky !important;top:0 !important;left:auto !important;right:auto !important;height:auto !important;z-index:20 !important;background:#fff !important;overflow:visible !important;transform:none !important;-webkit-transform:none !important;}' +
       'html.app-ios-unified-chrome body.page-shuiming-result .top-fixed .header,html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header,html.app-ios-iphone15.app-top-safe-shell.app-ios-unified-chrome body.page-shuiming-result .top-fixed .header{position:relative !important;top:auto !important;left:auto !important;right:auto !important;height:calc(44px + var(--app-shell-statusbar-top,59px)) !important;min-height:calc(44px + var(--app-shell-statusbar-top,59px)) !important;padding:var(--app-shell-statusbar-top,59px) 16px 0 !important;transform:none !important;-webkit-transform:none !important;box-shadow:none !important;border:none !important;border-bottom:none !important;background:#fff !important;background-color:#fff !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;}' +
       'html.app-ios-unified-chrome body.page-shuiming-result .top-fixed .header .back-btn,html.app-ios-unified-chrome body.page-shuiming-result .top-fixed .header .header-right,html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header .back-btn,html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header .header-right{top:var(--app-shell-statusbar-top,59px) !important;height:44px !important;}' +
@@ -5476,54 +5476,49 @@
       /* iOS 27 15PM：不要再铺 fixed ::before 白垫（会维持毛玻璃透明）；靠 sticky 实白顶栏 */
       'html.app-ios-liquid-glass.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result::before,html.app-ios-liquid-glass.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result::before{content:none !important;display:none !important;}' +
       'html.app-ios-liquid-glass.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header,html.app-ios-liquid-glass.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header{position:sticky !important;top:0 !important;height:calc(44px + var(--app-shell-statusbar-top,59px)) !important;min-height:calc(44px + var(--app-shell-statusbar-top,59px)) !important;padding:var(--app-shell-statusbar-top,59px) 16px 0 !important;background:#fff !important;background-color:#fff !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;}' +
-      /* ---- iOS 27 finale: override liquid-glass sticky with inflow + solid fixed header ---- */
+      /* —— iOS 27 收尾覆盖：压过上文 liquid-glass sticky，强制 inflow + 渐隐带顶距 —— */
       ios27InflowOverrideCss()
     );
   }
 
-  /** iOS 27 detail/query: root no-scroll + solid white position:fixed header. app-ios27 only. */
+  /** iOS 27 明细页：根文档不滚 + 顶栏实白贴顶；hoist 后 body flex、page-root 勿 100dvh。仅 app-ios27。 */
   function ios27InflowOverrideCss() {
-    var pad = 'var(--app-shell-statusbar-top,0px)';
-    var hdr = 'calc(44px + ' + pad + ')';
+    var pad = 'var(--app-shell-statusbar-top,56px)';
     return (
-      'html.app-ios27{--app-shell-statusbar-top:env(safe-area-inset-top, 0px)!important;}' +
+      'html.app-ios27{--app-shell-statusbar-top:calc(env(safe-area-inset-top, 0px) + 56px)!important;}' +
       'html.app-ios27,html.app-ios27 body{height:100%!important;max-height:100%!important;overflow:hidden!important;overscroll-behavior:none!important;}' +
       'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result,html.app-ios27.app-ios-liquid-glass:has(body.page-shuiming-result),' +
-      'html.app-ios27.app-ios-unified-chrome body.page-shuiming-result,' +
-      'html.app-ios27.app-ios-header-hoisted body.page-shuiming-result{' +
+      'html.app-ios27.app-ios-unified-chrome body.page-shuiming-result{' +
       'display:flex!important;flex-direction:column!important;height:100%!important;max-height:100%!important;' +
-      'overflow:hidden!important;overscroll-behavior:none!important;position:relative!important;background:#fff!important;background-color:#fff!important;}' +
-      'html.app-ios27 body.page-shuiming-result .page-root,' +
+      'overflow:hidden!important;overscroll-behavior:none!important;position:relative!important;background:#fff!important;}' +
       'html.app-ios27.app-ios-header-hoisted body.page-shuiming-result .page-root,' +
-      'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .page-root,' +
-      'html.app-ios27.app-ios-unified-chrome body.page-shuiming-result .page-root{' +
+      'html.app-ios27.app-ios-liquid-glass.app-ios-header-hoisted body.page-shuiming-result .page-root,' +
+      'html.app-ios27.app-ios-unified-chrome.app-ios-header-hoisted body.page-shuiming-result .page-root{' +
       'display:flex!important;flex-direction:column!important;flex:1 1 auto!important;min-height:0!important;' +
-      'height:100%!important;max-height:100%!important;overflow:hidden!important;isolation:isolate!important;' +
-      'padding-top:calc(' + hdr + ' + 88px)!important;box-sizing:border-box!important;background:#f5f6fa!important;}' +
-      'html.app-ios27 body.page-shuiming-result .top-fixed,' +
+      'height:auto!important;max-height:none!important;overflow:hidden!important;isolation:isolate!important;}' +
+      'html.app-ios27.app-ios-liquid-glass:not(.app-ios-header-hoisted) body.page-shuiming-result .page-root,' +
+      'html.app-ios27.app-ios-unified-chrome:not(.app-ios-header-hoisted) body.page-shuiming-result .page-root{' +
+      'display:flex!important;flex-direction:column!important;height:100dvh!important;max-height:100dvh!important;min-height:0!important;' +
+      'overflow:hidden!important;isolation:isolate!important;}' +
       'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed,' +
       'html.app-ios27.app-ios-unified-chrome body.page-shuiming-result .top-fixed,' +
       'html.app-ios27.app-ios-header-hoisted body.page-shuiming-result .top-fixed{' +
-      'position:fixed!important;top:0!important;left:0!important;right:0!important;flex:none!important;' +
+      'position:sticky!important;top:0!important;left:0!important;right:0!important;flex:0 0 auto!important;' +
       'width:100%!important;max-width:100%!important;height:auto!important;min-height:6px!important;' +
-      'margin:0!important;background:#fff!important;background-color:#fff!important;opacity:1!important;' +
-      'z-index:200!important;overflow:visible!important;isolation:isolate!important;' +
+      'margin:0!important;background:#fff!important;background-color:#fff!important;z-index:40!important;' +
+      'overflow:visible!important;isolation:isolate!important;' +
       '-webkit-transform:translateZ(0)!important;transform:translateZ(0)!important;' +
-      '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;' +
-      'box-shadow:none!important;border:none!important;}' +
-      'html.app-ios27 body.page-shuiming-result .top-fixed .header,' +
+      '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}' +
       'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header,' +
       'html.app-ios27.app-ios-unified-chrome body.page-shuiming-result .top-fixed .header,' +
       'html.app-ios27.app-ios-header-hoisted body.page-shuiming-result .top-fixed .header{' +
       'position:relative!important;top:auto!important;left:auto!important;right:auto!important;' +
       'width:100%!important;box-sizing:border-box!important;' +
-      'height:' + hdr + '!important;min-height:' + hdr + '!important;' +
-      'padding:' + pad + ' 16px 0!important;background:#fff!important;background-color:#fff!important;opacity:1!important;' +
+      'height:calc(44px + ' + pad + ')!important;min-height:calc(44px + ' + pad + ')!important;' +
+      'padding:' + pad + ' 16px 0!important;background:#fff!important;background-color:#fff!important;' +
       'box-shadow:none!important;isolation:isolate!important;' +
       '-webkit-transform:translateZ(0)!important;transform:translateZ(0)!important;' +
       '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}' +
-      'html.app-ios27 body.page-shuiming-result .top-fixed .header .back-btn,' +
-      'html.app-ios27 body.page-shuiming-result .top-fixed .header .header-right,' +
       'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header .back-btn,' +
       'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header .header-right,' +
       'html.app-ios27.app-ios-unified-chrome body.page-shuiming-result .top-fixed .header .back-btn,' +
@@ -5531,12 +5526,10 @@
       'html.app-ios27.app-ios-header-hoisted body.page-shuiming-result .top-fixed .header .back-btn,' +
       'html.app-ios27.app-ios-header-hoisted body.page-shuiming-result .top-fixed .header .header-right{' +
       'top:' + pad + '!important;height:44px!important;display:flex!important;align-items:center!important;}' +
-      'html.app-ios27 body.page-shuiming-result .top-fixed .summary,' +
       'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .summary,' +
       'html.app-ios27.app-ios-unified-chrome body.page-shuiming-result .top-fixed .summary,' +
       'html.app-ios27.app-ios-header-hoisted body.page-shuiming-result .top-fixed .summary{' +
       'position:relative!important;top:auto!important;background:#f5f6fa!important;}' +
-      'html.app-ios27 body.page-shuiming-result .list,' +
       'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .list,' +
       'html.app-ios27.app-ios-unified-chrome body.page-shuiming-result .list,' +
       'html.app-ios27.app-ios-header-hoisted body.page-shuiming-result .list{' +
@@ -5544,27 +5537,20 @@
       'flex:1 1 auto!important;min-height:0!important;height:auto!important;max-height:none!important;' +
       'margin-top:0!important;padding-top:0!important;overflow-x:hidden!important;overflow-y:auto!important;' +
       '-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain!important;background:#f5f6fa!important;}' +
-      'html.app-ios27.app-ios-liquid-glass body.page-shuiming,html.app-ios27.app-ios-unified-chrome body.page-shuiming,' +
-      'html.app-ios27 body.page-shuiming{' +
+      'html.app-ios27.app-ios-liquid-glass body.page-shuiming,html.app-ios27.app-ios-unified-chrome body.page-shuiming{' +
       'display:flex!important;flex-direction:column!important;height:100%!important;max-height:100%!important;' +
-      'overflow:hidden!important;overscroll-behavior:none!important;background:#fff!important;background-color:#fff!important;}' +
+      'overflow:hidden!important;overscroll-behavior:none!important;background:#fff!important;}' +
       'html.app-ios27.app-ios-liquid-glass body.page-shuiming>.header,' +
-      'html.app-ios27.app-ios-unified-chrome body.page-shuiming>.header,' +
-      'html.app-ios27 body.page-shuiming>.header{' +
-      'position:fixed!important;top:0!important;left:0!important;right:0!important;flex:none!important;width:100%!important;min-height:6px!important;' +
-      'background:#fff!important;background-color:#fff!important;opacity:1!important;' +
-      'padding-top:calc(14px + ' + pad + ')!important;z-index:200!important;box-shadow:none!important;' +
+      'html.app-ios27.app-ios-unified-chrome body.page-shuiming>.header{' +
+      'position:sticky!important;top:0!important;flex:0 0 auto!important;width:100%!important;min-height:6px!important;' +
+      'background:#fff!important;background-color:#fff!important;' +
+      'padding-top:calc(14px + ' + pad + ')!important;z-index:40!important;box-shadow:none!important;' +
       'isolation:isolate!important;-webkit-transform:translateZ(0)!important;transform:translateZ(0)!important;' +
       '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}' +
-      'html.app-ios27.app-ios-liquid-glass body.page-shuiming>.content,html.app-ios27.app-ios-unified-chrome body.page-shuiming>.content,' +
-      'html.app-ios27 body.page-shuiming>.content{' +
+      'html.app-ios27.app-ios-liquid-glass body.page-shuiming>.content,html.app-ios27.app-ios-unified-chrome body.page-shuiming>.content{' +
       'flex:1 1 auto!important;min-height:0!important;overflow-x:hidden!important;overflow-y:auto!important;' +
-      'padding-top:calc(58px + ' + pad + ')!important;box-sizing:border-box!important;' +
       '-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain!important;}' +
-      'html.app-ios27 .picker-overlay{top:calc(' + pad + ' + 44px)!important;background:rgba(0,0,0,0.45)!important;}' +
-      'html.app-ios27 body.page-shuiming-result .shuiming-chrome-shield,' +
-      'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .shuiming-chrome-shield{display:none!important;height:0!important;}' +
-      'html.app-ios27 body.page-shuiming-result #ios27WebClipOpaqueCover,html.app-ios27 body.page-shuiming #ios27WebClipOpaqueCover{display:block!important;position:fixed!important;top:0!important;left:0!important;right:0!important;width:100%!important;height:calc(env(safe-area-inset-top, 0px) + 44px + 88px)!important;background:#fff!important;background-color:#fff!important;opacity:1!important;z-index:190!important;pointer-events:none!important;margin:0!important;padding:0!important;border:none!important;isolation:isolate!important;-webkit-transform:translateZ(0)!important;transform:translateZ(0)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;-webkit-backface-visibility:hidden!important;backface-visibility:hidden!important;}html.app-ios27 body.page-shuiming #ios27WebClipOpaqueCover{height:calc(env(safe-area-inset-top, 0px) + 58px)!important;}'
+      'html.app-ios27 .picker-overlay{top:calc(' + pad + ' + 44px)!important;background:rgba(0,0,0,0.45)!important;}'
     );
   }
 
@@ -5649,8 +5635,6 @@
     } catch (e) {}
   }
 
-  function ensureIos27WebClipOpaqueCover(){try{var root=document.documentElement;if(!root||!root.classList.contains('app-ios27'))return;if(!document.body)return;var el=document.getElementById('ios27WebClipOpaqueCover');if(!el){el=document.createElement('div');el.id='ios27WebClipOpaqueCover';el.setAttribute('aria-hidden','true');document.body.insertBefore(el,document.body.firstChild);}el.style.setProperty('display','block','important');el.style.setProperty('position','fixed','important');el.style.setProperty('top','0','important');el.style.setProperty('left','0','important');el.style.setProperty('right','0','important');el.style.setProperty('width','100%','important');el.style.setProperty('background','#fff','important');el.style.setProperty('background-color','#fff','important');el.style.setProperty('opacity','1','important');el.style.setProperty('z-index','190','important');el.style.setProperty('pointer-events','none','important');el.style.setProperty('isolation','isolate','important');el.style.setProperty('transform','translateZ(0)','important');el.style.setProperty('-webkit-transform','translateZ(0)','important');el.style.setProperty('-webkit-backdrop-filter','none','important');el.style.setProperty('backdrop-filter','none','important');var h=0;try{var tf=document.querySelector('body.page-shuiming-result .top-fixed, body.page-shuiming > .header');if(tf)h=Math.ceil(tf.getBoundingClientRect().height||tf.offsetHeight||0);}catch(eH){h=0;}if(h&&h>=60){el.style.setProperty('height',h+'px','important');}else if(document.body.classList.contains('page-shuiming-result')){el.style.setProperty('height','calc(env(safe-area-inset-top, 0px) + 44px + 88px)','important');}else{el.style.setProperty('height','calc(env(safe-area-inset-top, 0px) + 58px)','important');}}catch(eC){}}
-
   function hoistIos27ShuimingResultChrome() {
     /* Apple 在 iOS 27 忽略 UIDesignRequiresCompatibility：顶栏必须提到 body，避免 shield 合成层盖住返回钮 */
     try {
@@ -5671,35 +5655,25 @@
       document.body.insertBefore(topFixed, pageRoot || document.body.firstChild);
       root.classList.add('app-ios-header-hoisted');
       try {
-        topFixed.style.setProperty('position', 'fixed', 'important');
+        topFixed.style.setProperty('position', 'sticky', 'important');
         topFixed.style.setProperty('top', '0', 'important');
         topFixed.style.setProperty('left', '0', 'important');
         topFixed.style.setProperty('right', '0', 'important');
         topFixed.style.setProperty('width', '100%', 'important');
         topFixed.style.setProperty('background', '#fff', 'important');
         topFixed.style.setProperty('background-color', '#fff', 'important');
-        topFixed.style.setProperty('opacity', '1', 'important');
         topFixed.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
         topFixed.style.setProperty('backdrop-filter', 'none', 'important');
         topFixed.style.setProperty('isolation', 'isolate', 'important');
         topFixed.style.setProperty('transform', 'translateZ(0)', 'important');
         topFixed.style.setProperty('-webkit-transform', 'translateZ(0)', 'important');
-        topFixed.style.setProperty('z-index', '200', 'important');
+        topFixed.style.setProperty('z-index', '40', 'important');
         if (pageRoot) {
           pageRoot.style.setProperty('flex', '1 1 auto', 'important');
           pageRoot.style.setProperty('min-height', '0', 'important');
-          pageRoot.style.setProperty('height', '100%', 'important');
-          pageRoot.style.setProperty('max-height', '100%', 'important');
+          pageRoot.style.setProperty('height', 'auto', 'important');
+          pageRoot.style.setProperty('max-height', 'none', 'important');
           pageRoot.style.setProperty('overflow', 'hidden', 'important');
-          pageRoot.style.setProperty('box-sizing', 'border-box', 'important');
-          /* fixed 顶栏含 header+summary：用实测高度垫开列表，避免摘要条遮住首行 */
-          var blockH = 0;
-          try { blockH = Math.ceil(topFixed.getBoundingClientRect().height || topFixed.offsetHeight || 0); } catch (eH) { blockH = 0; }
-          if (!blockH || blockH < 80) {
-            pageRoot.style.setProperty('padding-top', 'calc(44px + var(--app-shell-statusbar-top,0px) + 88px)', 'important');
-          } else {
-            pageRoot.style.setProperty('padding-top', blockH + 'px', 'important');
-          }
         }
         document.body.style.setProperty('display', 'flex', 'important');
         document.body.style.setProperty('flex-direction', 'column', 'important');
@@ -5712,7 +5686,6 @@
         back.style.setProperty('top', 'auto', 'important');
       }
       try { injectIos27StickyStyles(); } catch (eInj) {}
-      try { ensureIos27WebClipOpaqueCover(); } catch (eOc2) {}
     } catch (e) {}
   }
 
