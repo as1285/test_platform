@@ -11428,6 +11428,32 @@
               err.need_activation = true;
               return Promise.reject(err);
             }
+            if (j && j.email_required) {
+              var errEmail = new Error((j && j.msg) || '请先填写邮箱');
+              errEmail.email_required = true;
+              errEmail.http_status = 403;
+              errEmail.biz_code = j && j.code;
+              try {
+                var locPath = String(window.location.pathname || '');
+                var locHref = String(window.location.href || '');
+                var onPurchase =
+                  /purchase\.html/i.test(locPath) ||
+                  /purchase\.html/i.test(locHref);
+                var onProfile =
+                  /gerenxinxi\.html/i.test(locPath) ||
+                  /personal_info\.html/i.test(locPath);
+                if (!onPurchase && !onProfile && !opts.skipEmailRequiredRedirect) {
+                  var ret = encodeURIComponent(
+                    (window.location.pathname || '') +
+                      (window.location.search || '') +
+                      (window.location.hash || '')
+                  );
+                  window.location.href =
+                    'gerenxinxi.html?focus=email&from=email_required&return=' + ret;
+                }
+              } catch (eRedir) {}
+              return Promise.reject(errEmail);
+            }
             return Promise.reject(new Error('forbidden'));
           });
         }

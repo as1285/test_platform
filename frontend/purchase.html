@@ -11,7 +11,7 @@
     <script src="/js/tab-shell-escape.js?v=20260907-pay-top2"></script>
     <script src="/js/auth-boot.js?v=20260923-bs4s-restore"></script>
     <script src="/js/email-suffix.js?v=20260907-email-sfx" data-email-suffix="1"></script>
-    <script src="/js/auth.js?v=20261007-expired-repurchase" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20261010-email-required" defer fetchpriority="low"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 开通演示</title>
     <style>
@@ -1515,6 +1515,7 @@
                 <div class="purchase-email-actions">
                     <button type="button" class="purchase-email-save" id="btnPurchaseEmailSave">保存邮箱并付款</button>
                     <button type="button" class="purchase-email-skip" id="btnPurchaseEmailSkip">先付款，不开通回执</button>
+                    <button type="button" class="purchase-email-skip" id="btnPurchaseEmailProfile" hidden>去个人信息填写</button>
                 </div>
             </div>
         </div>
@@ -2610,6 +2611,16 @@
                             code: 401,
                             msg: '试用已过期，请重新登录',
                             activation_expired: true
+                        }
+                    };
+                }
+                if (err && err.email_required) {
+                    return {
+                        status: 403,
+                        body: {
+                            code: 403,
+                            msg: (err && err.message) || '请先填写邮箱',
+                            email_required: true
                         }
                     };
                 }
@@ -3937,13 +3948,25 @@
                     purchaseUiMode = 'legacy';
                     applyPurchaseUiMode();
                     hideAlipaySkeleton();
+                    var bootEmailReq = !!(x.body && x.body.email_required);
                     trackPurchaseUxFail('track_purchase_boot_fail', {
                         route: '/api/payments/alipay/config',
                         http_status: x.status,
                         biz_code: x.body && x.body.code,
                         activation_expired: !!(x.body && x.body.activation_expired) ? 1 : 0,
+                        email_required: bootEmailReq ? 1 : 0,
                         reason: (x.body && x.body.msg) || 'auth_failed'
                     });
+                    if (bootEmailReq) {
+                        markPurchaseHasEmail(false);
+                        try {
+                            showToast('请先填写邮箱后再付款');
+                        } catch (eToastEmail) {}
+                        openPurchaseEmailGate(function () {
+                            loadAlipayPurchase();
+                        });
+                        return;
+                    }
                     try {
                         showToast((x.body && x.body.msg) || '登录已失效，请重新登录后再开通');
                     } catch (eToast) {}
@@ -4296,6 +4319,10 @@
 
     function shouldCollectPurchaseEmail() {
         if (purchaseHasEmail === true) return false;
+        /* 新站 getjob68：硬门禁，不可跳过；未探测完也先拦，避免直打支付宝被 403 */
+        if (typeof isGetjob68PurchaseHost === 'function' && isGetjob68PurchaseHost()) {
+            return purchaseHasEmail !== true;
+        }
         if (purchaseEmailSkipped()) return false;
         return purchaseHasEmail === false;
     }
@@ -4306,6 +4333,34 @@
         }
         var s = raw == null ? '' : String(raw).trim();
         return /.+@.+\..+/.test(s) && s.indexOf(' ') < 0;
+    }
+
+    function applyPurchaseEmailGateCopy() {
+        var title = document.getElementById('purchaseEmailTitle');
+        var sub = document.getElementById('purchaseEmailSub');
+        var saveBtn = document.getElementById('btnPurchaseEmailSave');
+        var skipBtn = document.getElementById('btnPurchaseEmailSkip');
+        var profileBtn = document.getElementById('btnPurchaseEmailProfile');
+        var mandatory = typeof isGetjob68PurchaseHost === 'function' && isGetjob68PurchaseHost();
+        if (mandatory) {
+            if (title) title.textContent = '付款前请先填写邮箱';
+            if (sub) {
+                sub.textContent =
+                    '本站需留下常用邮箱后才能支付宝付款。开通回执、专属价会发到这个邮箱；填 QQ 号后点下方 @qq.com 即可。';
+            }
+            if (saveBtn) saveBtn.textContent = '保存邮箱并继续付款';
+            if (skipBtn) skipBtn.hidden = true;
+            if (profileBtn) profileBtn.hidden = false;
+        } else {
+            if (title) title.textContent = '开通回执发到邮箱';
+            if (sub) {
+                sub.textContent =
+                    '付款成功、专属价会发到这个邮箱。先填再付最省事；也可以先付款。';
+            }
+            if (saveBtn) saveBtn.textContent = '保存邮箱并付款';
+            if (skipBtn) skipBtn.hidden = false;
+            if (profileBtn) profileBtn.hidden = true;
+        }
     }
 
     function closePurchaseEmailGate() {
@@ -4322,10 +4377,14 @@
             if (typeof onContinue === 'function') onContinue();
             return;
         }
+        applyPurchaseEmailGateCopy();
         purchaseEmailContinue = onContinue;
         if (errEl) errEl.textContent = '';
         mask.hidden = false;
-        trackPurchase('track_purchase_email_gate_open');
+        trackPurchase('track_purchase_email_gate_open', {
+            mandatory:
+                typeof isGetjob68PurchaseHost === 'function' && isGetjob68PurchaseHost() ? 1 : 0
+        });
         setTimeout(function () {
             try {
                 if (input) input.focus();
@@ -4339,11 +4398,23 @@
         if (typeof next === 'function') next();
     }
 
+    function redirectPurchaseEmailProfile() {
+        try {
+            var ret = encodeURIComponent(
+                (location.pathname || '') + (location.search || '') + (location.hash || '')
+            );
+            location.href = 'gerenxinxi.html?focus=email&from=purchase&return=' + ret;
+        } catch (eGo) {
+            location.href = 'gerenxinxi.html?focus=email&from=purchase';
+        }
+    }
+
     function bindPurchaseEmailGate() {
         var chips = document.getElementById('purchaseEmailSuffixChips');
         var input = document.getElementById('purchaseEmailInput');
         var saveBtn = document.getElementById('btnPurchaseEmailSave');
         var skipBtn = document.getElementById('btnPurchaseEmailSkip');
+        var profileBtn = document.getElementById('btnPurchaseEmailProfile');
         if (chips && input) {
             if (window.EmailSuffix && typeof window.EmailSuffix.wireEmailSuffixChips === 'function') {
                 window.EmailSuffix.wireEmailSuffixChips(chips, input);
@@ -4376,6 +4447,7 @@
                     .authFetch('api/user', {
                         method: 'POST',
                         allowActivationExpired: true,
+                        skipEmailRequiredRedirect: true,
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ action: 'save_profile', email: val })
                     })
@@ -4387,6 +4459,9 @@
                             throw new Error((data && data.msg) || '保存失败');
                         }
                         markPurchaseHasEmail(true);
+                        try {
+                            sessionStorage.removeItem(PURCHASE_EMAIL_SKIP_KEY);
+                        } catch (eClr) {}
                         trackPurchase('track_purchase_email_gate_save');
                         continuePurchaseAfterEmail();
                     })
@@ -4398,6 +4473,11 @@
         }
         if (skipBtn) {
             skipBtn.addEventListener('click', function () {
+                if (typeof isGetjob68PurchaseHost === 'function' && isGetjob68PurchaseHost()) {
+                    var errEl = document.getElementById('purchaseEmailErr');
+                    if (errEl) errEl.textContent = '本站需先填写邮箱才能付款';
+                    return;
+                }
                 try {
                     sessionStorage.setItem(PURCHASE_EMAIL_SKIP_KEY, '1');
                 } catch (eSk) {}
@@ -4405,10 +4485,33 @@
                 continuePurchaseAfterEmail();
             });
         }
+        if (profileBtn) {
+            profileBtn.addEventListener('click', function () {
+                trackPurchase('track_purchase_email_gate_profile');
+                redirectPurchaseEmailProfile();
+            });
+        }
     }
 
     bindPurchaseEmailGate();
     refreshPurchaseHasEmail();
+    /* 新站进入开通页：无邮箱则立刻引导，避免点支付宝才发现被拦 */
+    (function maybeOpenGetjob68EmailGateOnBoot() {
+        if (typeof isGetjob68PurchaseHost !== 'function' || !isGetjob68PurchaseHost()) return;
+        var tries = 0;
+        function tick() {
+            tries += 1;
+            if (purchaseHasEmail === true) return;
+            if (purchaseHasEmail === false || tries >= 8) {
+                if (purchaseHasEmail !== true && shouldCollectPurchaseEmail()) {
+                    openPurchaseEmailGate(function () {});
+                }
+                return;
+            }
+            setTimeout(tick, 250);
+        }
+        setTimeout(tick, 400);
+    })();
 
     function startPurchaseAlipayPay(ctaSource) {
         if (shouldCollectPurchaseEmail() && !alipayPendingPayUrl) {
@@ -4461,6 +4564,7 @@
                     err.http_status = x.status;
                     err.biz_code = failBody.code;
                     err.activation_expired = !!failBody.activation_expired;
+                    err.email_required = !!failBody.email_required;
                     throw err;
                 }
                 var createdOrder = x.body.data.order || {};
@@ -4510,6 +4614,9 @@
                 } catch (eCloseFail) {}
                 var failMsg = e && e.message ? e.message : '创建支付订单失败，请稍后重试';
                 var expiredFlag = !!(e && e.activation_expired);
+                var emailReq =
+                    !!(e && e.email_required) ||
+                    /请先填写邮箱/.test(String(failMsg || ''));
                 trackPurchase('track_alipay_order_create_fail', {
                     pricing_variant: alipayPricing.variant,
                     sku_id: sku.id,
@@ -4518,6 +4625,7 @@
                     http_status: e && e.http_status,
                     biz_code: e && e.biz_code,
                     activation_expired: expiredFlag ? 1 : 0,
+                    email_required: emailReq ? 1 : 0,
                     route: '/api/payments/alipay/create'
                 });
                 trackPurchaseUxFail('track_purchase_pay_blocked', {
@@ -4526,16 +4634,26 @@
                     http_status: e && e.http_status,
                     biz_code: e && e.biz_code,
                     activation_expired: expiredFlag ? 1 : 0,
+                    email_required: emailReq ? 1 : 0,
                     reason: String(failMsg).slice(0, 120)
                 });
+                if (btn) btn.disabled = false;
+                if (stickyBtn) stickyBtn.disabled = false;
+                if (emailReq) {
+                    markPurchaseHasEmail(false);
+                    setAlipayStatus('请先填写邮箱后再付款', 'fail');
+                    showToast('请先填写邮箱后再支付宝付款');
+                    openPurchaseEmailGate(function () {
+                        startPurchaseAlipayPayAfterEmail(ctaSource);
+                    });
+                    return;
+                }
                 setAlipayStatus('下单失败：' + failMsg + '。可重试或联系客服。', 'fail');
                 if (typeof showPaymentCreateFailDialog === 'function') {
                     showPaymentCreateFailDialog({ message: failMsg, source: 'purchase_alipay' });
                 } else {
                     showToast(failMsg);
                 }
-                if (btn) btn.disabled = false;
-                if (stickyBtn) stickyBtn.disabled = false;
             });
     }
 

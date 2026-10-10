@@ -60,7 +60,7 @@ describe('注册 / 支付 / 引导接入后缀按钮', () => {
     expect(registerHtml).toContain('email-suffix.js?v=20260907-email-sfx');
   });
 
-  it('支付页没邮箱先收再付，仍可跳过', () => {
+  it('支付页没邮箱先收再付；getjob68 强制补邮箱再付', () => {
     expect(purchaseHtml).toContain('id="purchaseEmailMask"');
     expect(purchaseHtml).toContain('function shouldCollectPurchaseEmail');
     expect(purchaseHtml).toContain('function openPurchaseEmailGate');
@@ -68,6 +68,11 @@ describe('注册 / 支付 / 引导接入后缀按钮', () => {
     expect(purchaseHtml).toContain('先付款，不开通回执');
     expect(purchaseHtml).toContain('shouldCollectPurchaseEmail() && !alipayPendingPayUrl');
     expect(purchaseHtml).toContain('email-suffix.js?v=20260907-email-sfx');
+    expect(purchaseHtml).toContain('applyPurchaseEmailGateCopy');
+    expect(purchaseHtml).toContain('btnPurchaseEmailProfile');
+    expect(purchaseHtml).toContain('付款前请先填写邮箱');
+    expect(purchaseHtml).toContain('err.email_required');
+    expect(authSrc).toContain('j.email_required');
   });
 
   it('注册后引导和个人信息也有后缀按钮', () => {

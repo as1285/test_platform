@@ -9022,6 +9022,9 @@ function isEmailRequiredRequestExempt(req) {
   if (method === 'GET' && userRoot) {
     return action === '' || action === 'summary' || action === 'info';
   }
+  /* purchase page needs SKU reads before email; create still gated */
+  if (method === 'GET' && path.indexOf('/api/payments/alipay') === 0) return true;
+  if (method === 'GET' && path === '/api/lizhi-cert/status') return true;
   if (method === 'POST' && /^track_[a-z0-9_]{1,80}$/i.test(action)) return true;
   if (method === 'POST' && userRoot && action === 'save_profile') {
     var email = req.body && req.body.email != null ? String(req.body.email).trim() : '';

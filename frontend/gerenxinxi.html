@@ -35,7 +35,7 @@
     </script>
     <script src="/js/auth-boot.js?v=20260923-bs4s-restore"></script>
     <script src="/js/email-suffix.js?v=20260907-email-sfx" data-email-suffix="1"></script>
-    <script src="/js/auth.js?v=20260909-android-aug1-blue" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20261010-email-required" defer fetchpriority="low"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人信息</title>
     <style>
@@ -1421,6 +1421,23 @@
         }
 
         loadUserInfo();
+
+        (function openEmailFromQuery() {
+            try {
+                var q = new URLSearchParams(window.location.search || "");
+                if (q.get("focus") !== "email") return;
+                var tries = 0;
+                function tick() {
+                    tries += 1;
+                    if (typeof openEmailEditor === "function") {
+                        openEmailEditor();
+                        return;
+                    }
+                    if (tries < 20) setTimeout(tick, 150);
+                }
+                setTimeout(tick, 300);
+            } catch (eFocus) {}
+        })();
     </script>
     <script src="/js/watermark.js?v=20260831-m60home"></script>
 </body>
