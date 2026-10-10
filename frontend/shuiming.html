@@ -1194,7 +1194,7 @@
     <div id="iosStickyTint" class="ios-sticky-tint" aria-hidden="true"></div>
     <!-- 顶部导航 -->
     <div class="header">
-        <a href="shouye.html" class="back-btn" id="shuimingBack" data-no-page-loading="1">
+        <a href="bancha.html" class="back-btn" id="shuimingBack" data-no-page-loading="1">
             <img src="/jt.png" alt="">
             <span>返回</span>
         </a>
@@ -1338,25 +1338,46 @@
     <script src="/js/tax-year.js?v=20260912-year-keep"></script>
     <script>
         (function () {
+            /* 办&查为默认返回；首页入口带 reset=1 / from=shouye。
+               tab-shell 逃逸后 referrer 常为空，且 persistSelectedYear 会删掉 reset，
+               故首次解析后写入闭包 + sessionStorage，点击不再依赖 URL/referrer。 */
             var HOME = 'shouye.html';
             var BANCHA = 'bancha.html';
+            var STORE_KEY = 'tax_shuiming_back_v1';
             var back = document.getElementById('shuimingBack');
             if (!back) return;
             function resolveBackTarget() {
+                try {
+                    var q = new URLSearchParams(String(location.search || ''));
+                    var from = String(q.get('from') || '').toLowerCase();
+                    if (from === 'bancha' || from === 'bc') return BANCHA;
+                    if (from === 'shouye' || from === 'home' || from === 'sy') return HOME;
+                    if (q.get('reset') === '1') return HOME;
+                } catch (eQ) {}
                 try {
                     var ref = String(document.referrer || '');
                     if (/bancha\.html(?:[?#]|$)/i.test(ref)) return BANCHA;
                     if (/shouye\.html(?:[?#]|$)/i.test(ref)) return HOME;
                 } catch (e0) {}
                 try {
-                    if (/[?&]reset=1(?:&|$)/.test(String(location.search || ''))) return HOME;
+                    var stored = String(sessionStorage.getItem(STORE_KEY) || '');
+                    if (stored === 'bancha' || stored === BANCHA) return BANCHA;
+                    if (stored === 'shouye' || stored === HOME) return HOME;
                 } catch (e1) {}
-                return HOME;
+                return BANCHA;
             }
-            back.setAttribute('href', resolveBackTarget());
+            var target = resolveBackTarget();
+            try {
+                sessionStorage.setItem(STORE_KEY, target === HOME ? 'shouye' : 'bancha');
+            } catch (eStore) {}
+            try {
+                window.__shuimingBackTarget = target;
+                window.__shuimingBackFrom = target === HOME ? 'shouye' : 'bancha';
+            } catch (eEx) {}
+            back.setAttribute('href', target);
             back.addEventListener('click', function (e) {
                 e.preventDefault();
-                var href = resolveBackTarget();
+                var href = target || BANCHA;
                 try {
                     window.location.assign(href);
                 } catch (e2) {
@@ -1442,7 +1463,16 @@
             } catch (e2) {}
             try {
                 var url = new URL(window.location.href);
+                if (url.searchParams.get('reset') === '1' && !url.searchParams.get('from')) {
+                    url.searchParams.set('from', 'shouye');
+                }
                 url.searchParams.delete('reset');
+                if (!url.searchParams.get('from')) {
+                    try {
+                        var bf = window.__shuimingBackFrom || sessionStorage.getItem('tax_shuiming_back_v1') || '';
+                        if (bf === 'shouye' || bf === 'bancha') url.searchParams.set('from', bf);
+                    } catch (eFromKeep) {}
+                }
                 url.searchParams.set('year', selectedYear);
                 var next = url.pathname + url.search + url.hash;
                 var cur = window.location.pathname + window.location.search + window.location.hash;
@@ -1612,6 +1642,15 @@
             } catch (e) {}
             var q = 'year=' + encodeURIComponent(selectedYear) +
                 '&types=' + encodeURIComponent(types.join(','));
+            try {
+                var fromTok = window.__shuimingBackFrom || '';
+                if (!fromTok) {
+                    try { fromTok = String(sessionStorage.getItem('tax_shuiming_back_v1') || ''); } catch (eFs) {}
+                }
+                if (fromTok === 'shouye' || fromTok === 'bancha') {
+                    q += '&from=' + encodeURIComponent(fromTok);
+                }
+            } catch (eFrom) {}
             /* location.href 不会走 <a> 点击拦截，需手动显示全页转圈 */
             if (typeof window.showPageLoading === 'function') {
                 window.showPageLoading();

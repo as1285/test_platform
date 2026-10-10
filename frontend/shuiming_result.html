@@ -4696,7 +4696,7 @@
     <div class="shuiming-chrome-shield" id="shuimingChromeShield" aria-hidden="true"></div>
     <div class="top-fixed">
         <div class="header">
-            <a href="shuiming.html" class="back-btn" aria-label="返回">
+            <a href="shuiming.html?from=bancha" class="back-btn" aria-label="返回">
                 <img src="/jt.png" class="back-icon" alt="" width="9" decoding="async">
                 <span>返回</span>
             </a>
@@ -5414,6 +5414,21 @@
             var back = document.querySelector('.header .back-btn');
             if (!back) return;
             var href = 'shuiming.html?year=' + encodeURIComponent(year);
+            try {
+                var fromQ = String(getUrlParam('from') || '').toLowerCase();
+                if (!fromQ) {
+                    try { fromQ = String(sessionStorage.getItem('tax_shuiming_back_v1') || ''); } catch (eSs) {}
+                }
+                if (fromQ === 'shouye' || fromQ === 'home' || fromQ === 'sy') {
+                    href += '&from=shouye';
+                    try { sessionStorage.setItem('tax_shuiming_back_v1', 'shouye'); } catch (e1) {}
+                } else if (fromQ === 'bancha' || fromQ === 'bc' || !fromQ) {
+                    href += '&from=bancha';
+                    try { sessionStorage.setItem('tax_shuiming_back_v1', 'bancha'); } catch (e2) {}
+                }
+            } catch (eFromR) {
+                href += '&from=bancha';
+            }
             back.setAttribute('href', href);
             back.addEventListener('click', function (e) {
                 e.preventDefault();
