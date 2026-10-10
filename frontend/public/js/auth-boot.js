@@ -13,6 +13,9 @@
  * authGetToken / authFetch（Bearer 占位）/ currentPageName / isPublicPage /
  * sanitizeLoginNext / getLoginNextTarget / getSalesChannel / appendSalesChannelToUrl /
  * buildLoginPageUrl / markViewportChromeClasses；以及 showPageLoading 队列占位。
+ *
+ * 机型策略表（draft，本文件尚未 fetch）：/js/device-policy.json
+ * 见 docs/device-policy.md。新增 SKU 先改表再迁 regex；runtime 仍以本文件 + auth.js 硬编码为准。
  */
 (function () {
   if (typeof window === 'undefined') {
@@ -22,6 +25,12 @@
     return;
   }
   window.__authBootRan = 1;
+  /* draft table path for later auth consume; do not fetch here (FOUC). */
+  try {
+    if (!window.__DEVICE_POLICY_URL__) {
+      window.__DEVICE_POLICY_URL__ = '/js/device-policy.json';
+    }
+  } catch (ePolicyUrl) {}
 
   var LOGIN_PAGE = 'login.html';
   var SALES_CHANNEL_KEY = 'sales_channel_v1';
@@ -1138,6 +1147,49 @@
    * 正确做法：关掉 fixed 灰 shield / 顶垫；顶栏 sticky + 实白，让状态栏采成不透明白。
    * 14/15 Pro Max 例外：不进 liquid-glass，走 Aug15 black-translucent + 59px。
    */
+  /**
+   * iPhone 12（刘海 47）/ iPhone 15（灵动岛 59）：不要再加 56px 渐隐带。
+   * 390×844 与 393×852 用屏幕兜底；Plus / Pro Max 不走这里。
+   */
+  function ios12Or15TightStatusTopBoot() {
+    try {
+      var ua = String(navigator.userAgent || '');
+      try {
+        ua += ' ' + String(localStorage.getItem('tax_device_model_v1') || '');
+      } catch (eModel) {}
+      var sw = window.screen && window.screen.width ? Number(window.screen.width) : 0;
+      var sh = window.screen && window.screen.height ? Number(window.screen.height) : 0;
+      if (!sw || !sh) {
+        sw = window.innerWidth ? Number(window.innerWidth) : 0;
+        sh = window.innerHeight ? Number(window.innerHeight) : 0;
+      }
+      var shortSide = Math.min(sw || 0, sh || 0);
+      var longSide = Math.max(sw || 0, sh || 0);
+      var dpr = window.devicePixelRatio ? Number(window.devicePixelRatio) : 1;
+      if (dpr >= 2 && shortSide >= 700) {
+        shortSide = Math.round(shortSide / dpr);
+        longSide = Math.round(longSide / dpr);
+      }
+      var is15pm = /iPhone\s*15\s*(?:Plus|Pro\s*Max)|iPhone15,5\b|iPhone16,2\b/i.test(ua);
+      var is12pm = /iPhone\s*12\s*Pro\s*Max|iPhone13,4\b/i.test(ua);
+      var is15 =
+        !is15pm &&
+        (/iPhone\s*15\b|iPhone15,4\b|iPhone16,1\b|iPhone15Pro\b(?!Max)/i.test(ua) ||
+          (shortSide >= 390 && shortSide <= 396 && longSide >= 848 && longSide <= 856));
+      if (is15) return 'max(59px, env(safe-area-inset-top, 59px))';
+      var is12 =
+        !is12pm &&
+        (/iPhone\s*12\b|iPhone13,[123]\b/i.test(ua) ||
+          (shortSide >= 388 &&
+            shortSide <= 392 &&
+            longSide >= 840 &&
+            longSide <= 848 &&
+            !/iPhone\s*1[456]\s*Pro|iPhone15,[23]\b|iPhone17,1\b/i.test(ua)));
+      if (is12) return 'max(47px, env(safe-area-inset-top, 47px))';
+    } catch (e) {}
+    return '';
+  }
+
   function paintIos27LiquidGlassPlate() {
     try {
       var ua = String(navigator.userAgent || '');
@@ -1166,6 +1218,10 @@
         document.body.style.setProperty('background-color', color, 'important');
       }
       var isIos27Plus = major >= 27;
+      var tight12Or15 = '';
+      try {
+        tight12Or15 = ios12Or15TightStatusTopBoot();
+      } catch (eTight) {}
       if (isIos27Plus) {
         /*
          * iOS 27+：
@@ -1178,7 +1234,11 @@
         root.classList.add('app-ios27');
         root.classList.remove('app-top-safe-shell');
         /* 内联 !important：胜过任何后注入的样式表 !important（max(59px) 顶垫规则） */
-        root.style.setProperty('--app-shell-statusbar-top', 'calc(env(safe-area-inset-top, 0px) + 56px)', 'important');
+        root.style.setProperty(
+          '--app-shell-statusbar-top',
+          tight12Or15 || 'calc(env(safe-area-inset-top, 0px) + 56px)',
+          'important'
+        );
       } else {
         /* iOS 26：保持原有行为（黑透明沉浸 + 59px 顶垫 + sticky 实白顶栏） */
         root.classList.add('app-top-safe-shell');
@@ -1200,6 +1260,8 @@
         if (isIos27Plus) {
           css +=
             'html.app-ios27.app-top-safe-shell,html.app-ios27{--app-shell-statusbar-top:calc(env(safe-area-inset-top, 0px) + 56px)!important;}' +
+            'html.app-ios27.app-ios-iphone12pro{--app-shell-statusbar-top:max(47px,env(safe-area-inset-top,47px))!important;}' +
+            'html.app-ios27.app-ios-iphone15{--app-shell-statusbar-top:max(59px,env(safe-area-inset-top,59px))!important;}' +
             /* 明细页 inflow：根文档不滚，列表内部滚动 —— 消除 iOS 27 顶部滚动边缘毛玻璃 */
             'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result,html.app-ios27.app-ios-liquid-glass:has(body.page-shuiming-result){' +
             'height:100%!important;max-height:100%!important;overflow:hidden!important;overscroll-behavior:none!important;position:relative!important;}' +
