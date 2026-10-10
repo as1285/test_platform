@@ -35,7 +35,7 @@ describe('iOS 全机去掉顶部黑框', () => {
     );
     expect(shouye).toContain('html.app-ios-client.app-top-safe-shell:has(body.page-shouye)');
     expect(shouye).toContain('background-color: #4f90f3 !important');
-    expect(shouye).toContain('auth.js?v=20261010-smoke-hoist-k70');
+    expect(shouye).toContain('auth.js?v=20261010-ios-rollback-1009');
   });
 
   it('我的 / 办查 iOS html 实底顶蓝', () => {

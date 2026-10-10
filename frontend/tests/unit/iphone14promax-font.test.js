@@ -25,7 +25,7 @@ describe('iPhone 14 Pro Max 首页通知条 / 纳税明细字号', () => {
     expect(shouye).toMatch(
       /html\.app-ios-iphone14promax \.sy-apk-marquee[\s\S]{0,160}font-weight:\s*500/
     );
-    expect(shouye).toContain('auth.js?v=20261010-smoke-hoist-k70');
+    expect(shouye).toContain('auth.js?v=20261010-ios-rollback-1009');
   });
 
   it('收入纳税明细首屏打 14promax + promax-font，正文对齐 16 Pro Max', () => {

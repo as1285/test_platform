@@ -23,6 +23,6 @@ describe('荣耀 X20 顶部系统栏', () => {
       'body.page-shouye::before{height:32px !important;background-color:#000 !important;background-image:none !important;}'
     );
     expect(auth).not.toContain('honor-x20-clock');
-    expect(shouye).toContain('auth.js?v=20261010-smoke-hoist-k70');
+    expect(shouye).toContain('auth.js?v=20261010-ios-rollback-1009');
   });
 });
