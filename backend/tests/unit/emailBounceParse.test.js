@@ -1,4 +1,5 @@
-const { describe, it, expect } = require('vitest');
+'use strict';
+
 const parse = require('../../src/admin/emailBounceParse');
 
 describe('emailBounceParse', () => {

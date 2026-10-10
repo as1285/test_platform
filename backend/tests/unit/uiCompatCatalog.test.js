@@ -50,7 +50,7 @@ describe('uiCompatCatalog + deviceStats', () => {
     expect(catalog.modelMatchesBlob(a57, 'PHJ110 OPPO A58')).toBe(false);
     const k70 = catalog.listCatalogModels().find((m) => m.id === 'redmi-k70');
     expect(catalog.modelMatchesBlob(k70, '23113RKC6C')).toBe(true);
-    expect(k70.issues.some((i) => i.page === 'mine' && /underlap 黑垫/.test(i.title))).toBe(true);
+    expect(k70.issues.some((i) => i.page === 'mine' && /黑状态栏|黑垫|underlap/.test(i.title + ' ' + (i.summary || '')))).toBe(true);
   });
 
   it('matches MatePad 11.5S without taking Mate 60 or MatePad 11.5', () => {

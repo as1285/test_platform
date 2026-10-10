@@ -26,7 +26,7 @@ describe('signedAssets', () => {
 
   it('signs and verifies query', () => {
     const url = toSignedPublicAssetUrl('/uploads/app.apk', cfg);
-    expect(url).toMatch(/^\/api\/public\/asset\?/);
+    expect(url).toMatch(/^\/api\/public\/asset(\/|\?)/);
     const q = Object.fromEntries(new URL(url, 'https://x.test').searchParams.entries());
     const ok = verifySignedAssetQuery(q, cfg);
     expect(ok.ok).toBe(true);

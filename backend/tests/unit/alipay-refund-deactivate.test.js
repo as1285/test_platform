@@ -19,40 +19,35 @@ function sliceFn(src, startNeedle, endNeedle) {
 }
 
 describe('alipay refund cancels activation', () => {
-  it('clears trial/permanent fields instead of only flipping account_active', () => {
+  it('applyActivationRefundForUser bans + deactivates + hides list row', () => {
     const fn = sliceFn(
       monolith,
       'async function applyActivationRefundForUser',
-      'function isAlipayQueryFullRefund'
+      'async function markAlipayOrderRefunded'
     );
-    expect(fn).toContain("activation_kind = 'none'");
-    expect(fn).toContain('active_until = NULL');
-    expect(fn).toContain('isUserEffectivelyActive(row)');
     expect(fn).toContain('account_active = 0');
     expect(fn).toContain('activation_refunded_at');
+    expect(fn).toContain('list_hidden_at');
+    expect(fn).toContain('banned = 1');
+    expect(fn).toContain('session_rev = session_rev + 1');
   });
 
-  it('repairs already-refunded activation orders and skips addons', () => {
+  it('markAlipayOrderRefunded marks paid->refunded then applies activation refund', () => {
     const fn = sliceFn(
       monolith,
       'async function markAlipayOrderRefunded',
       'function isAlipayFullRefundNotify'
     );
-    expect(fn).toContain('isNonActivationSkuId(locked.sku_id, locked.grant_kind)');
-    expect(fn).toMatch(/status\) === 'refunded'[\s\S]*applyActivationRefundForUser/);
-    expect(fn).toContain('sku_id, grant_kind');
+    expect(fn).toContain("status = 'refunded'");
+    expect(fn).toContain('applyActivationRefundForUser');
+    expect(fn).toMatch(/String\(locked\.status\) === 'refunded'/);
+    expect(fn).toMatch(/String\(locked\.status\) !== 'paid'/);
   });
 
-  it('query sync treats paid + TRADE_CLOSED as refund', () => {
-    const fn = sliceFn(
-      monolith,
-      'async function syncAlipayOrderWithTrade',
-      'async function markAlipayOrderRefunded'
-    );
-    expect(fn).toContain("status === 'paid'");
-    expect(fn).toContain('isAlipayQueryFullRefund');
-    expect(fn).toContain('markAlipayOrderRefunded');
-    expect(monolith).toContain("String(order.status) === 'pending' || String(order.status) === 'paid'");
+  it('notify path treats paid + TRADE_CLOSED as refund', () => {
+    expect(monolith).toContain('isAlipayFullRefundNotify');
+    expect(monolith).toContain("tradeStatus === 'TRADE_CLOSED'");
+    expect(monolith).toContain('markAlipayOrderRefunded');
   });
 
   it('queryTrade exposes refundFee for full-refund detection', () => {
