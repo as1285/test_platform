@@ -1,6 +1,7 @@
 const {
   createPriceBids,
   normalizeBidConfig,
+  shouldAutoAcceptAllBids,
   DEFAULT_BID_CONFIG
 } = require('../../src/payments/priceBids');
 
@@ -118,7 +119,19 @@ describe('normalizeBidConfig', () => {
   });
 });
 
+describe('shouldAutoAcceptAllBids', () => {
+  it('auto-accepts for lkj, unknown, and empty; not for getjob68', () => {
+    expect(shouldAutoAcceptAllBids('lkj')).toBe(true);
+    expect(shouldAutoAcceptAllBids('')).toBe(true);
+    expect(shouldAutoAcceptAllBids(null)).toBe(true);
+    expect(shouldAutoAcceptAllBids('unknown')).toBe(true);
+    expect(shouldAutoAcceptAllBids('getjob68')).toBe(false);
+    expect(shouldAutoAcceptAllBids('GETJOB68')).toBe(false);
+  });
+});
+
 describe('submitBid auto accept vs pending', () => {
+
   it('auto-accepts at or above week-card floor (¥120) and writes offer', async () => {
     const state = { queries: [] };
     const offerCalls = [];
@@ -134,14 +147,36 @@ describe('submitBid auto accept vs pending', () => {
     expect(notes.length).toBe(1);
   });
 
-  it('queues below-floor bids as pending without touching offers', async () => {
+  it('lkj/default auto-accepts below-floor bids (no pending)', async () => {
     const state = { queries: [] };
     const offerCalls = [];
     const recorded = [];
     const api = makeApi(state, offerCalls, [], async function (username, amount) {
       recorded.push({ username: username, amount: amount });
     });
-    const out = await api.submitBid('u1', { sku_id: 'sku_300_7d', amount: '100' });
+    const out = await api.submitBid('u1', {
+      sku_id: 'sku_300_7d',
+      amount: '100',
+      site: 'lkj'
+    });
+    expect(out.status).toBe('accepted');
+    expect(out.accepted_amount).toBe('100.00');
+    expect(offerCalls.length).toBe(1);
+    expect(recorded).toEqual([{ username: 'u1', amount: '100.00' }]);
+  });
+
+  it('getjob68 still queues below-floor bids as pending', async () => {
+    const state = { queries: [] };
+    const offerCalls = [];
+    const recorded = [];
+    const api = makeApi(state, offerCalls, [], async function (username, amount) {
+      recorded.push({ username: username, amount: amount });
+    });
+    const out = await api.submitBid('u1', {
+      sku_id: 'sku_300_7d',
+      amount: '100',
+      site: 'getjob68'
+    });
     expect(out.status).toBe('pending');
     expect(offerCalls.length).toBe(0);
     expect(recorded).toEqual([{ username: 'u1', amount: '100.00' }]);
@@ -163,17 +198,17 @@ describe('submitBid auto accept vs pending', () => {
       ];
     };
     const api = makeApi({ queries: [] }, [], [], null, shelf);
-    /* 300 < 年卡现价 998 → 应受理（低于默认底价线则进 pending） */
-    const out = await api.submitBid('u1', { sku_id: 'sku_ch_t4', amount: '300' });
-    expect(out.status).toBe('pending');
+    /* 300 < 年卡现价 998 → 旧站一律自动通过 */
+    const out = await api.submitBid('u1', { sku_id: 'sku_ch_t4', amount: '300', site: 'lkj' });
+    expect(out.status).toBe('accepted');
     expect(out.sku_label).toBe('年卡');
     /* 出价 >= 年卡现价才拒 */
     await expect(api.submitBid('u1', { sku_id: 'sku_ch_t4', amount: '998' })).rejects.toThrow(
       /不低于现价 ¥998/
     );
-    /* 永久档同样用本档现价 */
-    const perm = await api.submitBid('u1', { sku_id: 'sku_ch_t5', amount: '500' });
-    expect(perm.status).toBe('pending');
+    /* 永久档同样用本档现价；旧站自动通过 */
+    const perm = await api.submitBid('u1', { sku_id: 'sku_ch_t5', amount: '500', site: 'lkj' });
+    expect(perm.status).toBe('accepted');
     expect(perm.sku_label).toBe('永久');
     await expect(api.submitBid('u1', { sku_id: 'sku_ch_t5', amount: '1998' })).rejects.toThrow(
       /不低于现价 ¥1998/
@@ -202,8 +237,14 @@ describe('submitBid auto accept vs pending', () => {
     };
     const api = makeApi({ queries: [] }, [], [], null, shelf);
     /* 全局下限默认 30；带 bid_min 的货架字段不再抬高地板 */
-    const out = await api.submitBid('u1', { sku_id: 'sku_300_7d', amount: '80' });
+    const out = await api.submitBid('u1', {
+      sku_id: 'sku_300_7d',
+      amount: '80',
+      site: 'getjob68'
+    });
     expect(out.status).toBe('pending');
+    const lkj = await api.submitBid('u1', { sku_id: 'sku_300_7d', amount: '80', site: 'lkj' });
+    expect(lkj.status).toBe('accepted');
     expect(out.sku_label).toBe('周卡');
   });
 
@@ -220,11 +261,25 @@ describe('submitBid auto accept vs pending', () => {
     const state = { queries: [], pendingRow: pendingRow };
     const offerCalls = [];
     const api = makeApi(state, offerCalls, []);
-    const out = await api.submitBid('u1', { sku_id: 'sku_300_7d', amount: '100', note: '再加点' });
+    const out = await api.submitBid('u1', {
+      sku_id: 'sku_300_7d',
+      amount: '100',
+      note: '再加点',
+      site: 'getjob68'
+    });
     expect(out.status).toBe('pending');
+    const lkjUpd = await api.submitBid('u1', {
+      sku_id: 'sku_300_7d',
+      amount: '100',
+      note: '再加点',
+      site: 'lkj'
+    });
+    expect(lkjUpd.status).toBe('accepted');
+    expect(lkjUpd.updated).toBe(true);
     expect(out.updated).toBe(true);
     expect(out.bid_amount).toBe('100.00');
-    expect(offerCalls.length).toBe(0);
+    /* getjob68 改价仍待审不写 offer；lkj 重提后自动放价 */
+    expect(offerCalls.length).toBe(1);
     const upd = state.queries.find(function (q) {
       return String(q.sql || '').indexOf('UPDATE user_price_bids SET sku_id') >= 0;
     });

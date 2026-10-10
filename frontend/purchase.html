@@ -1494,7 +1494,7 @@
                 <p class="price-bid-sub" id="priceBidSub">当前套餐：—</p>
                 <input type="number" id="priceBidAmount" min="1" step="1" inputmode="numeric" placeholder="想按多少元开通？">
                 <input type="text" id="priceBidNote" maxlength="50" placeholder="补一句话（可选）">
-                <p class="price-bid-hint" id="priceBidRuleHint">价格合适会立即生效，直接按新价开通；否则转人工处理，结果发站内信。待处理时可修改后重新提交。</p>
+                <p class="price-bid-hint" id="priceBidRuleHint">提交后立即按你的心理价生效，可直接按新价开通。</p>
                 <div class="price-bid-actions">
                     <button type="button" class="price-bid-cancel" id="btnPriceBidCancel">再想想</button>
                     <button type="button" class="price-bid-submit" id="btnPriceBidSubmit">提交出价</button>
@@ -3507,7 +3507,7 @@
         if (card) card.hidden = true;
     }
 
-    /* 心理价出价：达线自动改价并立即生效，未达线转人工（站内信通知结果）；待审可修改重提 */
+    /* 心理价出价：旧站 lkj 一律立即按出价改价生效；新站 getjob68 已隐藏入口 */
     var priceBidUi = {
         enabled: false,
         status: '',
@@ -3756,10 +3756,10 @@
             }
             if (hintEl) {
                 hintEl.textContent = isRevise
-                    ? '修改后仍按新价判断：达线立即生效，否则继续等待人工处理。'
+                    ? '修改后立即按新价生效，可直接开通。'
                     : fromBack
-                      ? '注册不久多看几眼很正常。填个能接受的价格：合适会立刻改价，可直接按新价开通；不合适会转人工，结果发站内信。'
-                      : '价格合适会立即生效，直接按新价开通；否则转人工处理，结果发站内信。待处理时可修改后重新提交。';
+                      ? '注册不久多看几眼很正常。填个能接受的价格：提交后立刻按该价改价，可直接开通。'
+                      : '提交后立即按你的心理价生效，可直接按新价开通。';
             }
             var sku =
                 typeof getSelectedAlipaySku === 'function' ? getSelectedAlipaySku() : null;

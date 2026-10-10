@@ -6785,14 +6785,21 @@ async function handlePriceBidGet(req, res) {
   }
 }
 
-/** C 端：提交心理价（达线自动放价，未达线转人工） */
+/** C 端：提交心理价（旧站 lkj 一律自动放价；新站 getjob68 UI 已隐藏） */
 async function handlePriceBidSubmit(req, res) {
   try {
     var body = req.body || {};
+    var bidSite = '';
+    try {
+      bidSite = registerSite.siteFromRequest(req).site || '';
+    } catch (eSite) {
+      bidSite = '';
+    }
     var out = await getPriceBids().submitBid(req.authUserId || '', {
       sku_id: body.sku_id,
       amount: body.amount,
-      note: body.note
+      note: body.note,
+      site: bidSite
     });
     var msg =
       out.status === 'accepted'

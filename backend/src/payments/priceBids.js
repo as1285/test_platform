@@ -1,6 +1,7 @@
 /**
  * 心理价出价（议价）：犹豫用户在支付页提交理想价。
- * ≥ 底价线自动写入 user_price_offers 立即生效；低于底价线进后台人工审。
+ * 旧站 lkj：一律自动写入 user_price_offers 立即生效（无待审）。
+ * 新站 getjob68：前端已隐藏出价 UI；若仍提交则保留底价线（≥线自动通过，低于线待审）。
  */
 'use strict';
 
@@ -61,6 +62,15 @@ function normalizeBidConfig(raw) {
     min_amount: clampInt(o.min_amount, 1, 99999, DEFAULT_BID_CONFIG.min_amount),
     daily_limit: clampInt(o.daily_limit, 1, 10, DEFAULT_BID_CONFIG.daily_limit)
   };
+}
+
+
+/** 旧站 lkj（及未知/缺省）心理价一律自动通过；仅新站 getjob68 仍走底价线待审 */
+function shouldAutoAcceptAllBids(site) {
+  var s = String(site == null ? '' : site)
+    .trim()
+    .toLowerCase();
+  return s !== 'getjob68';
 }
 
 /** 自动通过线：优先套餐固定金额，否则目录价 × floor_pct，且不低于全局最低出价 */
@@ -305,6 +315,7 @@ function createPriceBids(deps) {
 
   /**
    * 提交心理价。
+   * input.site: registerSite key（lkj/getjob68/unknown）；lkj/缺省一律 accepted。
    * 返回 { status: 'accepted'|'pending', accepted_amount?, floor_hint? }
    */
   async function submitBid(username, input) {
@@ -362,6 +373,8 @@ function createPriceBids(deps) {
     );
     var note = input && input.note != null ? String(input.note).trim().slice(0, 255) : '';
     var floor = resolveAutoFloor(cfg, sku.id, listAmount);
+    /* 旧站 lkj：无待审，直接按出价放价；新站 getjob68 才看底价线 */
+    var autoAll = shouldAutoAcceptAllBids(input && input.site);
     if (pendingRows.length) {
       var pending = plainBidRow(pendingRows[0]);
       await pool.execute(
@@ -382,7 +395,7 @@ function createPriceBids(deps) {
         sku_label: sku.label || '',
         bid_amount: amount
       };
-      if (isFinite(listAmount) && num >= floor) {
+      if (autoAll || (isFinite(listAmount) && num >= floor)) {
         await acceptToOffer(updatedBid, amount, 'price-bid-auto', true);
         await rememberSurveyExpectedPrice(u, amount);
         return {
@@ -421,7 +434,7 @@ function createPriceBids(deps) {
       sku_label: sku.label || '',
       bid_amount: amount
     };
-    if (isFinite(listAmount) && num >= floor) {
+    if (autoAll || (isFinite(listAmount) && num >= floor)) {
       await acceptToOffer(bid, amount, 'price-bid-auto', true);
       await rememberSurveyExpectedPrice(u, amount);
       return { status: 'accepted', accepted_amount: amount, sku_label: sku.label || '', updated: false };
@@ -830,6 +843,7 @@ module.exports = {
   createPriceBids: createPriceBids,
   normalizeBidConfig: normalizeBidConfig,
   resolveAutoFloor: resolveAutoFloor,
+  shouldAutoAcceptAllBids: shouldAutoAcceptAllBids,
   DEFAULT_BID_CONFIG: DEFAULT_BID_CONFIG,
   DEFAULT_FLOOR_BY_SKU: DEFAULT_FLOOR_BY_SKU
 };
