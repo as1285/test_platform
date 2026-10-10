@@ -7796,9 +7796,9 @@
           /* 16 Pro Max：标题下官方灰缝（勿白底贴死「收入合计」） */
           'html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header{box-shadow:none !important;}' +
           'html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;background:#f5f6fa !important;z-index:121 !important;padding:12px 0 10px !important;box-sizing:border-box !important;}' +
-          'html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .list{margin-top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top) + var(--list-summary-pad,96px)) !important;padding-top:var(--list-summary-pad,96px) !important;background:#f5f6fa !important;}' +
+          'html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .list{margin-top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top) + var(--list-summary-pad,96px)) !important;padding-top:0 !important;background:#f5f6fa !important;}' +
           /* 14PM / 15promax：首屏顶距含安全区+汇总垫，避免顶栏 top:59 被当成错位时挡住首条 */
-          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .list,html.app-ios-iphone14promax.app-top-safe-shell body.page-shuiming-result .list{margin-top:calc(52px + var(--app-shell-statusbar-top,59px) + var(--list-summary-pad,96px)) !important;padding-top:var(--list-summary-pad,96px) !important;}' +
+          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .list,html.app-ios-iphone14promax.app-top-safe-shell body.page-shuiming-result .list{margin-top:calc(52px + var(--app-shell-statusbar-top,59px) + var(--list-summary-pad,96px)) !important;padding-top:0 !important;}' +
           /* 15 Plus 顶距最终交给 syncTopFixedHeight 按汇总底重算 */
           /* 15 Plus 列表贴边铺满（压过 min-width:414 / promax-wide 的 20px） */
           'html.app-ios-iphone15promax body.page-shuiming-result .list,html.app-ios-iphone15promax.app-ios-promax-wide body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;box-sizing:border-box !important;}' +
