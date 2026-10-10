@@ -159,13 +159,6 @@ function siteFromRequest(req) {
   };
 }
 
-/**
- * 新站支付价与渠道脱钩：不默认套用任何推广渠道价。
- * 价目见 sku_catalog_prices_getjob68_json。
- */
-function defaultChannelPricesIdForSite(site) {
-  return '';
-}
 
 module.exports = {
   SITE_GETJOB68: SITE_GETJOB68,
@@ -183,6 +176,5 @@ module.exports = {
   appendRegisterSiteFilter: appendRegisterSiteFilter,
   isGetjob68ViewerAdmin: isGetjob68ViewerAdmin,
   appendExcludeGetjob68UnlessViewer: appendExcludeGetjob68UnlessViewer,
-  siteFromRequest: siteFromRequest,
-  defaultChannelPricesIdForSite: defaultChannelPricesIdForSite
+  siteFromRequest: siteFromRequest
 };

@@ -204,25 +204,10 @@
   }
 
   function renderPageOutline(page) {
-    /* 已下线：页内「本页」锚点条占用版面，且会把 hidden 区块算进导航 */
+    /* 已下线：页内本页锚点条不再生成；清掉残留 DOM */
     document.querySelectorAll('.page-outline').forEach(function (el) {
       el.remove();
     });
-    var panel = document.getElementById('page-' + page);
-    if (!panel) return;
-    var sections = Array.prototype.slice.call(panel.children).filter(function (el) {
-      if (el.tagName !== 'SECTION' || !el.querySelector('h2')) return false;
-      if (el.hidden || el.getAttribute('aria-hidden') === 'true') return false;
-      if (el.hasAttribute('hidden')) return false;
-      var style = window.getComputedStyle ? window.getComputedStyle(el) : null;
-      if (style && style.display === 'none') return false;
-      return true;
-    });
-    enhanceSectionDensity(page, sections);
-  }
-
-  function enhanceSectionDensity(page, sections) {
-    /* 旧「转化概览」页已并入运营看板；密度折叠逻辑不再需要 */
   }
 
   function isCommandOpen() {
