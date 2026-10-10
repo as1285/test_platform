@@ -91,6 +91,14 @@
                     document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
                     document.documentElement.style.setProperty('--android-status-inset', '40px');
                 }
+                if (/25102RKBEC|25102RK69C|25102PCBEG|(?:Redmi|Xiaomi|REDMI)[\s_-]*K90[\s_-]*Pro[\s_-]*Max|POCO[\s_-]*F8[\s_-]*Ultra/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-redmi-k90promax');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+
                 if (/22120RN86[CGHI]|22126RN91Y|2212ARNC4L|22127PC95[GHI]|(?:Redmi|POCO)[\s_-]*12C|POCO\s*C55/i.test(u)) {
                     document.documentElement.classList.add('app-android-redmi-12c');
                     document.documentElement.classList.add('app-android-immersive-white-top');
@@ -725,8 +733,8 @@
         html.app-android-xiaomi-10 body.page-shuiming > .header,
         html.app-android-xiaomi-10.app-top-safe-shell body.page-shuiming > .header,
         html.app-android-redmi-k70-ultra body.page-shuiming > .header,
-        html.app-android-redmi-k80pro body.page-shuiming > .header,
-        html.app-android-redmi-k80pro.app-top-safe-shell body.page-shuiming > .header,
+        html.app-android-redmi-k80pro, html.app-android-redmi-k90promax body.page-shuiming > .header,
+        html.app-android-redmi-k80pro, html.app-android-redmi-k90promax.app-top-safe-shell body.page-shuiming > .header,
         html.app-android-redmi-12c body.page-shuiming > .header,
         html.app-android-iqoo-neo8 body.page-shuiming > .header,
         html.app-android-iqoo-neo8.app-top-safe-shell body.page-shuiming > .header,
@@ -755,8 +763,8 @@
         html.app-android-xiaomi-10 body.page-shuiming > .content,
         html.app-android-xiaomi-10.app-top-safe-shell body.page-shuiming > .content,
         html.app-android-redmi-k70-ultra body.page-shuiming > .content,
-        html.app-android-redmi-k80pro body.page-shuiming > .content,
-        html.app-android-redmi-k80pro.app-top-safe-shell body.page-shuiming > .content,
+        html.app-android-redmi-k80pro, html.app-android-redmi-k90promax body.page-shuiming > .content,
+        html.app-android-redmi-k80pro, html.app-android-redmi-k90promax.app-top-safe-shell body.page-shuiming > .content,
         html.app-android-redmi-12c body.page-shuiming > .content,
         html.app-android-iqoo-neo8 body.page-shuiming > .content,
         html.app-android-iqoo-neo8.app-top-safe-shell body.page-shuiming > .content,

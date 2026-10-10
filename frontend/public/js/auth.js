@@ -839,7 +839,8 @@
       isRedmi12CClient() ||
       isRedmiNote115GClient() ||
       isRedmiK80ProClient() ||
-      isAndroid25060RK16CClient()
+      isAndroid25060RK16CClient() ||
+      isRedmiK90ProMaxClient()
     );
   }
 
@@ -1213,6 +1214,23 @@
     return /POCO[\s_-]*F7[\s_-]*Ultra/i.test(ua);
   }
 
+
+  /**
+   * 红米 K90 Pro Max（国行 25102RKBEC / 兰博 25102RK69C；国际 POCO F8 Ultra=25102PCBEG）。
+   * HyperOS 3 Cordova 仍压在系统状态栏下；「我的」再被 @sm 1180 裁切 + 100% 100% 压扁后，
+   * 菜单白卡会盖住个人信息 / 家庭成员 / 任职受雇 / 银行卡。勿匹配裸 K90 / K90 Ultra / K90 Max。
+   */
+  function isRedmiK90ProMaxClient() {
+    var ua = clientUaBlob();
+    if (/25102RKBEC|25102RK69C|25102PCBEG/i.test(ua)) {
+      return true;
+    }
+    if (/(?:Redmi|Xiaomi|REDMI)[\s_-]*K90[\s_-]*Pro[\s_-]*Max/i.test(ua)) {
+      return true;
+    }
+    return /POCO[\s_-]*F8[\s_-]*Ultra/i.test(ua);
+  }
+
   /**
    * 红米 K70 族（标准版 + 至尊）。用于非「我的」页的机型桶，勿再写成「外置故清零」。
    * 标准版：全页黑状态栏 + 40px 页内黑边（对齐小米 14），见 isRedmiK70StandardClient。
@@ -1223,7 +1241,8 @@
     var ua = clientUaBlob();
     if (
       isRedmiK80ProClient() ||
-      /(?:Redmi|Xiaomi|REDMI)[\s_-]*K80|24117RK2C|24122RKC7|24127RK2CC|25060RK16C/i.test(ua)
+      isRedmiK90ProMaxClient() ||
+      /(?:Redmi|Xiaomi|REDMI)[\s_-]*K80|24117RK2C|24122RKC7|24127RK2CC|25060RK16C|(?:Redmi|Xiaomi|REDMI)[\s_-]*K90/i.test(ua)
     ) {
       return false;
     }
@@ -1265,7 +1284,7 @@
     ) {
       return false;
     }
-    if (/24117RK2C|24122RKC7|24127RK2CC|25060RK16C|(?:Redmi|Xiaomi|REDMI)[\s_-]*K80/i.test(ua)) {
+    if (/24117RK2C|24122RKC7|24127RK2CC|25060RK16C|25102RKBEC|25102RK69C|25102PCBEG|(?:Redmi|Xiaomi|REDMI)[\s_-]*K80|(?:Redmi|Xiaomi|REDMI)[\s_-]*K90/i.test(ua)) {
       return false;
     }
     if (/23113RKC6[CG]|2311DRK48[CGI]/i.test(ua)) {
@@ -2909,6 +2928,12 @@
       return false;
     }
     if (
+      isRedmiK90ProMaxClient() ||
+      document.documentElement.classList.contains('app-android-redmi-k90promax')
+    ) {
+      return false;
+    }
+    if (
       isOppoReno10Client() ||
       document.documentElement.classList.contains('app-android-oppo-reno10')
     ) {
@@ -2949,6 +2974,12 @@
     if (
       isOnePlusAceProClient() ||
       root.classList.contains('app-android-oneplus-acepro')
+    ) {
+      return false;
+    }
+    if (
+      isRedmiK90ProMaxClient() ||
+      root.classList.contains('app-android-redmi-k90promax')
     ) {
       return false;
     }
@@ -3331,6 +3362,140 @@
     } catch (ePad) {}
   }
 
+
+  function k90ProMaxMineE1LockCss() {
+    var sel = 'html.app-android-redmi-k90promax';
+    return (
+      sel + ' body.page-mine,' +
+      sel + '.app-top-safe-shell body.page-mine,' +
+      sel + '.app-android-client.app-top-safe-shell body.page-mine,' +
+      sel + '.app-android-mine-e1-sm body.page-mine,' +
+      sel + '.app-android-mine-e1-plainimg body.page-mine{' +
+      '--mine-top-bleed:0px !important;}' +
+      sel + ' body.page-mine .mine-e1-canvas,' +
+      sel + '.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
+      sel + '.app-android-mine-e1-sm body.page-mine .mine-e1-canvas,' +
+      sel + '.app-android-mine-e1-plainimg body.page-mine .mine-e1-canvas,' +
+      sel + '.app-android-client.app-top-safe-shell.app-android-immersive-white-top body.page-mine .mine-e1-canvas{' +
+      'padding-top:0 !important;margin-top:0 !important;overflow:hidden !important;' +
+      'width:100% !important;height:auto !important;max-height:none !important;' +
+      'aspect-ratio:auto !important;container-type:normal !important;' +
+      'background-image:none !important;background-color:#f5f6fa !important;}' +
+      sel + ' body.page-mine .mine-e1-canvas > img,' +
+      sel + ' body.page-mine .mine-e1-canvas > #headerImg,' +
+      sel + '.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
+      sel + '.app-android-mine-e1-sm body.page-mine .mine-e1-canvas > img,' +
+      sel + '.app-android-mine-e1-plainimg body.page-mine .mine-e1-canvas > img{' +
+      'margin-top:0 !important;display:block !important;position:relative !important;' +
+      'width:100% !important;height:auto !important;max-height:none !important;' +
+      'aspect-ratio:1284 / 2127 !important;object-fit:fill !important;' +
+      'opacity:1 !important;top:auto !important;transform:none !important;}' +
+      sel + ' body.page-mine .mine-e1-layer,' +
+      sel + '.app-top-safe-shell body.page-mine .mine-e1-layer,' +
+      sel + '.app-android-mine-e1-sm body.page-mine .mine-e1-layer,' +
+      sel + '.app-android-mine-e1-plainimg body.page-mine .mine-e1-layer{' +
+      'top:0 !important;height:0 !important;padding-bottom:calc(2127 / 1284 * 100%) !important;}' +
+      sel + ' body.page-mine .mine-e1-pill,' +
+      sel + '.app-android-mine-e1-plainimg body.page-mine .mine-e1-pill{' +
+      'display:inline-flex !important;align-items:center !important;justify-content:center !important;' +
+      'line-height:1 !important;box-sizing:border-box !important;' +
+      'padding-top:0 !important;padding-bottom:0 !important;overflow:hidden !important;}' +
+      sel + ' body.page-mine .mine-e1-pill-family{left:calc(135 * var(--mine-rpx)) !important;transform:translateX(-50%) !important;}' +
+      sel + ' body.page-mine .mine-e1-pill-employer{left:calc(375 * var(--mine-rpx)) !important;transform:translateX(-50%) !important;}' +
+      sel + ' body.page-mine .mine-e1-pill-bank{left:calc(615 * var(--mine-rpx)) !important;transform:translateX(-50%) !important;}'
+    );
+  }
+
+  function pinK90ProMaxMineE1Layout() {
+    try {
+      var root = document.documentElement;
+      if (!isRedmiK90ProMaxClient() && !root.classList.contains('app-android-redmi-k90promax')) {
+        return;
+      }
+      root.classList.add('app-android-client');
+      root.classList.add('app-top-safe-shell');
+      root.classList.add('app-android-redmi-k90promax');
+      root.classList.add('app-android-immersive-white-top');
+      root.classList.add('app-android-mine-e1-plainimg');
+      root.classList.remove('app-android-mine-e1-sm');
+      root.classList.remove('app-android-mi-family');
+      root.classList.remove('app-android-white-page-outer');
+      window.__mineE1PlainImg = true;
+      window.__mineE1ForceSm = true;
+      try {
+        root.style.setProperty('--app-shell-statusbar-top', '40px');
+        root.style.setProperty('--android-status-inset', '40px');
+      } catch (eInset) {}
+      try {
+        dropStaleMineE1SmStyles();
+      } catch (eDrop) {}
+      try {
+        var oldLock = document.querySelector('style[data-k90promax-mine-e1-lock]');
+        if (oldLock && oldLock.parentNode) oldLock.parentNode.removeChild(oldLock);
+        var lock = document.createElement('style');
+        lock.setAttribute('data-k90promax-mine-e1-lock', '1');
+        lock.textContent = k90ProMaxMineE1LockCss();
+        (document.head || document.documentElement).appendChild(lock);
+      } catch (eLock) {}
+      if (!document.body || !document.body.classList.contains('page-mine')) {
+        return;
+      }
+      root.style.setProperty('--mine-top-bleed', '0px', 'important');
+      document.body.style.setProperty('--mine-top-bleed', '0px', 'important');
+      var canvas = document.getElementById('mineE1Canvas');
+      var layer = document.getElementById('mineE1Layer');
+      var img = document.getElementById('headerImg');
+      if (canvas) {
+        ['background-image', 'background-size', 'background-repeat', 'background-position', 'aspect-ratio', 'height', 'max-height'].forEach(
+          function (prop) {
+            try {
+              canvas.style.removeProperty(prop);
+            } catch (eRm) {}
+          }
+        );
+        canvas.style.setProperty('padding-top', '0', 'important');
+        canvas.style.setProperty('margin-top', '0', 'important');
+        canvas.style.setProperty('width', '100%', 'important');
+        canvas.style.setProperty('height', 'auto', 'important');
+        canvas.style.setProperty('max-height', 'none', 'important');
+        canvas.style.setProperty('aspect-ratio', 'auto', 'important');
+        canvas.style.setProperty('container-type', 'normal', 'important');
+        canvas.style.setProperty('overflow', 'hidden', 'important');
+        canvas.style.setProperty('background-image', 'none', 'important');
+        canvas.style.setProperty('background-color', '#f5f6fa', 'important');
+      }
+      if (img) {
+        img.style.setProperty('margin-top', '0', 'important');
+        img.style.setProperty('display', 'block', 'important');
+        img.style.setProperty('position', 'relative', 'important');
+        img.style.setProperty('width', '100%', 'important');
+        img.style.setProperty('height', 'auto', 'important');
+        img.style.setProperty('max-height', 'none', 'important');
+        img.style.setProperty('aspect-ratio', '1284 / 2127', 'important');
+        img.style.setProperty('object-fit', 'fill', 'important');
+        img.style.setProperty('opacity', '1', 'important');
+        img.style.setProperty('top', 'auto', 'important');
+        img.style.setProperty('transform', 'none', 'important');
+      }
+      if (layer) {
+        layer.style.setProperty('top', '0', 'important');
+        layer.style.setProperty('height', '0', 'important');
+        layer.style.setProperty('padding-bottom', 'calc(2127 / 1284 * 100%)', 'important');
+      }
+      pinMineE1RpxFromCanvas();
+      if (!pinK90ProMaxMineE1Layout._rpxRearm) {
+        pinK90ProMaxMineE1Layout._rpxRearm = true;
+        [80, 240, 600, 1200].forEach(function (ms) {
+          setTimeout(function () {
+            try {
+              pinK90ProMaxMineE1Layout();
+            } catch (eRe) {}
+          }, ms);
+        });
+      }
+    } catch (eK90pin) {}
+  }
+
   function pinAceProMineE1Layout() {
     try {
       var root = document.documentElement;
@@ -3597,7 +3762,7 @@
   /** Android @sm：裁到菜单下缘（含 iQOO 13/15）。小米 HyperOS 2 / Mate 60 / Ace Pro 另走 lock。 */
   function androidMineE1TailCropCss() {
       var cropSel =
-      'html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra):not(.app-android-redmi-note13-pro):not(.app-android-oppo-reno10):not(.app-android-huawei-matepad115s) body.page-mine';
+      'html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-android-redmi-k90promax):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra):not(.app-android-redmi-note13-pro):not(.app-android-oppo-reno10):not(.app-android-huawei-matepad115s) body.page-mine';
     var imgSel =
       cropSel + ' .mine-e1-canvas > img,' +
       cropSel + ' .mine-e1-canvas > #headerImg';
@@ -3640,6 +3805,14 @@
       try {
         return typeof currentPageName === 'function' && currentPageName() === 'mine.html';
       } catch (eZ9) {
+        return false;
+      }
+    }
+    /* K90 Pro Max：@sm 1180 + 100% 100% 压扁后菜单白卡盖三宫格；只在「我的」走单层 */
+    if (isRedmiK90ProMaxClient()) {
+      try {
+        return typeof currentPageName === 'function' && currentPageName() === 'mine.html';
+      } catch (eK90) {
         return false;
       }
     }
@@ -3984,11 +4157,16 @@
       if (shouldApplyMineBlackStatus() || root.classList.contains('app-mine-black-status')) {
         return;
       }
+      if (isRedmiK90ProMaxClient() || root.classList.contains('app-android-redmi-k90promax')) {
+        pinK90ProMaxMineE1Layout();
+        return;
+      }
       if (isIqooMineTailPhone() || isMineE1PlainImgClient()) {
         return;
       }
       if (isOnePlusAceProClient() || root.classList.contains('app-android-oneplus-acepro')) {
         pinAceProMineE1Layout();
+      pinK90ProMaxMineE1Layout();
         return;
       }
       if (isOppoReno10Client() || root.classList.contains('app-android-oppo-reno10')) {
@@ -4814,7 +4992,7 @@
           /* 外置状态栏族：壳级 inset 也清零（Ace 2 Pro / Ace 2V 仍沉浸，勿清零） */
           'html.app-android-vivo-family.app-top-safe-shell:not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-vivo-s15):not(.app-android-immersive-white-top),' +
           'html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oneplus-ace6):not(.app-android-oneplus-12):not(.app-android-oppo-reno10):not(.app-android-oppo-k9x):not(.app-android-immersive-white-top),' +
-          'html.app-android-mi-family.app-top-safe-shell:not(.app-android-redmi-k80pro):not(.app-android-redmi-k80ultra):not(.app-android-immersive-white-top),' +
+          'html.app-android-mi-family.app-top-safe-shell:not(.app-android-redmi-k80pro):not(.app-android-redmi-k80ultra):not(.app-android-redmi-k90promax):not(.app-android-immersive-white-top),' +
           'html.app-android-samsung.app-top-safe-shell:not(.app-android-immersive-white-top):not(.app-android-samsung-s23u),' +
           'html.app-android-samsung-s24u.app-top-safe-shell:not(.app-android-immersive-white-top),' +
           'html.app-android-huawei-harmony.app-top-safe-shell:not(.app-android-huawei-mate60):not(.app-android-huawei-p40):not(.app-android-huawei-p40pro):not(.app-android-immersive-white-top):not(.app-android-honor-oxf),' +
@@ -4883,6 +5061,7 @@
       pinMate60MineE1Layout();
       pinXiaomi14ProMineE1Layout();
       pinAceProMineE1Layout();
+      pinK90ProMaxMineE1Layout();
       pinReno10MineE1Layout();
       pinHinova9SeMineE1Layout();
       pinMatePad115SMineE1Layout();
@@ -5869,6 +6048,16 @@
           if (isRedmiK80ProClient() || root.classList.contains('app-android-redmi-k80pro')) {
             root.classList.add('app-android-redmi-k80pro');
           }
+          if (isRedmiK90ProMaxClient() || root.classList.contains('app-android-redmi-k90promax')) {
+            root.classList.add('app-android-redmi-k90promax');
+            root.classList.add('app-android-immersive-white-top');
+            root.classList.remove('app-android-mi-family');
+            root.classList.remove('app-android-white-page-outer');
+            try {
+              root.style.setProperty('--app-shell-statusbar-top', '40px');
+              root.style.setProperty('--android-status-inset', '40px');
+            } catch (eK90m) {}
+          }
           if (isRedmi12CClient() || root.classList.contains('app-android-redmi-12c')) {
             root.classList.add('app-android-redmi-12c');
           }
@@ -6598,6 +6787,7 @@
       var redmiK70UltraClient = androidClient && isRedmiK70UltraClient();
       var redmiK70StdClient = androidClient && isRedmiK70StandardClient();
       var redmiK80ProClient = androidClient && isRedmiK80ProClient();
+      var redmiK90ProMaxClient = androidClient && isRedmiK90ProMaxClient();
       var redmi12CClient = androidClient && isRedmi12CClient();
       var redmiNote115GClient = androidClient && isRedmiNote115GClient();
       var xiaomiMixFoldClient = androidClient && isXiaomiMixFoldClient();
@@ -6622,6 +6812,7 @@
         !xiaomi10NotchClient &&
         !redmiK70UltraClient &&
         !redmiK80ProClient &&
+        !redmiK90ProMaxClient &&
         !isAndroid25060RK16CClient() &&
         !redmi12CClient &&
         !redmiNote115GClient;
@@ -6705,6 +6896,7 @@
         !xiaomi10NotchClient &&
         !redmiK70UltraClient &&
         !redmiK80ProClient &&
+        !redmiK90ProMaxClient &&
         !redmi12CClient &&
         !redmiNote115GClient &&
         !huaweiMate60Client &&
@@ -7069,6 +7261,14 @@
       if (redmiK80ProClient) {
         document.documentElement.classList.add('app-android-redmi-k80pro');
       }
+      if (redmiK90ProMaxClient) {
+        document.documentElement.classList.add('app-android-redmi-k90promax');
+        document.documentElement.classList.add('app-android-immersive-white-top');
+        document.documentElement.classList.remove('app-android-mi-family');
+        document.documentElement.classList.remove('app-android-white-page-outer');
+        document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+        document.documentElement.style.setProperty('--android-status-inset', '40px');
+      }
       if (redmi12CClient) {
         document.documentElement.classList.add('app-android-redmi-12c');
       }
@@ -7432,7 +7632,7 @@
           'html.app-android-vivo-x90.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
           'html.app-android-vivo-v2285a.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
           'html.app-android-vivo-s15.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;background-image:none !important;}' +
-          'html.app-android-mi-family.app-top-safe-shell:not(.app-android-redmi-k80pro):not(.app-android-redmi-k80ultra):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-immersive-white-top),html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oneplus-ace6):not(.app-android-oneplus-12):not(.app-android-oppo-reno10):not(.app-android-oppo-k9x):not(.app-android-immersive-white-top),html.app-android-vivo-family.app-top-safe-shell:not(.app-android-immersive-white-top):not(.app-android-vivo-x300pro):not(.app-android-vivo-s50promini):not(.app-android-vivo-x200pro):not(.app-android-vivo-x90):not(.app-android-vivo-v2285a):not(.app-android-vivo-s15):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-meizu-20pro),html.app-android-samsung.app-top-safe-shell:not(.app-android-immersive-white-top):not(.app-android-samsung-s23u),html.app-android-samsung-s24u.app-top-safe-shell:not(.app-android-immersive-white-top),html.app-android-huawei-harmony.app-top-safe-shell:not(.app-android-huawei-mate60):not(.app-android-huawei-mate70):not(.app-android-huawei-mate30):not(.app-android-huawei-mate30pro):not(.app-android-huawei-lio-an00):not(.app-android-huawei-nova13):not(.app-android-huawei-p40):not(.app-android-huawei-p40pro):not(.app-android-immersive-white-top):not(.app-android-honor-oxf),html.app-android-hinova.app-top-safe-shell:not(.app-android-immersive-white-top){--app-shell-statusbar-top:0px !important;}' +
+          'html.app-android-mi-family.app-top-safe-shell:not(.app-android-redmi-k80pro):not(.app-android-redmi-k80ultra):not(.app-android-redmi-k90promax):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-immersive-white-top),html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oneplus-ace6):not(.app-android-oneplus-12):not(.app-android-oppo-reno10):not(.app-android-oppo-k9x):not(.app-android-immersive-white-top),html.app-android-vivo-family.app-top-safe-shell:not(.app-android-immersive-white-top):not(.app-android-vivo-x300pro):not(.app-android-vivo-s50promini):not(.app-android-vivo-x200pro):not(.app-android-vivo-x90):not(.app-android-vivo-v2285a):not(.app-android-vivo-s15):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-meizu-20pro),html.app-android-samsung.app-top-safe-shell:not(.app-android-immersive-white-top):not(.app-android-samsung-s23u),html.app-android-samsung-s24u.app-top-safe-shell:not(.app-android-immersive-white-top),html.app-android-huawei-harmony.app-top-safe-shell:not(.app-android-huawei-mate60):not(.app-android-huawei-mate70):not(.app-android-huawei-mate30):not(.app-android-huawei-mate30pro):not(.app-android-huawei-lio-an00):not(.app-android-huawei-nova13):not(.app-android-huawei-p40):not(.app-android-huawei-p40pro):not(.app-android-immersive-white-top):not(.app-android-honor-oxf),html.app-android-hinova.app-top-safe-shell:not(.app-android-immersive-white-top){--app-shell-statusbar-top:0px !important;}' +
           /* 沉浸压栏机（含 Mate60 / Mate70 白顶栏 / 小米10 / K70至尊 / 12C / Ace 2 Pro / Neo8 Pro / 魅族 20 Pro）：压过族清零 */ +
           'html.app-android-immersive-white-top.app-top-safe-shell,' +
           'html.app-android-huawei-mate60.app-top-safe-shell,' +
@@ -7462,7 +7662,7 @@
           'html.app-android-vivo-s15.app-top-safe-shell,' +
           'html.app-android-redmi-k70-ultra.app-top-safe-shell,' +
           'html.app-android-xiaomi-15.app-top-safe-shell,' +
-          'html.app-android-redmi-k80pro.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
+          'html.app-android-redmi-k80pro.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' + 'html.app-android-redmi-k90promax.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
           'html.app-android-samsung-s23u.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
           'html.app-android-redmi-k80ultra.app-top-safe-shell,html.app-android-25060rk16c.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
           'html.app-android-redmi-12c.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
@@ -8824,6 +9024,7 @@
     pinMate60MineE1Layout();
     pinXiaomi14ProMineE1Layout();
     pinAceProMineE1Layout();
+      pinK90ProMaxMineE1Layout();
       pinReno10MineE1Layout();
     pinHinova9SeMineE1Layout();
     pinMatePad115SMineE1Layout();
@@ -8903,6 +9104,7 @@
       pinMate60MineE1Layout();
       pinXiaomi14ProMineE1Layout();
       pinAceProMineE1Layout();
+      pinK90ProMaxMineE1Layout();
       pinReno10MineE1Layout();
       pinHinova9SeMineE1Layout();
       pinMatePad115SMineE1Layout();
@@ -8919,6 +9121,7 @@
       pinMate60MineE1Layout();
       pinXiaomi14ProMineE1Layout();
       pinAceProMineE1Layout();
+      pinK90ProMaxMineE1Layout();
       pinReno10MineE1Layout();
       pinHinova9SeMineE1Layout();
       pinMatePad115SMineE1Layout();
@@ -9061,6 +9264,7 @@
     pinMate60MineE1Layout();
     pinXiaomi14ProMineE1Layout();
     pinAceProMineE1Layout();
+      pinK90ProMaxMineE1Layout();
       pinReno10MineE1Layout();
     pinHinova9SeMineE1Layout();
     pinMatePad115SMineE1Layout();

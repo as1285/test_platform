@@ -103,6 +103,14 @@
                     document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
                     document.documentElement.style.setProperty('--android-status-inset', '40px');
                 }
+                if (/25102RKBEC|25102RK69C|25102PCBEG|(?:Redmi|Xiaomi|REDMI)[\s_-]*K90[\s_-]*Pro[\s_-]*Max|POCO[\s_-]*F8[\s_-]*Ultra/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-redmi-k90promax');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
+
                 if (/V2527A|V2527DA|V2527B|PD2527[A-Z]?|\bV2527\b|(?:vivo[\s_-]*)?S50[\s_-]*Pro[\s_-]*[Mm]ini|S50Promini/i.test(u)) {
                     document.documentElement.classList.add('app-android-vivo-s50promini');
                     document.documentElement.classList.add('app-android-immersive-white-top');
@@ -378,7 +386,7 @@
         html.app-android-xiaomi-13pro.app-top-safe-shell body.page-xiangqing,
         html.app-android-xiaomi-14pro.app-top-safe-shell body.page-xiangqing,
         html.app-android-redmi-k70-ultra.app-top-safe-shell body.page-xiangqing,
-        html.app-android-redmi-k80pro.app-top-safe-shell body.page-xiangqing,
+        html.app-android-redmi-k80pro, html.app-android-redmi-k90promax.app-top-safe-shell body.page-xiangqing,
         html.app-android-redmi-12c.app-top-safe-shell body.page-xiangqing {
             --app-shell-statusbar-top: 40px;
             padding-top: calc(var(--xq-header-core) + 40px);
@@ -392,7 +400,7 @@
         html.app-android-xiaomi-13pro.app-top-safe-shell body.page-xiangqing > .header,
         html.app-android-xiaomi-14pro.app-top-safe-shell body.page-xiangqing > .header,
         html.app-android-redmi-k70-ultra.app-top-safe-shell body.page-xiangqing > .header,
-        html.app-android-redmi-k80pro.app-top-safe-shell body.page-xiangqing > .header,
+        html.app-android-redmi-k80pro, html.app-android-redmi-k90promax.app-top-safe-shell body.page-xiangqing > .header,
         html.app-android-redmi-12c.app-top-safe-shell body.page-xiangqing > .header {
             padding-top: calc(10px + 40px) !important;
         }
