@@ -13,18 +13,18 @@ describe('admin email console', () => {
     expect(html).toContain('id="userEmailSendAudience"');
     expect(html).toContain('id="userEmailSendPreview"');
     expect(html).toContain('id="userEmailHalf"');
-    expect(html).toContain('id="userEmailBounce"');
-    expect(html).toContain('id="btnUserEmailBounceSync"');
+    expect(html).not.toContain('id="userEmailBounce"');
+    expect(html).not.toContain('id="btnUserEmailBounceSync"');
     expect(html).toContain('退税测算邮件已停发');
-    expect(loader).toContain('user-emails.js?v=20260911-bounces');
+    expect(loader).toContain('user-emails.js?v=20261010-dead-admin');
     expect(src).toContain('function loadOverview');
     expect(src).toContain('本周填写率');
     expect(src).toContain('function audienceLabel');
     expect(src).toContain('jumpToRegisteredUser');
     expect(src).toContain('function previewSend');
     expect(src).toContain('api/admin/emails/overview?days=7');
-    expect(src).toContain('api/admin/emails/bounces');
-    expect(src).toContain('function syncBounces');
+    expect(src).not.toContain('api/admin/emails/bounces');
+    expect(src).not.toContain('function syncBounces');
   });
 
   it('jumps to registered user from send log', () => {

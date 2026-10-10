@@ -6324,16 +6324,6 @@
             }
         }
 
-        function currentAdminSiteFilter(selectId) {
-            if (selectId === 'filterRegisterSite' || !selectId) {
-                return currentUsersListSite();
-            }
-            if (isLegacyAdminHostClient()) return 'lkj';
-            var el = document.getElementById(selectId);
-            var v = el ? String(el.value || 'all').trim() : 'all';
-            return v || 'all';
-        }
-
         function loadUsers(p) {
             ensureUserDetailPagesToggleDelegation();
             syncActivationCreditVisibility();

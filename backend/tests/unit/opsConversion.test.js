@@ -63,12 +63,6 @@ describe('opsConversion helpers', () => {
     );
     expect(src).toContain('resolveKpiRange(req.query)');
     expect(src).toContain('cnDay} >= ? AND ${cnDay} <= ?');
-    var dauSrc = require('fs').readFileSync(
-      require('path').resolve(__dirname, '../../src/admin/opsBoardDau.js'),
-      'utf8'
-    );
-    expect(dauSrc).toContain('async function loadOpsBoardDau');
-    expect(src + dauSrc).toMatch(/dau:\s*dau|loadOpsBoardDau/);
   });
 
   it('keeps high-income threshold at 15000', () => {

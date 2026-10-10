@@ -19,9 +19,9 @@
     'feature-survey': '/js/admin/modules/feature-survey.js?v=20260907-hub6',
     'payment-orders': '/js/admin/modules/payment-orders.js?v=20260907-hub6',
     feedback: '/js/admin/modules/feedback.js?v=20260910-fb-act',
-    'ops-conversion': '/js/admin/modules/ops-conversion.js?v=20261008-legacy-plain',
+    'ops-conversion': '/js/admin/modules/ops-conversion.js?v=20261010-dead-admin',
     'ad-analytics': '/js/admin/modules/ad-analytics.js?v=20261009-purchase-copy-daily',
-    'user-emails': '/js/admin/modules/user-emails.js?v=20260910-week-fill',
+    'user-emails': '/js/admin/modules/user-emails.js?v=20261010-dead-admin',
     'abc-ops': '/js/admin/modules/abc-ops.js?v=20261008-legacy-plain'
   };
 
@@ -135,8 +135,8 @@
    *  consult-core / consult-batch-tax 的 ?v= 必须与 C 端 consult.html 同步，否则管理端跑旧缓存逻辑 */
   function ensureTaxBatchScripts() {
     var scripts = [
-      '/js/consult-core.js?v=20260907-sz-wage',
-      '/js/consult-batch-tax.js?v=20260907-tax-ux',
+      '/js/consult-core.js?v=20261010-ocr-list',
+      '/js/consult-batch-tax.js?v=20261010-ocr-list',
       '/js/admin-tax-batch-bridge.js?v=20260806-admin-tax-align'
     ];
     var chain = Promise.resolve();
